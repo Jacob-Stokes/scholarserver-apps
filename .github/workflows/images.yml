@@ -57,7 +57,17 @@ jobs:
           IMAGE: ghcr.io/jacob-stokes/scholarserver-${{ matrix.image }}
           REVISION: ${{ github.sha }}
         run: |
-          docker manifest create "$IMAGE:sha-$REVISION" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
-          docker manifest push "$IMAGE:sha-$REVISION"
-          docker manifest create "$IMAGE:edge" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
-          docker manifest push "$IMAGE:edge"
+          publish_manifest() {
+            target="$1"
+            for attempt in 1 2 3; do
+              docker manifest rm "$target" 2>/dev/null || true
+              if docker manifest create "$target" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64" \
+                && docker manifest push "$target"; then
+                return 0
+              fi
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+          publish_manifest "$IMAGE:sha-$REVISION"
+          publish_manifest "$IMAGE:edge"

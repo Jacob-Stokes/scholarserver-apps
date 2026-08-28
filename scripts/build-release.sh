@@ -9,7 +9,8 @@ if grep -q 'sha256:0000000000000000000000000000000000000000000000000000000000000
 fi
 
 mkdir -p catalog/dist
-archive=catalog/dist/obsidian-0.1.0.tar.gz
+package_version=$(sed -n 's/^packageVersion: //p' "$manifest")
+archive="catalog/dist/obsidian-$package_version.tar.gz"
 tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
   -czf "$archive" -C apps/obsidian/package .
 digest=$(sha256sum "$archive" | cut -d ' ' -f 1)
@@ -20,7 +21,7 @@ cat > catalog/dist/index.json <<EOF
   "applications": [
     {
       "id": "org.scholarserver.obsidian",
-      "version": "0.1.0",
+      "version": "$package_version",
       "bundle": "$asset_url",
       "sha256": "$digest"
     }
