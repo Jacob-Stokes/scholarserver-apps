@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ObsidianClient } from "../obsidian-client.js";
 import { ObsidianError, encodeVaultPath } from "../obsidian-client.js";
@@ -21,18 +22,24 @@ export type NoteSnapshot = {
 
 function configuredPrefixes(name: string): string[] | null {
   const value = process.env[name]?.trim();
+  if (value) return value === "*" ? null : value.split(",").map(normalizeVaultPath).filter(Boolean);
+  try {
+    const scope = readFileSync("/runtime/scope-path", "utf8").trim();
+    if (!scope || scope === "/" || scope === "*") return null;
+    return [normalizeVaultPath(scope)];
+  } catch {}
   if (!value || value === "*") return null;
   return value.split(",").map(normalizeVaultPath).filter(Boolean);
 }
 
 export class VaultPolicy {
-  private readonly readPrefixes = configuredPrefixes("OBSIDIAN_READ_PATHS");
-  private readonly writePrefixes = configuredPrefixes("OBSIDIAN_WRITE_PATHS");
+  private readPrefixes() { return configuredPrefixes("OBSIDIAN_READ_PATHS"); }
+  private writePrefixes() { return configuredPrefixes("OBSIDIAN_WRITE_PATHS"); }
 
   assertRead(rawPath: string): string {
     const normalized = normalizeVaultPath(rawPath);
     this.assertNotPrivate(normalized);
-    if (!matchesPrefix(normalized, this.readPrefixes)) {
+    if (!matchesPrefix(normalized, this.readPrefixes())) {
       throw new Error(`read denied by OBSIDIAN_READ_PATHS: ${normalized}`);
     }
     return normalized;
@@ -53,7 +60,8 @@ export class VaultPolicy {
     try {
       const normalized = normalizeVaultPath(rawPath);
       this.assertNotPrivate(normalized);
-      return !this.readPrefixes || this.readPrefixes.some((prefix) =>
+      const prefixes = this.readPrefixes();
+      return !prefixes || prefixes.some((prefix) =>
         normalized === prefix || normalized.startsWith(`${prefix}/`) || prefix.startsWith(`${normalized}/`),
       );
     } catch {
@@ -66,7 +74,7 @@ export class VaultPolicy {
     if (!(options.allowTrash && (normalized === ".trash" || normalized.startsWith(".trash/")))) {
       this.assertNotPrivate(normalized);
     }
-    if (!options.allowTrash && !matchesPrefix(normalized, this.writePrefixes)) {
+    if (!options.allowTrash && !matchesPrefix(normalized, this.writePrefixes())) {
       throw new Error(`write denied by OBSIDIAN_WRITE_PATHS: ${normalized}`);
     }
     return normalized;
@@ -74,8 +82,8 @@ export class VaultPolicy {
 
   describe() {
     return {
-      readPaths: this.readPrefixes ?? ["*"],
-      writePaths: this.writePrefixes ?? ["*"],
+      readPaths: this.readPrefixes() ?? ["*"],
+      writePaths: this.writePrefixes() ?? ["*"],
       alwaysDenied: [".obsidian", ".trash"],
     };
   }

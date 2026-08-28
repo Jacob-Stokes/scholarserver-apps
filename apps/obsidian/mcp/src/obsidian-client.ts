@@ -15,7 +15,9 @@ export class ObsidianClient {
   ) {}
 
   async call(method: string, path: string, body?: unknown, contentType = "application/json"): Promise<any> {
-    const url = `${this.baseUrl}${path}`;
+    const prefix = process.env.OBSIDIAN_API_PREFIX ?? "";
+    const backendPath = path.startsWith("/api/") ? `${prefix}${path.slice(4)}` : path;
+    const url = `${this.baseUrl}${backendPath}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {

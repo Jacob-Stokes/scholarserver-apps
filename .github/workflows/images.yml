@@ -1,0 +1,62 @@
+name: Native multi-architecture images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/obsidian/**"
+      - "packages/mcp-common/**"
+      - ".github/workflows/images.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push native images
+        env:
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          ARCH: ${{ matrix.architecture }}
+          REVISION: ${{ github.sha }}
+        run: ./scripts/build-native-images.sh
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [obsidian-sync, obsidian-api, obsidian-mcp]
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish multi-platform manifest
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/scholarserver-${{ matrix.image }}
+          REVISION: ${{ github.sha }}
+        run: |
+          docker manifest create "$IMAGE:sha-$REVISION" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
+          docker manifest push "$IMAGE:sha-$REVISION"
+          docker manifest create "$IMAGE:edge" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
+          docker manifest push "$IMAGE:edge"
+

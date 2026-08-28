@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "mcp-common": "file:../mcp-common",
+    "mcp-common": "file:../../../packages/mcp-common",
     "yaml": "^2.9.0",
     "zod": "^3.23.0"
   },

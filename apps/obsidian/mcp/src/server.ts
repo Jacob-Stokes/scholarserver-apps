@@ -3,7 +3,8 @@
 // Shared transport + schema + Infisical plumbing lives in `mcp-common`;
 // this file is config + backend client + tool registration.
 
-import { startMcp, fetchSecret } from "mcp-common";
+import { startMcp } from "mcp-common";
+import { readFile } from "node:fs/promises";
 import { ObsidianClient, ObsidianError } from "./obsidian-client.js";
 import { normalizeVaultPath, VaultPolicy, type ToolContext } from "./lib/vault.js";
 
@@ -32,13 +33,22 @@ import { ATTACHMENTS_TOOL, AttachmentsInput, handleAttachments } from "./tools/a
 import { STATUS_TOOL, StatusInput, handleStatus } from "./tools/status.js";
 
 const PORT = parseInt(process.env.PORT || "7002", 10);
-const OBSIDIAN_BASE_URL = process.env.OBSIDIAN_BASE_URL || "http://obsidian-landing:3099";
-const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN;
-if (!MCP_BEARER_TOKEN) { console.error("FATAL: MCP_BEARER_TOKEN env var required"); process.exit(1); }
+const OBSIDIAN_BASE_URL = process.env.OBSIDIAN_BASE_URL || "http://api:3000";
 
-const apiKey = process.env.OBSIDIAN_API_KEY
-  ? (console.log("obsidian api key: from env"), process.env.OBSIDIAN_API_KEY)
-  : (console.log("obsidian api key: fetching from Infisical"), await fetchSecret("OBSIDIAN_API_KEY"));
+async function serviceToken(): Promise<string> {
+  if (process.env.MCP_BEARER_TOKEN) return process.env.MCP_BEARER_TOKEN;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const token = (await readFile("/runtime/service-token", "utf8")).trim();
+      if (token) return token;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("ScholarServer service token was not created");
+}
+
+const MCP_BEARER_TOKEN = await serviceToken();
+const apiKey = process.env.OBSIDIAN_API_KEY || MCP_BEARER_TOKEN;
 
 const client = new ObsidianClient(OBSIDIAN_BASE_URL, apiKey);
 const policy = new VaultPolicy();
@@ -66,12 +76,15 @@ try {
   process.exit(1);
 }
 
-try {
-  await client.get("/api/folders");
-  console.log(`obsidian connectivity: ok (${OBSIDIAN_BASE_URL})`);
-} catch (e: any) {
-  console.error(`obsidian connectivity FAILED at ${OBSIDIAN_BASE_URL}:`, e.message);
-  process.exit(1);
+for (let attempt = 0; attempt < 60; attempt += 1) {
+  try {
+    await client.get("/api/folders");
+    console.log(`obsidian connectivity: ok (${OBSIDIAN_BASE_URL})`);
+    break;
+  } catch (error: any) {
+    if (attempt === 59) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 // OAuth is opt-in. Set MCP_OAUTH_ISSUER + MCP_OAUTH_CANONICAL_URL to enable.

@@ -1,0 +1,63 @@
+services:
+  sync:
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m]
+    volumes:
+      - ${SCHOLARSERVER_DATA_VAULT}:/vault
+      - ${SCHOLARSERVER_DATA_HEADLESS_CONFIG}:/home/obsidian/.config
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+    networks: [egress]
+    healthcheck:
+      test: [CMD, node, -e, "require('node:fs').statSync('/runtime/status.json')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+  api:
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=16m]
+    volumes:
+      - ${SCHOLARSERVER_DATA_VAULT}:/vault
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
+    expose: ["3000"]
+    networks: [instance]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+  mcp:
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=16m]
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
+    expose: ["7002"]
+    networks:
+      instance:
+        aliases: [obsidian-mcp]
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:7002/health]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 12
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false

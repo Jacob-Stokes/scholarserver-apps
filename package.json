@@ -1,0 +1,19 @@
+{
+  "name": "scholarserver-apps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/obsidian/api",
+    "apps/obsidian/mcp",
+    "packages/mcp-common"
+  ],
+  "scripts": {
+    "build": "npm run build -w apps/obsidian/api && npm run build -w packages/mcp-common && npm run build -w apps/obsidian/mcp",
+    "test": "npm run check:controller && npm run build -w packages/mcp-common && npm run test -w apps/obsidian/api && npm run test -w apps/obsidian/mcp",
+    "check:controller": "node --check apps/obsidian/sync/controller.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

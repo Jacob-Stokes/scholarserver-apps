@@ -1,0 +1,106 @@
+schemaVersion: 1
+id: org.scholarserver.obsidian
+name: Obsidian
+packageVersion: 0.1.0
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: Obsidian Headless
+  version: 0.0.14
+  license: UNLICENSED
+support:
+  tier: official
+  architectures: [amd64, arm64]
+delivery:
+  class: headless-service
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides: [notes.vault, notes.sync, mcp.obsidian]
+  requires: [gateway.mcp]
+  conflicts: []
+resources:
+  minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
+  recommended: { cpu: 1, memory: 1GiB, disk: 10GiB }
+permissions:
+  networkEgress: [sync-obsidian-net]
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities: [ALL]
+images:
+  - service: sync
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: api
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: mcp
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000
+data:
+  - id: vault
+    mountPath: /vault
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0750" }
+    backup: filesystem-consistent
+    retention: preserve
+    exportFormat: Obsidian vault
+  - id: headless-config
+    mountPath: /home/obsidian/.config
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: runtime
+    mountPath: /runtime
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: reproducible
+    retention: preserve
+endpoints:
+  - { id: vault-api, service: api, port: 3000, protocol: http, exposure: private, auth: service-identity }
+  - id: mcp
+    service: mcp
+    port: 7002
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: Obsidian
+      namespace: obsidian
+      hostname: obsidian-mcp
+      credentialData: runtime
+      credentialFile: service-token
+lifecycle:
+  supportsDisable: true
+  removeDataDefault: false
+  rollback: backup-required
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Connect an Obsidian Sync account
+    - Select the remote vault
+    - Complete the safe initial pull
+    - Choose the folder exposed through MCP
+  actions:
+    - id: status
+      data: runtime
+      timeoutSeconds: 10
+      fields: []
+    - id: login
+      data: runtime
+      timeoutSeconds: 60
+      fields:
+        - { id: email, type: string, secret: false, required: true }
+        - { id: password, type: string, secret: true, required: true }
+        - { id: mfa, type: string, secret: true, required: false }
+    - id: connect-vault
+      data: runtime
+      timeoutSeconds: 900
+      activateGateway: true
+      fields:
+        - { id: vault, type: string, secret: false, required: true }
+        - { id: encryptionPassword, type: string, secret: true, required: false }
+        - { id: scopePath, type: string, secret: false, required: true }
