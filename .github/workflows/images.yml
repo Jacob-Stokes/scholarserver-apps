@@ -5,7 +5,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps/obsidian/**"
+      - "apps/obsidian/api/**"
+      - "apps/obsidian/mcp/**"
+      - "apps/obsidian/sync/**"
       - "packages/mcp-common/**"
       - ".github/workflows/images.yml"
 
