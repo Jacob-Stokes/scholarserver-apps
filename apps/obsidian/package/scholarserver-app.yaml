@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.1.4
+packageVersion: 0.1.5
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -38,7 +38,7 @@ images:
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:783532d5bf27cdba9e6ed7c5487420d7d9910068c6fed9ec9d9624e367610f2f
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:dcb8590847fd10904010c3dc2469cec32b4230757a3c9ec4f4128c5eb1c612ad
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:ecc0c7d15653f99ca81ffbce00733c5ece07950b2052aeda3b672b70509064ef
 data:
   - id: vault
     mountPath: /vault

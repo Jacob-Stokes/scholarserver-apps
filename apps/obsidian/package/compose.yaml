@@ -38,7 +38,7 @@ services:
       start_period: 10s
       retries: 12
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:dcb8590847fd10904010c3dc2469cec32b4230757a3c9ec4f4128c5eb1c612ad
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:ecc0c7d15653f99ca81ffbce00733c5ece07950b2052aeda3b672b70509064ef
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
