@@ -33,7 +33,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push native images
         env:
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          REGISTRY: ghcr.io/jacob-stokes
           ARCH: ${{ matrix.architecture }}
           REVISION: ${{ github.sha }}
         run: ./scripts/build-native-images.sh
@@ -52,11 +52,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish multi-platform manifest
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/scholarserver-${{ matrix.image }}
+          IMAGE: ghcr.io/jacob-stokes/scholarserver-${{ matrix.image }}
           REVISION: ${{ github.sha }}
         run: |
           docker manifest create "$IMAGE:sha-$REVISION" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
           docker manifest push "$IMAGE:sha-$REVISION"
           docker manifest create "$IMAGE:edge" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64"
           docker manifest push "$IMAGE:edge"
-
