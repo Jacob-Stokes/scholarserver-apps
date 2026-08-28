@@ -9,7 +9,6 @@ const requestsPath = path.join(runtimePath, "requests");
 const responsesPath = path.join(runtimePath, "responses");
 const statusPath = path.join(runtimePath, "status.json");
 const serviceTokenPath = path.join(runtimePath, "service-token");
-const serverIdPath = path.join(runtimePath, "local-server-id");
 const configurationPath = path.join(runtimePath, "configuration.json");
 const localApiKeyPath = path.join(runtimePath, "local-api-key");
 const accountSessionPath = path.join(runtimePath, "account-session.json");
@@ -93,12 +92,15 @@ async function updateConfiguration(values) {
 
 async function api(pathname, init = {}) {
   const key = await localApiKey();
+  const method = (init.method ?? "GET").toUpperCase();
+  const serverId = method === "GET" || method === "HEAD" ? null : await discoverServerId();
   const response = await fetch(`${zoteroBaseUrl}${pathname}`, {
     ...init,
     headers: {
       Accept: "application/json",
       "Zotero-API-Version": "3",
       ...(key ? { "Zotero-API-Key": key } : {}),
+      ...(serverId ? { "Zotero-Server-ID": serverId } : {}),
       ...(init.headers ?? {}),
     },
   });
@@ -110,6 +112,22 @@ async function api(pathname, init = {}) {
   if (!text) return null;
   const type = response.headers.get("content-type") ?? "";
   return type.includes("application/json") ? JSON.parse(text) : text;
+}
+
+async function discoverServerId() {
+  const response = await fetch(`${zoteroBaseUrl}/`, {
+    headers: {
+      Accept: "application/json",
+      "Zotero-API-Version": "3",
+    },
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) throw new Error(`Could not identify the running Zotero desktop (HTTP ${response.status})`);
+  const serverId = response.headers.get("zotero-server-id")?.trim() ?? "";
+  if (!serverId || serverId.length > 128 || /[\x00-\x20\x7f]/.test(serverId)) {
+    throw new Error("The running Zotero desktop did not provide a valid server ID");
+  }
+  return serverId;
 }
 
 async function currentStatus(lastError = null) {
@@ -224,17 +242,22 @@ async function syncNow() {
 async function authorize() {
   const config = await configuration();
   if (!config?.userId) throw new Error("Configure the Zotero user ID before authorizing writes");
-  const serverId = await ensureRandomFile(serverIdPath, 16);
+  const serverId = await discoverServerId();
   const response = await fetch(`${zoteroBaseUrl}/local/authorize`, {
     method: "POST",
     headers: {
+      Accept: "application/json",
       "Content-Type": "application/json",
+      "Zotero-API-Version": "3",
       "Zotero-Server-ID": serverId,
     },
     body: JSON.stringify({ appName: "ScholarServer" }),
     signal: AbortSignal.timeout(240_000),
   });
   const text = await response.text();
+  if (response.status === 412) {
+    throw new Error("Zotero restarted while authorization was beginning. Select Authorize ScholarServer again");
+  }
   let result;
   try { result = text ? JSON.parse(text) : {}; }
   catch { throw new Error(`Zotero returned an invalid authorization response (HTTP ${response.status})`); }
@@ -323,7 +346,6 @@ async function processRequest(fileName) {
 await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureRandomFile(serviceTokenPath);
-await ensureRandomFile(serverIdPath, 16);
 await currentStatus();
 
 for (;;) {
