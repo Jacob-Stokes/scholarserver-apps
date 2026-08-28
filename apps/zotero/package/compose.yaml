@@ -1,0 +1,61 @@
+services:
+  desktop:
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:e5508423a2624759335bb27338c63984eede3cf759c9fb5a14c48a7ee60846f3
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - "/tmp:rw,nosuid,nodev,size=256m,mode=1777"
+      - "/run:rw,nosuid,nodev,size=32m,mode=0755"
+    volumes:
+      - ${SCHOLARSERVER_DATA_DESKTOP_CONFIG}:/config
+      - ${SCHOLARSERVER_DATA_LIBRARY}:/data
+    expose: ["3000"]
+    networks: [instance, egress]
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:23119/connector/ping]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 18
+  controller:
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:c78d62cca65faa88f0e6796e1e82da0c12fe25cf49c6eaec2c76cbaa18add35f
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    network_mode: service:desktop
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_LIBRARY}:/data:ro
+      - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
+    healthcheck:
+      test: [CMD, node, -e, "require('node:fs').statSync('/runtime/status.json')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+  mcp:
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:2934ac6bedb0c8306144411922801ccd1380f41d15cbb6ee2e3c8b7ab2193f76
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    network_mode: service:desktop
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
+    expose: ["7012"]
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:7012/health]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 12
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false

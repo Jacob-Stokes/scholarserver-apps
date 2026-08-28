@@ -1,0 +1,120 @@
+schemaVersion: 1
+id: org.scholarserver.zotero
+name: Zotero
+packageVersion: 0.1.0
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: Zotero
+  version: 10.0.1
+  license: AGPL-3.0-or-later
+support:
+  tier: official
+  architectures: [amd64, arm64]
+delivery:
+  class: remote-desktop
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides: [references.zotero-library, attachments.resolve, mcp.zotero]
+  requires: [gateway.mcp]
+  conflicts: []
+resources:
+  minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
+  recommended: { cpu: 2, memory: 4GiB, disk: 25GiB }
+permissions:
+  networkEgress: [sync.zotero.org, api.zotero.org, user-configured-webdav]
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities: [ALL]
+images:
+  - service: desktop
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:e5508423a2624759335bb27338c63984eede3cf759c9fb5a14c48a7ee60846f3
+  - service: controller
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:c78d62cca65faa88f0e6796e1e82da0c12fe25cf49c6eaec2c76cbaa18add35f
+  - service: mcp
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:2934ac6bedb0c8306144411922801ccd1380f41d15cbb6ee2e3c8b7ab2193f76
+data:
+  - id: desktop-config
+    mountPath: /config
+    owner: zotero
+    filesystem: { uid: 10001, gid: 10001, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: library
+    mountPath: /data
+    owner: zotero
+    filesystem: { uid: 10001, gid: 10001, mode: "0750" }
+    backup: application-consistent
+    retention: preserve
+    exportFormat: Zotero data directory
+  - id: runtime
+    mountPath: /runtime
+    owner: zotero
+    filesystem: { uid: 10001, gid: 10001, mode: "0700" }
+    backup: reproducible
+    retention: preserve
+  - id: linked-files
+    mountPath: /linked
+    owner: zotero
+    filesystem: { uid: 10001, gid: 10001, mode: "0750" }
+    backup: filesystem-consistent
+    retention: preserve
+    exportFormat: plain-directory
+endpoints:
+  - id: desktop
+    service: desktop
+    port: 3000
+    protocol: http
+    exposure: human-optional
+    auth: authentik-forward-single
+  - id: mcp
+    service: mcp
+    port: 7012
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: Zotero
+      namespace: zotero
+      hostname: desktop
+      credentialData: runtime
+      credentialFile: service-token
+lifecycle:
+  supportsDisable: true
+  removeDataDefault: false
+  rollback: backup-required
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Open the private Zotero desktop
+    - Sign in and finish the first synchronization
+    - Enable the Zotero local API
+    - Authorize ScholarServer for local library access
+    - Confirm the selected attachment storage mode
+  actions:
+    - id: status
+      data: runtime
+      timeoutSeconds: 10
+      fields: []
+    - id: configure
+      data: runtime
+      timeoutSeconds: 15
+      fields:
+        - { id: userId, type: string, secret: false, required: true }
+        - { id: storageMode, type: string, secret: false, required: true }
+    - id: authorize-local
+      data: runtime
+      timeoutSeconds: 300
+      activateGateway: true
+      fields: []
+    - id: resolve-attachment
+      data: runtime
+      timeoutSeconds: 60
+      fields:
+        - { id: attachmentKey, type: string, secret: false, required: true }
