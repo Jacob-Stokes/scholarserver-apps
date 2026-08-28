@@ -19,5 +19,6 @@ COPY --from=build /build/apps/obsidian/mcp/dist ./dist
 COPY apps/obsidian/mcp/package.json ./
 ENV PORT=7002
 EXPOSE 7002
+USER node
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/server.js"]
