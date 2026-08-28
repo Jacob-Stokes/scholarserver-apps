@@ -47,7 +47,7 @@ async function ensureServiceToken() {
   }
 }
 
-function runOb(args, { sensitive = false } = {}) {
+function runOb(args, { credentialKind = null } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn("ob", args, {
       cwd: vaultPath,
@@ -61,7 +61,14 @@ function runOb(args, { sensitive = false } = {}) {
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) return resolve(stdout.trim());
-      const detail = sensitive ? "Obsidian rejected the credentials" : (stderr.trim() || stdout.trim() || `ob exited ${code}`);
+      const commandOutput = `${stderr}\n${stdout}`;
+      let detail = stderr.trim() || stdout.trim() || `ob exited ${code}`;
+      if (credentialKind === "account") detail = "Obsidian account sign-in was not accepted";
+      if (credentialKind === "vault") {
+        detail = /wrong vault key|validate password/i.test(commandOutput)
+          ? "Vault encryption password was not accepted"
+          : "Obsidian could not open the selected vault";
+      }
       reject(new Error(detail));
     });
   });
@@ -78,7 +85,7 @@ async function login(input) {
   if (typeof input.password !== "string" || input.password.length === 0) throw new Error("Password is required");
   const args = ["login", "--email", input.email, "--password", input.password];
   if (typeof input.mfa === "string" && input.mfa.length > 0) args.push("--mfa", input.mfa);
-  await runOb(args, { sensitive: true });
+  await runOb(args, { credentialKind: "account" });
   const vaults = await listRemoteVaults();
   await updateStatus({ state: "vault-selection-required", lastError: null });
   return { state: "vault-selection-required", vaults };
@@ -88,7 +95,7 @@ async function connectVault(input) {
   if (typeof input.vault !== "string" || input.vault.length === 0) throw new Error("Remote vault is required");
   const setup = ["sync-setup", "--vault", input.vault, "--path", vaultPath, "--device-name", "ScholarServer", "--json"];
   if (typeof input.encryptionPassword === "string" && input.encryptionPassword.length > 0) setup.push("--password", input.encryptionPassword);
-  await runOb(setup, { sensitive: true });
+  await runOb(setup, { credentialKind: "vault" });
 
   // An empty server replica must never upload before the first successful pull.
   await runOb(["sync-config", "--path", vaultPath, "--mode", "pull-only", "--json"]);
@@ -119,7 +126,15 @@ function startContinuousSync() {
 
 async function action(request) {
   switch (request.action) {
-    case "status": return state;
+    case "status": {
+      if (state.state !== "vault-selection-required") return state;
+      try {
+        return { ...state, vaults: await listRemoteVaults() };
+      } catch {
+        await updateStatus({ state: "setup-required" });
+        return state;
+      }
+    }
     case "login": return login(request.input ?? {});
     case "connect-vault": return connectVault(request.input ?? {});
     default: throw new Error("Unsupported onboarding action");
