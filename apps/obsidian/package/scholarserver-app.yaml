@@ -34,11 +34,11 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:8cf4b3cd28f13e223e5785c56eca14acc429c9bfb0a840486d971bbce4fa3c45
   - service: api
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:2811fe70a1870e4c3d4e56888799d0e6cfe7d746e7582591a1721ba234809b9e
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:018bf4a524adb3429e887f7350434e62f40ce1396256c4dcb0d4d4e08d2d8fcd
 data:
   - id: vault
     mountPath: /vault
