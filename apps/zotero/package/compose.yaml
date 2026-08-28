@@ -11,7 +11,7 @@ services:
     volumes:
       - ${SCHOLARSERVER_DATA_DESKTOP_CONFIG}:/config
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data
-    expose: ["3000"]
+    expose: ["3000", "7012"]
     networks: [instance, egress]
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:23119/connector/ping]
@@ -45,7 +45,6 @@ services:
     network_mode: service:desktop
     volumes:
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
-    expose: ["7012"]
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:7012/health]
       interval: 10s
