@@ -17,10 +17,13 @@ build() {
   dockerfile="$2"
   context="$3"
   target="$REGISTRY/scholarserver-$image:sha-$REVISION-$ARCH"
-  docker build --pull --file "$dockerfile" --tag "$target" "$context"
+  docker build --pull --build-arg TARGETARCH="$ARCH" --file "$dockerfile" --tag "$target" "$context"
   docker push "$target"
 }
 
 build obsidian-sync apps/obsidian/sync/Dockerfile apps/obsidian/sync
 build obsidian-api apps/obsidian/api/Dockerfile apps/obsidian/api
 build obsidian-mcp apps/obsidian/mcp/Dockerfile .
+build zotero-desktop apps/zotero/desktop/Dockerfile apps/zotero/desktop
+build zotero-controller apps/zotero/controller/Dockerfile apps/zotero/controller
+build zotero-mcp apps/zotero/mcp/Dockerfile .
