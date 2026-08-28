@@ -117,6 +117,7 @@ function startContinuousSync() {
     env: { HOME: "/home/obsidian", PATH: process.env.PATH },
     stdio: ["ignore", "inherit", "inherit"],
   });
+  void updateStatus({ lastError: null });
   syncProcess.once("exit", (code) => {
     syncProcess = null;
     void updateStatus({ lastError: code === 0 ? null : "Continuous sync stopped" });
