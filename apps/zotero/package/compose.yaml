@@ -1,6 +1,6 @@
 services:
   desktop:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:e5508423a2624759335bb27338c63984eede3cf759c9fb5a14c48a7ee60846f3
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:af1cc11418b0febf9fa9c55193009fa79e638726fa23331a2fbb97e21fdeadf6
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 18
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:c78d62cca65faa88f0e6796e1e82da0c12fe25cf49c6eaec2c76cbaa18add35f
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:13504bff167672aa77a153d819ae6931e76e5ad9581f8a93d4e99e662fd2399b
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -39,7 +39,7 @@ services:
       start_period: 10s
       retries: 12
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:2934ac6bedb0c8306144411922801ccd1380f41d15cbb6ee2e3c8b7ab2193f76
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:c8320427018f2cb9cbd4cf7944e26c3f5a47c7c775630f590a7ea4fa24964aa7
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
