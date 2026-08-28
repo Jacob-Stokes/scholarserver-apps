@@ -6,7 +6,7 @@
 import { startMcp } from "mcp-common";
 import { readFile } from "node:fs/promises";
 import { ObsidianClient, ObsidianError } from "./obsidian-client.js";
-import { normalizeVaultPath, VaultPolicy, type ToolContext } from "./lib/vault.js";
+import { VaultPolicy, type ToolContext } from "./lib/vault.js";
 
 import { FILES_TOOL, FilesInput, handleFiles } from "./tools/files.js";
 import { FOLDERS_TOOL, FoldersInput, handleFolders } from "./tools/folders.js";
@@ -55,7 +55,7 @@ const policy = new VaultPolicy();
 const context: ToolContext = {
   client,
   policy,
-  dailyFolder: normalizeVaultPath(process.env.OBSIDIAN_DAILY_FOLDER || "Journal"),
+  dailyFolder: policy.resolveDefaultPath(process.env.OBSIDIAN_DAILY_FOLDER || "Journal"),
   timeZone: process.env.OBSIDIAN_TIMEZONE || "UTC",
   maxAttachmentBytes: parseInt(process.env.OBSIDIAN_MAX_ATTACHMENT_BYTES || String(10 * 1024 * 1024), 10),
 };

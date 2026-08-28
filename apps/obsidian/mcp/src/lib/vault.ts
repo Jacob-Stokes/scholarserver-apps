@@ -36,6 +36,13 @@ export class VaultPolicy {
   private readPrefixes() { return configuredPrefixes("OBSIDIAN_READ_PATHS"); }
   private writePrefixes() { return configuredPrefixes("OBSIDIAN_WRITE_PATHS"); }
 
+  resolveDefaultPath(rawPath: string): string {
+    const normalized = normalizeVaultPath(rawPath);
+    const prefixes = this.readPrefixes();
+    if (!prefixes || matchesPrefix(normalized, prefixes)) return normalized;
+    return prefixes.length === 1 ? `${prefixes[0]}/${normalized}` : normalized;
+  }
+
   assertRead(rawPath: string): string {
     const normalized = normalizeVaultPath(rawPath);
     this.assertNotPrivate(normalized);

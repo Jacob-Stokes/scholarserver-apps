@@ -69,6 +69,19 @@ test("vault paths reject traversal and private Obsidian configuration", () => {
   assert.equal(policy.assertWrite(".trash/deleted.md", { allowTrash: true }), ".trash/deleted.md");
 });
 
+test("configured defaults stay inside a single restricted vault scope", () => {
+  const original = process.env.OBSIDIAN_READ_PATHS;
+  process.env.OBSIDIAN_READ_PATHS = "ScholarServer";
+  try {
+    const policy = new VaultPolicy();
+    assert.equal(policy.resolveDefaultPath("Journal"), "ScholarServer/Journal");
+    assert.equal(policy.resolveDefaultPath("ScholarServer/Daily"), "ScholarServer/Daily");
+  } finally {
+    if (original === undefined) delete process.env.OBSIDIAN_READ_PATHS;
+    else process.env.OBSIDIAN_READ_PATHS = original;
+  }
+});
+
 test("dry-run writes return hashes without calling the backend", async () => {
   let calls = 0;
   const ctx = {
