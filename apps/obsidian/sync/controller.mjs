@@ -127,11 +127,16 @@ function startContinuousSync() {
 async function action(request) {
   switch (request.action) {
     case "status": {
-      if (state.state !== "vault-selection-required") return state;
+      if (state.state === "ready" || state.state === "initial-sync") return state;
       try {
-        return { ...state, vaults: await listRemoteVaults() };
+        const vaults = await listRemoteVaults();
+        if (vaults.length === 0) return state;
+        if (state.state !== "vault-selection-required") {
+          await updateStatus({ state: "vault-selection-required", lastError: null });
+        }
+        return { ...state, vaults };
       } catch {
-        await updateStatus({ state: "setup-required" });
+        if (state.state !== "setup-required") await updateStatus({ state: "setup-required" });
         return state;
       }
     }
