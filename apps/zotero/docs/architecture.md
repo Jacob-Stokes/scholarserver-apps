@@ -21,6 +21,12 @@ metadata reads and writes, resolves stored attachment paths, and accepts full fi
 uploads. A generated Markdown derivative therefore enters Zotero through a supported
 API and is synchronized by Zotero according to the user's selected attachment policy.
 
+Account linking and sync preferences use a bundled Zotero bootstrap plugin rather than
+editing its profile database or storing credentials in Compose. The controller sends
+single-use JSON commands over a private runtime volume. Zotero performs account linking,
+encrypted WebDAV credential storage, server verification, and synchronization through
+its own internal APIs. Request and response files are removed after every operation.
+
 The Desktop image is built from Zotero's official, checksum-pinned native Linux
 tarballs for amd64 and arm64. It does not use architecture emulation. The web desktop
 has no independent VNC password because it is reachable only through ScholarServer's

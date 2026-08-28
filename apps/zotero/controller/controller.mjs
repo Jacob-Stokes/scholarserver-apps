@@ -12,6 +12,10 @@ const serviceTokenPath = path.join(runtimePath, "service-token");
 const serverIdPath = path.join(runtimePath, "local-server-id");
 const configurationPath = path.join(runtimePath, "configuration.json");
 const localApiKeyPath = path.join(runtimePath, "local-api-key");
+const accountSessionPath = path.join(runtimePath, "account-session.json");
+const bridgePath = path.join(runtimePath, "zotero-bridge");
+const bridgeRequestsPath = path.join(bridgePath, "requests");
+const bridgeResponsesPath = path.join(bridgePath, "responses");
 const zoteroBaseUrl = "http://127.0.0.1:23119/api";
 const connectorPingUrl = "http://127.0.0.1:23119/connector/ping";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
@@ -53,6 +57,40 @@ async function localApiKey() {
   catch { return ""; }
 }
 
+async function callBridge(action, input = {}, timeoutMs = 30_000) {
+  await mkdir(bridgeRequestsPath, { recursive: true });
+  await mkdir(bridgeResponsesPath, { recursive: true });
+  const id = randomUUID().toLowerCase();
+  const requestPath = path.join(bridgeRequestsPath, `${id}.json`);
+  const responsePath = path.join(bridgeResponsesPath, `${id}.json`);
+  await atomicJson(requestPath, { action, input });
+  const deadline = Date.now() + timeoutMs;
+  try {
+    while (Date.now() < deadline) {
+      try {
+        const response = JSON.parse(await readFile(responsePath, "utf8"));
+        if (!response.ok) throw new Error(response.error || "Zotero setup bridge rejected the request");
+        return response.result;
+      } catch (error) {
+        if (error instanceof SyntaxError) throw new Error("Zotero setup bridge returned invalid JSON");
+        if (error?.code !== "ENOENT") throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    throw new Error("Zotero setup bridge did not respond before the deadline");
+  } finally {
+    await rm(requestPath, { force: true });
+    await rm(responsePath, { force: true });
+  }
+}
+
+async function updateConfiguration(values) {
+  const current = await configuration() ?? {};
+  const next = { ...current, ...values };
+  await atomicJson(configurationPath, next);
+  return next;
+}
+
 async function api(pathname, init = {}) {
   const key = await localApiKey();
   const response = await fetch(`${zoteroBaseUrl}${pathname}`, {
@@ -79,6 +117,7 @@ async function currentStatus(lastError = null) {
   let desktop = "unavailable";
   let localApi = "not-configured";
   let version = null;
+  let engine = null;
   try {
     const ping = await fetch(connectorPingUrl, { signal: AbortSignal.timeout(2_000) });
     if (ping.ok) {
@@ -86,6 +125,10 @@ async function currentStatus(lastError = null) {
       version = ping.headers.get("x-zotero-version");
     }
   } catch {}
+  if (desktop === "available") {
+    try { engine = await callBridge("status", {}, 2_000); }
+    catch {}
+  }
   if (config?.userId) {
     try {
       await api(`/users/${encodeURIComponent(String(config.userId))}/items?limit=1`);
@@ -94,25 +137,87 @@ async function currentStatus(lastError = null) {
       localApi = error instanceof Error && /HTTP 403/.test(error.message) ? "disabled" : "unavailable";
     }
   }
-  const state = !config ? "setup-required" : localApi === "authorized" ? "ready" : "authorization-required";
+  let state = "setup-required";
+  if (desktop === "available" && engine && !engine.accountConnected) state = "account-required";
+  else if (desktop === "available" && engine?.accountConnected && !config?.storageMode) state = "storage-required";
+  else if (config?.storageMode && localApi === "authorized") state = "ready";
+  else if (config?.storageMode) state = "authorization-required";
   const value = {
     state,
     desktop,
     version,
     localApi,
     storageMode: config?.storageMode ?? null,
+    accountConnected: engine?.accountConnected ?? false,
+    userId: config?.userId ?? engine?.userId ?? null,
+    username: engine?.username ?? null,
+    downloadMode: engine?.downloadMode ?? null,
+    groupFileSync: engine?.groupFileSync ?? false,
+    storageVerified: engine?.storageVerified ?? false,
+    syncInProgress: engine?.syncInProgress ?? false,
     lastError,
   };
   await atomicJson(statusPath, value, 0o644);
   return value;
 }
 
-async function configure(input) {
-  const userId = typeof input.userId === "number" ? String(input.userId) : input.userId?.trim();
+async function startAccountLink() {
+  const result = await callBridge("account-start");
+  await atomicJson(accountSessionPath, { sessionToken: result.sessionToken });
+  return { state: "account-authorization-required", loginUrl: result.loginUrl };
+}
+
+async function completeAccountLink() {
+  let session;
+  try { session = JSON.parse(await readFile(accountSessionPath, "utf8")); }
+  catch { throw new Error("Start Zotero account linking before checking its progress"); }
+  const result = await callBridge("account-complete", { sessionToken: session.sessionToken });
+  if (result.state === "pending") return { state: "account-authorization-pending" };
+  if (result.state === "cancelled") {
+    await rm(accountSessionPath, { force: true });
+    return { state: "account-required" };
+  }
+  if (result.state !== "connected" || !/^\d+$/.test(String(result.userId ?? ""))) {
+    throw new Error("Zotero account linking completed without a valid user ID");
+  }
+  await updateConfiguration({ userId: String(result.userId) });
+  await rm(accountSessionPath, { force: true });
+  return currentStatus();
+}
+
+async function configureStorage(input) {
   const storageMode = input.storageMode?.trim();
-  if (!/^\d+$/.test(userId ?? "")) throw new Error("Zotero user ID must contain only digits");
+  const downloadMode = input.downloadMode?.trim() || "on-demand";
   if (!storageModes.has(storageMode)) throw new Error("Storage mode must be zotero-storage, webdav, linked-folder, or server-only");
-  await atomicJson(configurationPath, { userId, storageMode });
+  if (!new Set(["on-sync", "on-demand"]).has(downloadMode)) throw new Error("Download mode must be on-sync or on-demand");
+  const groupFileSync = typeof input.groupFileSync === "boolean" ? input.groupFileSync : storageMode === "zotero-storage";
+  await callBridge("configure-storage", { storageMode, downloadMode, groupFileSync });
+  const engine = await callBridge("status");
+  await updateConfiguration({
+    storageMode,
+    ...(engine?.userId ? { userId: String(engine.userId) } : {}),
+  });
+  return currentStatus();
+}
+
+async function configureWebDAV(input) {
+  const url = typeof input.url === "string" ? input.url.trim() : "";
+  const username = typeof input.username === "string" ? input.username.trim() : "";
+  const password = typeof input.password === "string" ? input.password : "";
+  const downloadMode = input.downloadMode?.trim() || "on-demand";
+  const groupFileSync = input.groupFileSync === true;
+  if (!url || !username || !password) throw new Error("WebDAV URL, username, and password are required");
+  await callBridge("configure-webdav", { url, username, password, downloadMode, groupFileSync }, 120_000);
+  const engine = await callBridge("status");
+  await updateConfiguration({
+    storageMode: "webdav",
+    ...(engine?.userId ? { userId: String(engine.userId) } : {}),
+  });
+  return currentStatus();
+}
+
+async function syncNow() {
+  await callBridge("sync-now", {}, 15 * 60_000);
   return currentStatus();
 }
 
@@ -186,7 +291,11 @@ async function resolveAttachment(input) {
 async function action(request) {
   switch (request.action) {
     case "status": return currentStatus();
-    case "configure": return configure(request.input ?? {});
+    case "account-start": return startAccountLink();
+    case "account-complete": return completeAccountLink();
+    case "configure-storage": return configureStorage(request.input ?? {});
+    case "configure-webdav": return configureWebDAV(request.input ?? {});
+    case "sync-now": return syncNow();
     case "authorize-local": return authorize();
     case "resolve-attachment": return resolveAttachment(request.input ?? {});
     default: throw new Error("Unsupported Zotero action");
@@ -199,6 +308,7 @@ async function processRequest(fileName) {
   let response;
   try {
     const request = JSON.parse(await readFile(requestFile, "utf8"));
+    await rm(requestFile, { force: true });
     response = { ok: true, result: await action(request) };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zotero action failed";

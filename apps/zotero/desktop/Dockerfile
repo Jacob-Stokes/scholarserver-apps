@@ -1,3 +1,9 @@
+FROM alpine:3.22 AS plugin-builder
+
+RUN apk add --no-cache zip
+COPY plugin /source
+RUN cd /source && zip -q -r /setup-bridge.xpi .
+
 FROM ubuntu:24.04
 
 ARG TARGETARCH
@@ -48,6 +54,7 @@ RUN useradd --create-home --home-dir /home/zotero --uid 10001 --shell /usr/sbin/
     && chown -R zotero:zotero /config /data /home/zotero
 
 COPY --chown=root:root start-zotero.sh /usr/local/bin/start-zotero
+COPY --from=plugin-builder --chown=root:root /setup-bridge.xpi /opt/zotero/distribution/extensions/setup-bridge@scholarserver.com.xpi
 RUN chmod 0755 /usr/local/bin/start-zotero
 
 USER 10001:10001

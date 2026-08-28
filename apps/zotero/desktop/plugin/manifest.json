@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "name": "ScholarServer Zotero Setup Bridge",
+  "version": "0.2.1",
+  "description": "Configures the private ScholarServer Zotero engine through Zotero's own APIs.",
+  "author": "ScholarServer",
+  "homepage_url": "https://github.com/jacob-stokes/scholarserver-apps",
+  "applications": {
+    "zotero": {
+      "id": "setup-bridge@scholarserver.com",
+      "update_url": "https://raw.githubusercontent.com/jacob-stokes/scholarserver-apps/main/apps/zotero/desktop/plugin/updates.json",
+      "strict_min_version": "10.0",
+      "strict_max_version": "10.0.*"
+    }
+  }
+}

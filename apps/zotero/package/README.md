@@ -7,15 +7,20 @@ namespace and reach it at `127.0.0.1:23119`.
 
 After installation, ScholarServer guides the user through:
 
-1. Opening the authenticated Zotero desktop.
-2. Signing into Zotero and allowing the first synchronization to finish.
-3. Enabling **Allow other applications on this computer to communicate with Zotero**
-   in Zotero's Advanced settings.
-4. Entering the numeric Zotero user ID and selecting one storage mode:
+1. Connecting a Zotero account through Zotero's own browser authorization page.
+2. Selecting one storage mode:
    `zotero-storage`, `webdav`, `linked-folder`, or `server-only`.
-5. Starting local authorization and choosing **Always Allow** in Zotero's prompt.
+3. Supplying WebDAV settings when that storage mode is selected. ScholarServer asks
+   Zotero to verify the server before reporting success.
+   WebDAV covers the personal library only; group-library files can optionally use
+   Zotero Storage and ScholarServer explains the quota implication in the setup UI.
+4. Starting local authorization and choosing **Always Allow** in Zotero's prompt.
+5. Starting the first synchronization from ScholarServer.
 
-The Zotero password and any WebDAV credentials stay in Zotero's own persistent profile.
+ScholarServer never asks for the Zotero password. The account token and any WebDAV
+password stay in Zotero's encrypted credential store inside its persistent profile.
+Setup commands pass through a private, single-use filesystem bridge shared only by the
+Zotero engine and its controller; their request files are removed before processing.
 ScholarServer retains a Zotero-local API authorization key, which is unrelated to the
 user's zotero.org API key and is only usable against this local Desktop instance.
 

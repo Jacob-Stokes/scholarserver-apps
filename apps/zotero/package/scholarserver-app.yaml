@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.1.1
+packageVersion: 0.2.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -92,26 +92,47 @@ lifecycle:
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Open the private Zotero desktop
-    - Sign in and finish the first synchronization
-    - Enable the Zotero local API
+    - Connect a Zotero account in ScholarServer
+    - Choose how attachments are stored and downloaded
     - Authorize ScholarServer for local library access
-    - Confirm the selected attachment storage mode
+    - Run the first synchronization
   actions:
     - id: status
       data: runtime
       timeoutSeconds: 10
       fields: []
-    - id: configure
+    - id: account-start
       data: runtime
-      timeoutSeconds: 15
+      timeoutSeconds: 30
+      fields: []
+    - id: account-complete
+      data: runtime
+      timeoutSeconds: 30
+      fields: []
+    - id: configure-storage
+      data: runtime
+      timeoutSeconds: 30
       fields:
-        - { id: userId, type: string, secret: false, required: true }
         - { id: storageMode, type: string, secret: false, required: true }
+        - { id: downloadMode, type: string, secret: false, required: true }
+        - { id: groupFileSync, type: boolean, secret: false, required: true }
+    - id: configure-webdav
+      data: runtime
+      timeoutSeconds: 180
+      fields:
+        - { id: url, type: string, secret: false, required: true }
+        - { id: username, type: string, secret: false, required: true }
+        - { id: password, type: string, secret: true, required: true }
+        - { id: downloadMode, type: string, secret: false, required: true }
+        - { id: groupFileSync, type: boolean, secret: false, required: true }
     - id: authorize-local
       data: runtime
       timeoutSeconds: 300
       activateGateway: true
+      fields: []
+    - id: sync-now
+      data: runtime
+      timeoutSeconds: 900
       fields: []
     - id: resolve-attachment
       data: runtime

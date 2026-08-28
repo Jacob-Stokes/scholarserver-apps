@@ -11,6 +11,8 @@ services:
     volumes:
       - ${SCHOLARSERVER_DATA_DESKTOP_CONFIG}:/config
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked
     expose: ["3000", "7012"]
     networks: [instance, egress]
     healthcheck:
