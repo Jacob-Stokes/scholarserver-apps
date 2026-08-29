@@ -303,7 +303,9 @@ async function scheduler() {
       const automation = state.automations[definition.id];
       if (!automation.enabled || automation.runs.some((run) => run.state === "running")) continue;
       const latest = automation.runs[0];
-      if (!latest || Date.now() - new Date(latest.startedAt).getTime() >= automation.intervalMinutes * 60_000) await startRun("scheduled");
+      if (latest && Date.now() - new Date(latest.startedAt).getTime() < automation.intervalMinutes * 60_000) continue;
+      try { await doclingInstance(); } catch { continue; }
+      await startRun("scheduled");
     } catch {}
   }
 }
