@@ -53,8 +53,9 @@ function normalizeVaults(value: unknown): RemoteVault[] {
   });
 }
 
-function when(value: string | null): string {
-  return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not yet";
+function vaultLabel(value: string | null): string {
+  if (!value) return "Not selected";
+  return /^[a-f0-9]{24,}$/i.test(value) ? "Connected" : value;
 }
 
 export function App() {
@@ -133,10 +134,10 @@ export function App() {
       {status && tab === "overview" ? <div className="ss-stack">
         <div className="ss-grid ss-grid-3">
           <div className="ss-card"><div className="ss-metric-label">Sync service</div><div className="ss-metric-value">{status.workerRunning ? "Running" : "Stopped"}</div></div>
-          <div className="ss-card"><div className="ss-metric-label">Remote vault</div><div className="ss-metric-value">{status.remoteVault ?? "Not selected"}</div></div>
+          <div className="ss-card"><div className="ss-metric-label">Remote vault</div><div className="ss-metric-value">{vaultLabel(status.remoteVault)}</div></div>
           <div className="ss-card"><div className="ss-metric-label">AI-accessible folder</div><div className="ss-metric-value"><code className="ss-code">{status.scopePath || "/"}</code></div></div>
         </div>
-        <section className="ss-card"><div className="ss-toolbar"><div><h2>Vault connection</h2><p className="ss-card-description">The server replica stays synchronized using Obsidian Sync.</p></div><button className="ss-button ss-button-secondary" onClick={() => void refresh()}>Refresh</button></div><dl className="ss-details"><dt>State</dt><dd>{status.state}</dd><dt>Last connected sync</dt><dd>{when(status.lastSyncAt)}</dd><dt>MCP scope</dt><dd><code>{status.scopePath || "/"}</code></dd></dl></section>
+        <section className="ss-card"><div className="ss-toolbar"><div><h2>Vault connection</h2><p className="ss-card-description">The server replica stays synchronized using Obsidian Sync.</p></div><button className="ss-button ss-button-secondary" onClick={() => void refresh()}>Refresh</button></div><dl className="ss-details"><dt>State</dt><dd>{status.state}</dd><dt>Continuous sync</dt><dd>{status.workerRunning ? "Running" : "Stopped"}</dd><dt>MCP scope</dt><dd><code>{status.scopePath || "/"}</code></dd></dl></section>
         {!ready ? <section className="ss-card"><div className="ss-toolbar"><div><h2>Finish setup</h2><p className="ss-card-description">Connect an account and choose the remote vault before notes can be used.</p></div><button className="ss-button" onClick={() => navigate("configuration")}>Continue setup</button></div></section> : null}
       </div> : null}
 
