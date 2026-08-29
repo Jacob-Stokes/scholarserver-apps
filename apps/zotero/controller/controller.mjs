@@ -481,7 +481,14 @@ const contentTypes = new Map([
 
 async function sendStatic(requestPath, response) {
   const root = path.resolve(uiPath);
-  let candidate = path.resolve(root, requestPath.replace(/^\/+/, ""));
+  // Vite emits relative asset URLs so the same UI can run at / locally and
+  // behind the Manager's /apps/:instance prefix. On a client-side detail
+  // route those URLs include the route segments (for example
+  // /automations/assets/app.js), so map every assets suffix back to the
+  // immutable build directory before applying the normal traversal guard.
+  const assetPosition = requestPath.indexOf("/assets/");
+  const staticPath = assetPosition >= 0 ? requestPath.slice(assetPosition) : requestPath;
+  let candidate = path.resolve(root, staticPath.replace(/^\/+/, ""));
   if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) return json(response, 404, { error: "Not found" });
   try { if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html"); }
   catch { candidate = path.join(root, "index.html"); }
