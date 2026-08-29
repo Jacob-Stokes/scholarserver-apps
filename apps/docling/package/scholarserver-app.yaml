@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.docling
 name: Docling
-packageVersion: 0.3.1
+packageVersion: 0.3.2
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -36,7 +36,7 @@ images:
   - service: docling
     reference: quay.io/docling-project/docling-serve-cpu@sha256:32ba1a1dded8d8fd21f9d8da1b9837e04cfee164ef891d9513174c3d989dcee9
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:3fb160e03a163092514225594063710c654bd3ca51686590f33468a97cd57fa6
+    reference: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:f4fded0228ef849ef2494f906393a16e9dc153d8967a7656d539b52af8ee430e
 data:
   - id: runtime
     mountPath: /runtime
@@ -107,6 +107,11 @@ onboarding:
       fields:
         - { id: folder, type: string, secret: false, required: true }
         - { id: limit, type: number, secret: false, required: true }
+    - id: browse-folders
+      data: documents
+      timeoutSeconds: 10
+      fields:
+        - { id: path, type: string, secret: false, required: true }
     - id: job-status
       data: runtime
       timeoutSeconds: 10
