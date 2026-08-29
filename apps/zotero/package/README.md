@@ -30,10 +30,13 @@ then verifies that the canonical file remains below `/data` or `/linked`. It nev
 `zotero.sqlite` and never accepts an arbitrary filesystem path.
 
 The controller serves package-owned Overview, Attachments, Automations and
-Configuration tabs on port 8080 inside the Desktop network namespace. Only the
-generic Manager proxy can reach that interface through the restricted
-`scholarserver-edge` network; neither it nor Zotero's localhost API has a
-published host port.
+Configuration tabs on port 8080 inside the Desktop network namespace. The
+Automations tab is a searchable catalogue of cards rather than one expanded
+workflow form. Each card can be activated independently and opens a stable
+detail route for configuration, scheduling, manual runs and history. Activation
+does not silently enable scheduling. Only the generic Manager proxy can reach
+that interface through the restricted `scholarserver-edge` network; neither it
+nor Zotero's localhost API has a published host port.
 
 The Zotero stack also owns a small, unprivileged automation worker. Its first
 curated action discovers Zotero PDFs in the selected shared-storage folder,

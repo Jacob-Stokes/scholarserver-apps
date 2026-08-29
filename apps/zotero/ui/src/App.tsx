@@ -41,7 +41,10 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 function currentTab(): Tab {
-  const value = window.location.pathname.split("/").filter(Boolean).at(-1);
+  const relative = base && window.location.pathname.startsWith(base)
+    ? window.location.pathname.slice(base.length)
+    : window.location.pathname;
+  const value = relative.split("/").filter(Boolean)[0];
   return tabs.some((tab) => tab.id === value) ? value as Tab : "overview";
 }
 function storageName(value: string | null) { return storageOptions.find((item) => item.value === value)?.title ?? value ?? "Not configured"; }
@@ -142,7 +145,7 @@ export function App() {
         <section className="ss-card"><h2>Result</h2><p className="ss-card-description">Diagnostic metadata is shown without exposing the server file path.</p>{attachmentResult ? <pre className="ss-result ss-code">{JSON.stringify(attachmentResult, null, 2)}</pre> : <p className="ss-muted">No attachment checked yet.</p>}</section>
       </div> : null}
 
-      {status && tab === "automations" ? <AutomationsTab request={request} setNotice={setNotice} setError={setError} /> : null}
+      {status && tab === "automations" ? <AutomationsTab base={base} request={request} setNotice={setNotice} setError={setError} /> : null}
 
       {status && tab === "configuration" ? <div className="ss-stack">
         <section className="ss-card ss-stack"><div className="ss-toolbar"><div><h2>1. Zotero account</h2><p className="ss-card-description">Sign in on Zotero's website. ScholarServer never receives your Zotero password.</p></div>{status.accountConnected ? <span className="ss-badge ss-badge-success">Connected</span> : null}</div>{status.accountConnected ? <div className="ss-callout">Connected as <strong>{status.username ?? status.userId}</strong>. Zotero stores its own account token.</div> : <><div className="ss-form-actions"><button className="ss-button" disabled={busy || checkingAccount} onClick={() => void connectAccount()}>{busy || checkingAccount ? <span className="ss-spinner" /> : null}{checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}</button>{authorizationUrl ? <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">Open Zotero sign-in</a> : null}</div></>}</section>

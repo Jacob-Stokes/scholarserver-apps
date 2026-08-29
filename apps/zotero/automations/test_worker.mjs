@@ -6,7 +6,7 @@ import test from "node:test";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "scholarserver-zotero-automations-"));
 process.env.SCHOLARSERVER_LINKED_ROOT = root;
-const { browseFolders, validateConfiguration } = await import("./worker.mjs");
+const { browseFolders, validateAutomationUpdate, validateConfiguration } = await import("./worker.mjs");
 
 test("validates the bundled PDF conversion settings", () => {
   assert.deepEqual(validateConfiguration({ folder: "Papers/History", limit: 3, ocr: false, attachMarkdown: true }), {
@@ -28,4 +28,15 @@ test("folder browser is bounded to visible shared-storage directories", async ()
     path: "Papers", parent: "", folders: [{ name: "History", path: "Papers/History" }]
   });
   await assert.rejects(() => browseFolders("../"), /stay inside/);
+});
+
+test("activation is independent from scheduling and deactivation stops schedules", () => {
+  const configuration = { folder: "", limit: 3, ocr: false, attachMarkdown: true };
+  assert.deepEqual(validateAutomationUpdate({ active: true, enabled: false, intervalMinutes: 60, configuration }), {
+    active: true, enabled: false, intervalMinutes: 60, configuration
+  });
+  assert.deepEqual(validateAutomationUpdate({ active: false, enabled: true, intervalMinutes: 60, configuration }), {
+    active: false, enabled: false, intervalMinutes: 60, configuration
+  });
+  assert.throws(() => validateAutomationUpdate({ enabled: false, intervalMinutes: 60, configuration }), /Activation state/);
 });

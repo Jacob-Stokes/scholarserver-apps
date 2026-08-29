@@ -17,6 +17,8 @@ const definition = Object.freeze({
   id: "convert-zotero-pdfs",
   name: "Convert Zotero PDFs",
   description: "Convert PDFs from Zotero's shared attachment folder to Markdown with Docling, then attach the result to the matching Zotero item.",
+  category: "Documents",
+  keywords: ["PDF", "Markdown", "Docling", "attachments", "full text"],
   requires: ["org.scholarserver.docling"],
   defaults: { folder: "", limit: 3, ocr: false, attachMarkdown: true },
   scheduling: { defaultIntervalMinutes: 60, minimumIntervalMinutes: 15 }
@@ -27,6 +29,7 @@ function initialState() {
     schemaVersion: 1,
     automations: {
       [definition.id]: {
+        active: false,
         enabled: false,
         intervalMinutes: definition.scheduling.defaultIntervalMinutes,
         configuration: { ...definition.defaults },
@@ -47,7 +50,14 @@ async function atomicJson(filePath, value) {
 async function loadState() {
   try {
     const value = JSON.parse(await readFile(statePath, "utf8"));
-    if (value?.schemaVersion === 1 && value.automations?.[definition.id]) return value;
+    const automation = value?.automations?.[definition.id];
+    if (value?.schemaVersion === 1 && automation) {
+      if (typeof automation.active !== "boolean") {
+        automation.active = automation.runs?.length > 0 || automation.updatedAt !== new Date(0).toISOString();
+        await atomicJson(statePath, value);
+      }
+      return value;
+    }
   } catch {}
   const value = initialState();
   await atomicJson(statePath, value);
@@ -201,6 +211,7 @@ async function updateRun(runId, update) {
 async function startRun(trigger = "manual") {
   const { run, configuration } = await mutateState((state) => {
     const automation = state.automations[definition.id];
+    if (!automation.active) throw new Error("Activate this automation before running it");
     if (automation.runs.some((candidate) => candidate.state === "running")) throw new Error("This automation is already running");
     const run = { id: randomUUID(), state: "running", trigger, startedAt: new Date().toISOString(), finishedAt: null, summary: null, error: null };
     automation.runs.unshift(run);
@@ -221,20 +232,24 @@ async function views() {
   return [{ definition, configuration: automation, readiness }];
 }
 
-async function saveAutomation(input) {
+export function validateAutomationUpdate(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Automation update must be an object");
-  const unknown = Object.keys(input).find((key) => !["enabled", "intervalMinutes", "configuration"].includes(key));
+  const unknown = Object.keys(input).find((key) => !["active", "enabled", "intervalMinutes", "configuration"].includes(key));
   if (unknown) throw new Error(`Unknown automation update: ${unknown}`);
+  if (typeof input.active !== "boolean") throw new Error("Activation state must be true or false");
   if (typeof input.enabled !== "boolean") throw new Error("Schedule must be true or false");
   const intervalMinutes = Number(input.intervalMinutes);
   if (!Number.isInteger(intervalMinutes) || intervalMinutes < 15 || intervalMinutes > 10080) throw new Error("Schedule interval must be between 15 minutes and one week");
   const configuration = validateConfiguration(input.configuration);
+  return { active: input.active, enabled: input.active && input.enabled, intervalMinutes, configuration };
+}
+
+async function saveAutomation(input) {
+  const update = validateAutomationUpdate(input);
   return mutateState((state) => {
     state.automations[definition.id] = {
       ...state.automations[definition.id],
-      enabled: input.enabled,
-      intervalMinutes,
-      configuration,
+      ...update,
       updatedAt: new Date().toISOString()
     };
     return state.automations[definition.id];
@@ -301,7 +316,7 @@ async function scheduler() {
     try {
       const state = await loadState();
       const automation = state.automations[definition.id];
-      if (!automation.enabled || automation.runs.some((run) => run.state === "running")) continue;
+      if (!automation.active || !automation.enabled || automation.runs.some((run) => run.state === "running")) continue;
       const latest = automation.runs[0];
       if (latest && Date.now() - new Date(latest.startedAt).getTime() < automation.intervalMinutes * 60_000) continue;
       try { await doclingInstance(); } catch { continue; }

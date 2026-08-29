@@ -36,6 +36,11 @@ The automation worker belongs to the Zotero application stack. It owns the curat
 Zotero-to-Docling action, its settings, schedule and run history; Docling remains a
 reusable conversion service and does not contain Zotero workflow logic.
 
+Zotero presents its shipped actions as an application-local automation catalogue.
+Catalogue cards are searchable and filterable, expose activation and dependency
+state, and drill into package-owned detail routes. “Activated” means available for
+manual use; “scheduled” is a separate opt-in state.
+
 ## Storage adapters
 
 The processor presents two resolver families:
