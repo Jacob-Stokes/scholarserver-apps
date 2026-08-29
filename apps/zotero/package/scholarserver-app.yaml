@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.2.7
+packageVersion: 0.3.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -36,7 +36,7 @@ images:
   - service: desktop
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:1d90ec0b016bd2090d204f75f55dd5758e74f0d8f871f70be969ef19c3158dc6
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:e9ee06eb938d99b1709a885c989ff0f6a2bf702c70f1c6805169dfe810ed9d6f
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:9070859dae2f4a27c11c539e0d9324a1b28ad85b256a039c687fe241acacd045
   - service: mcp
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:3856f59ff167879ac4bb214501566b927928bf82369bc36c5f60551971c71c3c
 data:
@@ -77,6 +77,12 @@ endpoints:
     protocol: http
     exposure: human-optional
     auth: authentik-forward-single
+  - id: app-ui
+    service: desktop
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
   - id: mcp
     service: desktop
     port: 7012
@@ -89,6 +95,10 @@ endpoints:
       hostname: desktop
       credentialData: runtime
       credentialFile: service-token
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /overview
 lifecycle:
   supportsDisable: true
   removeDataDefault: false

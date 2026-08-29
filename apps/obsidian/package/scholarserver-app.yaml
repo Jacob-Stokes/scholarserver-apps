@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.1.7
+packageVersion: 0.2.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -34,7 +34,7 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:7bccd81c3576e6f841614c4ad29f868d70edadffc5c4dd881e2dce0eea6a32b9
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:d0978af846be117830b2e27574c84afca231db1e6b357f15a5571896e0f5923c
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:783532d5bf27cdba9e6ed7c5487420d7d9910068c6fed9ec9d9624e367610f2f
   - service: mcp
@@ -61,6 +61,12 @@ data:
     retention: preserve
 endpoints:
   - { id: vault-api, service: api, port: 3000, protocol: http, exposure: private, auth: service-identity }
+  - id: app-ui
+    service: sync
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
   - id: mcp
     service: mcp
     port: 7002
@@ -73,6 +79,10 @@ endpoints:
       hostname: obsidian-mcp
       credentialData: runtime
       credentialFile: service-token
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /overview
 lifecycle:
   supportsDisable: true
   removeDataDefault: false
