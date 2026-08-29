@@ -18,6 +18,7 @@ const bridgeResponsesPath = path.join(bridgePath, "responses");
 const zoteroBaseUrl = "http://127.0.0.1:23119/api";
 const connectorPingUrl = "http://127.0.0.1:23119/connector/ping";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
+let attachmentIndexCache = { expiresAt: 0, items: [] };
 
 async function atomicWrite(filePath, content, mode = 0o600) {
   const temporary = `${filePath}.${process.pid}.tmp`;
@@ -171,6 +172,8 @@ async function currentStatus(lastError = null) {
     username: engine?.username ?? null,
     downloadMode: engine?.downloadMode ?? null,
     groupFileSync: engine?.groupFileSync ?? false,
+    linkedFolder: engine?.linkedFolder ?? null,
+    linkedFolderAutomation: engine?.linkedFolderAutomation ?? false,
     storageVerified: engine?.storageVerified ?? false,
     syncInProgress: engine?.syncInProgress ?? false,
     lastError,
@@ -239,6 +242,16 @@ async function syncNow() {
   return currentStatus();
 }
 
+async function attachDoclingResult(input) {
+  const sourceAttachmentKey = typeof input.sourceAttachmentKey === "string" ? input.sourceAttachmentKey.trim().toUpperCase() : "";
+  const relativePath = typeof input.relativePath === "string" ? input.relativePath.trim() : "";
+  if (!/^[A-Z0-9]{8}$/.test(sourceAttachmentKey)) throw new Error("A valid Zotero source attachment key is required");
+  if (!/^\.scholarserver\/docling\/[a-f0-9]{64}\/document\.md$/.test(relativePath)) {
+    throw new Error("The Docling result path is invalid");
+  }
+  return callBridge("attach-docling-result", { sourceAttachmentKey, relativePath }, 120_000);
+}
+
 async function authorize() {
   const config = await configuration();
   if (!config?.userId) throw new Error("Configure the Zotero user ID before authorizing writes");
@@ -276,7 +289,14 @@ async function sha256(filePath) {
 }
 
 async function allowedAttachmentPath(candidate) {
-  const resolved = await realpath(candidate);
+  const desktopDataRoot = "/config/home/Zotero";
+  const controllerDataRoot = "/data";
+  const translated = candidate === desktopDataRoot
+    ? controllerDataRoot
+    : candidate.startsWith(`${desktopDataRoot}${path.sep}`)
+      ? path.join(controllerDataRoot, candidate.slice(desktopDataRoot.length + 1))
+      : candidate;
+  const resolved = await realpath(translated);
   const roots = [];
   for (const root of ["/data", "/linked"]) {
     try { roots.push(await realpath(root)); } catch {}
@@ -311,6 +331,61 @@ async function resolveAttachment(input) {
   };
 }
 
+async function personalAttachments(userId) {
+  if (attachmentIndexCache.expiresAt > Date.now()) return attachmentIndexCache.items;
+  const items = [];
+  for (let start = 0; start < 1000; start += 100) {
+    const page = await api(`/users/${encodeURIComponent(String(userId))}/items?itemType=attachment&limit=100&start=${start}&format=json`);
+    if (!Array.isArray(page)) throw new Error("Zotero returned an invalid attachment list");
+    items.push(...page);
+    if (page.length < 100) break;
+  }
+  attachmentIndexCache = { expiresAt: Date.now() + 30_000, items };
+  return items;
+}
+
+async function matchAttachment(input) {
+  const sourcePath = typeof input.sourcePath === "string" ? input.sourcePath.trim().replaceAll("\\", "/") : "";
+  const relative = sourcePath ? sourcePath.split("/") : [];
+  if (!sourcePath || sourcePath.startsWith("/") || relative.some((part) => !part || part === "." || part === "..")) {
+    throw new Error("Enter a valid path inside the linked research files folder");
+  }
+  const linkedRoot = await realpath("/linked");
+  const expected = await realpath(path.join(linkedRoot, ...relative));
+  if (expected === linkedRoot || !expected.startsWith(`${linkedRoot}${path.sep}`)) {
+    throw new Error("The selected file leaves the linked research files folder");
+  }
+  const config = await configuration();
+  if (!config?.userId) throw new Error("Zotero is not configured");
+  const wantedName = path.basename(expected).toLocaleLowerCase();
+  const attachments = await personalAttachments(config.userId);
+  const candidates = attachments.filter((item) => {
+    const data = item?.data ?? {};
+    const storedPath = String(data.path ?? "").replace(/^attachments:/, "");
+    const filename = String(data.filename ?? path.basename(storedPath) ?? data.title ?? "");
+    return filename.toLocaleLowerCase() === wantedName || String(data.title ?? "").toLocaleLowerCase() === wantedName;
+  });
+  const matches = [];
+  for (const item of candidates) {
+    const key = String(item?.key ?? item?.data?.key ?? "").toUpperCase();
+    if (!/^[A-Z0-9]{8}$/.test(key)) continue;
+    try {
+      const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${key}`;
+      const fileUrl = await api(`${prefix}/file/view/url`);
+      if (typeof fileUrl !== "string" || !fileUrl.startsWith("file:")) continue;
+      if (await allowedAttachmentPath(fileURLToPath(fileUrl.trim())) !== expected) continue;
+      matches.push({
+        attachmentKey: key,
+        parentItemKey: item?.data?.parentItem ?? null,
+        title: item?.data?.title ?? path.basename(expected),
+      });
+    } catch {}
+  }
+  if (matches.length === 1) return { state: "matched", sourcePath, ...matches[0] };
+  if (matches.length > 1) return { state: "ambiguous", sourcePath, matches };
+  return { state: "not-found", sourcePath, matches: [] };
+}
+
 async function action(request) {
   switch (request.action) {
     case "status": return currentStatus();
@@ -321,6 +396,8 @@ async function action(request) {
     case "sync-now": return syncNow();
     case "authorize-local": return authorize();
     case "resolve-attachment": return resolveAttachment(request.input ?? {});
+    case "match-attachment": return matchAttachment(request.input ?? {});
+    case "attach-docling-result": return attachDoclingResult(request.input ?? {});
     default: throw new Error("Unsupported Zotero action");
   }
 }

@@ -1,0 +1,14 @@
+.ss-alert { margin-bottom: 1rem; }
+.ss-loading { display: flex; align-items: center; gap: .65rem; color: var(--muted-foreground); }
+.ss-empty { margin: 1rem 0 0; border: 1px dashed var(--border); border-radius: .65rem; background: color-mix(in srgb, var(--muted) 45%, transparent); padding: 1.25rem; color: var(--muted-foreground); text-align: center; }
+.ss-process-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .8fr); gap: 1rem; align-items: start; }
+.ss-check { display: flex; align-items: flex-start; gap: .7rem; border: 1px solid var(--border); border-radius: .65rem; padding: .85rem; font-size: .875rem; }
+.ss-check input { margin-top: .15rem; accent-color: var(--primary); }
+.ss-check strong, .ss-check small { display: block; }
+.ss-check small { margin-top: .2rem; color: var(--muted-foreground); }
+.ss-running { display: flex; align-items: center; gap: .35rem; margin-top: .45rem; color: var(--muted-foreground); font-size: .75rem; }
+.ss-job-error { margin-top: .4rem; color: var(--destructive); font-size: .75rem; }
+.ss-details { display: grid; grid-template-columns: 10rem 1fr; gap: .75rem 1rem; margin: 1rem 0 0; font-size: .875rem; }
+.ss-details dt { color: var(--muted-foreground); }
+.ss-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .ss-process-grid { grid-template-columns: 1fr; } .ss-details { grid-template-columns: 1fr; gap: .25rem; } .ss-details dd { margin-bottom: .65rem; } }

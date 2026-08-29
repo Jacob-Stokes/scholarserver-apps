@@ -10,6 +10,8 @@ ARG TARGETARCH
 ARG ZOTERO_VERSION=10.0.1
 ARG ZOTERO_SHA256_AMD64=7bf57ab1e757077f2168a58cbc20b7f6db516ae7ad787bca94c6cdf0df6df200
 ARG ZOTERO_SHA256_ARM64=e42e69275dafa14af0342f5dea24242a3f7c39ba7e92b4ee00a97b0f08cd387a
+ARG ZOTMOOV_VERSION=1.2.32
+ARG ZOTMOOV_SHA256=7770dc2c62d2aaab2662fd7402afadd058387bff69578481ac039bfc050ecc2b
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -48,6 +50,12 @@ RUN set -eu; \
     tar -xJf "${archive}" --strip-components=1 -C /opt/zotero; \
     rm -f "${archive}"; \
     ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html
+
+RUN set -eu; \
+    zotmoov=/opt/zotero/distribution/extensions/zotmoov@wileyy.com.xpi; \
+    mkdir -p /opt/zotero/distribution/extensions; \
+    curl -fsSL "https://github.com/wileyyugioh/zotmoov/releases/download/${ZOTMOOV_VERSION}/zotmoov-${ZOTMOOV_VERSION}-fx.xpi" -o "${zotmoov}"; \
+    echo "${ZOTMOOV_SHA256}  ${zotmoov}" | sha256sum -c -
 
 RUN useradd --create-home --home-dir /home/zotero --uid 10001 --shell /usr/sbin/nologin zotero \
     && mkdir -p /config /data \

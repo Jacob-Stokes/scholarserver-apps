@@ -11,7 +11,10 @@ on:
       - "apps/zotero/controller/**"
       - "apps/zotero/desktop/**"
       - "apps/zotero/mcp/**"
+      - "apps/docling/controller/**"
+      - "apps/docling/ui/**"
       - "packages/mcp-common/**"
+      - "vendor/scholarserver-ui/**"
       - "scripts/build-native-images.sh"
       - ".github/workflows/images.yml"
 
@@ -49,7 +52,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        image: [obsidian-sync, obsidian-api, obsidian-mcp, zotero-desktop, zotero-controller, zotero-mcp]
+        image: [obsidian-sync, obsidian-api, obsidian-mcp, zotero-desktop, zotero-controller, zotero-mcp, docling-controller]
     steps:
       - uses: docker/login-action@v3
         with:

@@ -54,3 +54,9 @@ resolvers. They are ways to make the linked-folder capability available.
 7. Upload Markdown as a child attachment through the local API.
 8. Observe the derivative on another synchronized Zotero client.
 9. Read the derivative through the remote MCP.
+
+The Docling integration imports the generated Markdown as a stored child attachment.
+The shared document mount is therefore only a hand-off location: Zotero copies the
+derivative into its own attachment storage and applies the user's selected Zotero
+Storage, WebDAV, or server-only synchronization policy. ScholarServer never edits
+`zotero.sqlite`.

@@ -1,0 +1,127 @@
+schemaVersion: 1
+id: org.scholarserver.docling
+name: Docling
+packageVersion: 0.2.0
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: Docling Serve
+  version: 1.31.0
+  license: MIT
+support:
+  tier: official
+  architectures: [amd64, arm64]
+delivery:
+  class: headless-service
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides: [documents.convert-markdown, jobs.docling]
+  requires: []
+  conflicts: []
+resources:
+  minimum: { cpu: 1, memory: 4GiB, disk: 4GiB }
+  recommended: { cpu: 2, memory: 6GiB, disk: 10GiB }
+permissions:
+  networkEgress: [models.huggingface.co]
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities: [ALL]
+images:
+  - service: docling
+    reference: quay.io/docling-project/docling-serve-cpu@sha256:32ba1a1dded8d8fd21f9d8da1b9837e04cfee164ef891d9513174c3d989dcee9
+  - service: controller
+    reference: ghcr.io/jacob-stokes/scholarserver-docling-controller@sha256:a82a7be6612cdc01ed9e38b2a08a88792bea96d7bbd5b1cda7c4e0d2e6ae88e6
+data:
+  - id: runtime
+    mountPath: /runtime
+    owner: docling-controller
+    filesystem: { uid: 10001, gid: 10001, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: documents
+    mountPath: /documents
+    owner: docling-controller
+    filesystem: { uid: 10001, gid: 10001, mode: "0750" }
+    backup: filesystem-consistent
+    retention: preserve
+    exportFormat: PDF sources and Markdown derivatives
+    externalStorage:
+      mountable: true
+      access: read-write
+      content: documents
+endpoints:
+  - id: engine
+    service: docling
+    port: 5001
+    protocol: http
+    exposure: private
+    auth: none-private
+  - id: app-ui
+    service: controller
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /queue
+lifecycle:
+  supportsDisable: true
+  removeDataDefault: false
+  rollback: reversible
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Attach the Research documents storage location
+    - Queue one PDF to verify conversion
+    - Review the generated Markdown before enabling a larger scan
+  actions:
+    - id: status
+      data: runtime
+      timeoutSeconds: 10
+      fields: []
+    - id: enqueue
+      data: runtime
+      timeoutSeconds: 120
+      fields:
+        - { id: sourcePath, type: string, secret: false, required: true }
+        - { id: sourceAttachmentKey, type: string, secret: false, required: false }
+        - { id: ocr, type: boolean, secret: false, required: true }
+    - id: scan
+      data: runtime
+      timeoutSeconds: 1800
+      fields:
+        - { id: folder, type: string, secret: false, required: true }
+        - { id: limit, type: number, secret: false, required: true }
+        - { id: ocr, type: boolean, secret: false, required: true }
+    - id: discover
+      data: runtime
+      timeoutSeconds: 120
+      fields:
+        - { id: folder, type: string, secret: false, required: true }
+        - { id: limit, type: number, secret: false, required: true }
+    - id: job-status
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: jobId, type: string, secret: false, required: true }
+    - id: retry
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: jobId, type: string, secret: false, required: true }
+    - id: pause
+      data: runtime
+      timeoutSeconds: 10
+      fields: []
+    - id: resume
+      data: runtime
+      timeoutSeconds: 10
+      fields: []

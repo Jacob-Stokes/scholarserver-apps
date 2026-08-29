@@ -11,6 +11,8 @@ checksummed release bundles; it does not execute files directly from a Git branc
 | Package | Status | Containers |
 | --- | --- | --- |
 | Obsidian | Preview | Headless Sync, vault API, remote MCP |
+| Zotero | Preview | Browser-accessible desktop, onboarding controller, remote MCP |
+| Docling | Preview | CPU-only conversion engine, durable single-worker queue |
 
 ## Repository layout
 

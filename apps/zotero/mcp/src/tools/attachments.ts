@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { readFile, realpath, stat } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import type { ZoteroClient } from "../zotero-client.js";
 
 // Zotero attachments as exposed by Zotero 10's local API. Ordinary agent
@@ -12,8 +15,8 @@ export const ATTACHMENTS_TOOL = {
   description: [
     "Work with files attached to Zotero items (PDFs, HTML snapshots). Actions:",
     "• list — show attachments for an item (filename, type, link mode, etc.). Pass the parent item key.",
-    "• get_text — fetch the extracted full text of a PDF/HTML attachment for reading/summarization. Pass either attachment_key directly, or parent item_key + index (defaults to first attachment of the item). Returns the indexed content + page count.",
-    "Text comes from the server-side Zotero index; PDF bytes are not transported over MCP. If `get_text` is empty, indexing or Docling conversion may still be required.",
+    "• get_text — read a Markdown/text attachment directly, or fetch Zotero's extracted full text for a PDF/HTML attachment. Pass either attachment_key directly, or parent item_key + index (defaults to first attachment of the item).",
+    "PDF bytes are not transported over MCP. Docling Markdown is read from the server's read-only Zotero data mount, so it does not depend on Zotero full-text indexing.",
   ].join(" "),
 } as const;
 
@@ -59,6 +62,19 @@ export async function handleAttachments(client: ZoteroClient, input: z.infer<typ
         attKey = picked.data.key;
         parentInfo = { item_key: input.item_key, index: input.index };
       }
+      if (!attKey) throw new Error("could not resolve the attachment key");
+
+      const direct = await directTextAttachment(client, attKey, input.max_chars);
+      if (direct) {
+        return {
+          attachment_key: attKey,
+          ...(parentInfo ? { resolved_from: parentInfo } : {}),
+          source: "direct_file",
+          chars_returned: direct.content.length,
+          truncated: direct.truncated,
+          content: direct.content,
+        };
+      }
 
       const { data: ft } = await client.get<any>(client.userPath(`/items/${attKey}/fulltext`));
       const content: string = ft?.content ?? "";
@@ -68,6 +84,7 @@ export async function handleAttachments(client: ZoteroClient, input: z.infer<typ
       return {
         attachment_key: attKey,
         ...(parentInfo ? { resolved_from: parentInfo } : {}),
+        source: "zotero_index",
         indexed_pages: ft?.indexedPages,
         total_pages: ft?.totalPages,
         indexed_chars: ft?.indexedChars,
@@ -81,6 +98,38 @@ export async function handleAttachments(client: ZoteroClient, input: z.infer<typ
       };
     }
   }
+}
+
+async function directTextAttachment(client: ZoteroClient, attachmentKey: string, maxChars: number) {
+  const { data: attachment } = await client.get<any>(client.userPath(`/items/${attachmentKey}`));
+  const contentType = String(attachment?.data?.contentType ?? "").toLowerCase();
+  const filename = String(attachment?.data?.filename ?? "").toLowerCase();
+  if (!(contentType.startsWith("text/") || filename.endsWith(".md") || filename.endsWith(".txt"))) return null;
+
+  const { data: fileUrl } = await client.get<string>(client.userPath(`/items/${attachmentKey}/file/view/url`));
+  if (typeof fileUrl !== "string" || !fileUrl.trim().startsWith("file:")) {
+    throw new Error("Zotero did not return a local file for this text attachment");
+  }
+  const desktopDataRoot = "/config/home/Zotero";
+  const candidate = fileURLToPath(fileUrl.trim());
+  const translated = candidate === desktopDataRoot
+    ? "/data"
+    : candidate.startsWith(`${desktopDataRoot}${path.sep}`)
+      ? path.join("/data", candidate.slice(desktopDataRoot.length + 1))
+      : candidate;
+  const resolved = await realpath(translated);
+  const roots = await Promise.all(["/data", "/linked"].map(async (root) => {
+    try { return await realpath(root); } catch { return null; }
+  }));
+  if (!roots.some((root) => root && (resolved === root || resolved.startsWith(`${root}${path.sep}`)))) {
+    throw new Error("Zotero returned a text attachment outside the approved read-only storage roots");
+  }
+  const metadata = await stat(resolved);
+  if (!metadata.isFile() || metadata.size > 50 * 1024 * 1024) {
+    throw new Error("The text attachment is not a regular file or exceeds 50 MiB");
+  }
+  const content = await readFile(resolved, "utf8");
+  return { content: content.slice(0, maxChars), truncated: content.length > maxChars };
 }
 
 function compactAttachment(att: any) {

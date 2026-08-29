@@ -21,11 +21,10 @@ if [[ ! -d "${profile}" && -f "${profile_root}/profiles.ini" ]]; then
   esac
 fi
 mkdir -p "${profile}"
-profile_plugin="${profile}/extensions/setup-bridge@scholarserver.com.xpi"
-bundled_plugin="/opt/zotero/distribution/extensions/setup-bridge@scholarserver.com.xpi"
-if [[ -f "${profile_plugin}" ]]; then
-  cp "${bundled_plugin}" "${profile_plugin}"
-fi
+mkdir -p "${profile}/extensions"
+for extension_id in setup-bridge@scholarserver.com zotmoov@wileyy.com; do
+  cp "/opt/zotero/distribution/extensions/${extension_id}.xpi" "${profile}/extensions/${extension_id}.xpi"
+done
 
 if [[ ! -e "${HOME}/Zotero" ]]; then
   ln -s /data "${HOME}/Zotero"

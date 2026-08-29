@@ -44,6 +44,7 @@ async function startup() {
 			downloadMode: Zotero.Prefs.get("sync.storage.downloadMode.personal"),
 			groupFileSync: Zotero.Prefs.get("sync.storage.groups.enabled"),
 			linkedFolder: Zotero.Prefs.get("baseAttachmentPath") || null,
+			linkedFolderAutomation: !!Zotero.Prefs.get("extensions.zotmoov.enable_automove"),
 			syncInProgress: !!Zotero.Sync.Runner.syncInProgress,
 		});
 	}
@@ -86,21 +87,32 @@ async function startup() {
 		Zotero.Prefs.set("sync.storage.groups.enabled", !!groupFileSync);
 		Zotero.Prefs.set("httpServer.enabled", true);
 		Zotero.Prefs.set("httpServer.localAPI.enabled", true);
+		Zotero.Prefs.set("extensions.zotmoov.enable_automove", false);
 
 		if (storageMode === "zotero-storage") {
 			Zotero.Prefs.set("sync.storage.enabled", true);
 			Zotero.Prefs.set("sync.storage.protocol", "zotero");
 			Zotero.Prefs.set("saveRelativeAttachmentPath", false);
+			Zotero.Prefs.set("baseAttachmentPath", "");
 		}
 		else if (storageMode === "webdav") {
 			Zotero.Prefs.set("sync.storage.enabled", true);
 			Zotero.Prefs.set("sync.storage.protocol", "webdav");
 			Zotero.Prefs.set("saveRelativeAttachmentPath", false);
+			Zotero.Prefs.set("baseAttachmentPath", "");
 		}
 		else if (storageMode === "linked-folder") {
 			Zotero.Prefs.set("sync.storage.enabled", false);
+			Zotero.Prefs.set("sync.storage.groups.enabled", false);
 			Zotero.Prefs.set("saveRelativeAttachmentPath", true);
 			Zotero.Prefs.set("baseAttachmentPath", "/linked");
+			Zotero.Prefs.set("extensions.zotmoov.dst_dir", "/linked");
+			Zotero.Prefs.set("extensions.zotmoov.file_behavior", "move");
+			Zotero.Prefs.set("extensions.zotmoov.enable_automove", true);
+			Zotero.Prefs.set("extensions.zotmoov.enable_subdir_move", false);
+			Zotero.Prefs.set("extensions.zotmoov.process_synced_files", true);
+			Zotero.Prefs.set("extensions.zotmoov.copy_group_libraries", false);
+			Zotero.Prefs.set("extensions.zotmoov.add_zotmoov_tag", false);
 		}
 		else {
 			Zotero.Prefs.set("sync.storage.enabled", false);
@@ -153,6 +165,46 @@ async function startup() {
 		return { state: "complete" };
 	}
 
+	async function attachDoclingResult(input) {
+		const sourceAttachmentKey = typeof input?.sourceAttachmentKey === "string"
+			? input.sourceAttachmentKey.trim().toUpperCase()
+			: "";
+		const relativePath = typeof input?.relativePath === "string" ? input.relativePath.trim() : "";
+		if (!/^[A-Z0-9]{8}$/.test(sourceAttachmentKey)) {
+			throw new Error("A valid Zotero source attachment key is required");
+		}
+		const match = /^\.scholarserver\/docling\/([a-f0-9]{64})\/document\.md$/.exec(relativePath);
+		if (!match) {
+			throw new Error("The Docling result path is outside ScholarServer's generated-output folder");
+		}
+		const fullPath = PathUtils.join("/linked", ...relativePath.split("/"));
+		const metadata = await IOUtils.stat(fullPath);
+		if (metadata.type !== "regular" || metadata.size <= 0 || metadata.size > 50 * 1024 * 1024) {
+			throw new Error("The Docling result must be a non-empty Markdown file no larger than 50 MiB");
+		}
+		const source = await Zotero.Items.getByLibraryAndKeyAsync(Zotero.Libraries.userLibraryID, sourceAttachmentKey);
+		if (!source) throw new Error("The source Zotero attachment is not present in the personal library");
+		const parentItemID = source.isAttachment() ? source.parentID : source.id;
+		if (!parentItemID) throw new Error("The source attachment does not belong to a bibliographic item");
+		const parent = Zotero.Items.get(parentItemID);
+		if (!parent || !parent.isRegularItem()) throw new Error("The source attachment parent is not a bibliographic item");
+		const title = `Docling Markdown — ${match[1].slice(0, 12)}`;
+		for (const attachmentID of parent.getAttachments()) {
+			const existing = Zotero.Items.get(attachmentID);
+			if (existing && existing.getField("title") === title) {
+				return response({ state: "already-attached", attachmentKey: existing.key, parentItemKey: parent.key, sourceSha256: match[1] });
+			}
+		}
+		const attachment = await Zotero.Attachments.importFromFile({
+			file: fullPath,
+			parentItemID,
+			title,
+			contentType: "text/markdown",
+			charset: "utf-8",
+		});
+		return response({ state: "attached", attachmentKey: attachment.key, parentItemKey: parent.key, sourceSha256: match[1] });
+	}
+
 	async function perform(request) {
 		switch (request.action) {
 			case "status": return status();
@@ -161,6 +213,7 @@ async function startup() {
 			case "configure-storage": return configureStorage(request.input || {});
 			case "configure-webdav": return configureWebDAV(request.input || {});
 			case "sync-now": return syncNow();
+			case "attach-docling-result": return attachDoclingResult(request.input || {});
 			default: throw new Error("Unsupported ScholarServer Zotero setup action");
 		}
 	}
