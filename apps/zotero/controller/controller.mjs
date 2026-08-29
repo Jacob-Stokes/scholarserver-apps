@@ -18,6 +18,7 @@ const bridgeRequestsPath = path.join(bridgePath, "requests");
 const bridgeResponsesPath = path.join(bridgePath, "responses");
 const zoteroBaseUrl = "http://127.0.0.1:23119/api";
 const connectorPingUrl = "http://127.0.0.1:23119/connector/ping";
+const automationsBaseUrl = "http://automations:8081/v1";
 const uiPath = "/app/ui";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
@@ -454,6 +455,24 @@ async function body(request) {
   return value;
 }
 
+async function proxyAutomations(request, response, url) {
+  const suffix = url.pathname.replace(/^\/api\/automations/, "");
+  const target = suffix === "/folders"
+    ? `${automationsBaseUrl}/folders${url.search}`
+    : `${automationsBaseUrl}/automations${suffix}${url.search}`;
+  const requestBody = request.method === "GET" || request.method === "HEAD"
+    ? undefined
+    : JSON.stringify(await body(request));
+  const upstream = await fetch(target, {
+    method: request.method,
+    headers: requestBody ? { "content-type": "application/json" } : undefined,
+    body: requestBody,
+    signal: AbortSignal.timeout(130_000)
+  });
+  const value = await upstream.json().catch(() => ({ error: "The Zotero automation worker returned an invalid response" }));
+  return json(response, upstream.status, value);
+}
+
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"], [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"], [".json", "application/json; charset=utf-8"],
@@ -488,6 +507,8 @@ async function handleHttp(request, response) {
     if (request.method === "POST" && url.pathname === "/api/sync") { await body(request); return json(response, 200, await syncNow()); }
     if (request.method === "POST" && url.pathname === "/api/attachments/resolve") return json(response, 200, await resolveAttachment(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/attachments/match") return json(response, 200, await matchAttachment(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/attachments/attach-docling") return json(response, 200, await attachDoclingResult(await body(request)));
+    if (url.pathname === "/api/automations" || url.pathname.startsWith("/api/automations/")) return proxyAutomations(request, response, url);
     if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
     return json(response, 404, { error: "Not found" });
   } catch (error) {

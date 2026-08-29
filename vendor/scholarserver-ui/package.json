@@ -4,7 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./folder-picker": "./folder-picker.tsx"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "1.1.15",
+    "lucide-react": "0.475.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "scholarserverSource": "scholarserver/packages/ui@0.1.0"
 }

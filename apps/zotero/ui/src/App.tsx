@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AutomationsTab } from "./AutomationsTab";
 
 type Status = {
   state: string; desktop: string; version: string | null; localApi: string;
@@ -7,11 +8,11 @@ type Status = {
   linkedFolder: string | null; linkedFolderAutomation: boolean; storageVerified: boolean;
   syncInProgress: boolean; lastError: string | null;
 };
-type Tab = "overview" | "attachments" | "configuration";
+type Tab = "overview" | "attachments" | "automations" | "configuration";
 type StorageMode = "zotero-storage" | "webdav" | "linked-folder" | "server-only";
 
 const tabs: Array<{ id: Tab; label: string }> = [
-  { id: "overview", label: "Overview" }, { id: "attachments", label: "Attachments" }, { id: "configuration", label: "Configuration" }
+  { id: "overview", label: "Overview" }, { id: "attachments", label: "Attachments" }, { id: "automations", label: "Automations" }, { id: "configuration", label: "Configuration" }
 ];
 const storageOptions: Array<{ value: StorageMode; title: string; detail: string }> = [
   { value: "zotero-storage", title: "Zotero Storage", detail: "The simplest option. Zotero synchronizes references and attachments." },
@@ -140,6 +141,8 @@ export function App() {
         <section className="ss-card ss-stack"><div><h2>Match a shared file</h2><p className="ss-card-description">Find the Zotero attachment corresponding to a path inside the linked research folder.</p></div><label className="ss-field">Relative file path<input className="ss-input" placeholder="Papers/example.pdf" value={sourcePath} onChange={(event) => setSourcePath(event.target.value)} /></label><button className="ss-button" disabled={busy || !sourcePath.trim()} onClick={() => void run(() => request<unknown>("attachments/match", { method: "POST", body: JSON.stringify({ sourcePath }) }), "Attachment matching completed.", setAttachmentResult)}>Find match</button></section>
         <section className="ss-card"><h2>Result</h2><p className="ss-card-description">Diagnostic metadata is shown without exposing the server file path.</p>{attachmentResult ? <pre className="ss-result ss-code">{JSON.stringify(attachmentResult, null, 2)}</pre> : <p className="ss-muted">No attachment checked yet.</p>}</section>
       </div> : null}
+
+      {status && tab === "automations" ? <AutomationsTab request={request} setNotice={setNotice} setError={setError} /> : null}
 
       {status && tab === "configuration" ? <div className="ss-stack">
         <section className="ss-card ss-stack"><div className="ss-toolbar"><div><h2>1. Zotero account</h2><p className="ss-card-description">Sign in on Zotero's website. ScholarServer never receives your Zotero password.</p></div>{status.accountConnected ? <span className="ss-badge ss-badge-success">Connected</span> : null}</div>{status.accountConnected ? <div className="ss-callout">Connected as <strong>{status.username ?? status.userId}</strong>. Zotero stores its own account token.</div> : <><div className="ss-form-actions"><button className="ss-button" disabled={busy || checkingAccount} onClick={() => void connectAccount()}>{busy || checkingAccount ? <span className="ss-spinner" /> : null}{checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}</button>{authorizationUrl ? <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">Open Zotero sign-in</a> : null}</div></>}</section>
