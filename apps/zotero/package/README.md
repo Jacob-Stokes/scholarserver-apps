@@ -29,7 +29,16 @@ The `resolve-attachment` diagnostic action asks Zotero for a supported local fil
 then verifies that the canonical file remains below `/data` or `/linked`. It never reads
 `zotero.sqlite` and never accepts an arbitrary filesystem path.
 
-The controller serves package-owned Overview, Attachments and Configuration
-tabs on port 8080 inside the Desktop network namespace. Only the generic Manager
-proxy can reach that interface through the restricted `scholarserver-edge`
-network; neither it nor Zotero's localhost API has a published host port.
+The controller serves package-owned Overview, Attachments, Automations and
+Configuration tabs on port 8080 inside the Desktop network namespace. Only the
+generic Manager proxy can reach that interface through the restricted
+`scholarserver-edge` network; neither it nor Zotero's localhost API has a
+published host port.
+
+The Zotero stack also owns a small, unprivileged automation worker. Its first
+curated action discovers Zotero PDFs in the selected shared-storage folder,
+asks an installed Docling application to convert them, and can attach the
+resulting Markdown to the matching Zotero item. The worker stores its settings,
+schedule and recent run history in a dedicated persistent data slot. It has no
+host port, no Docker socket and no arbitrary script or YAML execution surface.
+Stopping Zotero stops the worker with the rest of the application stack.

@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 18
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:67fa99d1bf8f89cb64421111da64f7d1f99475740b21681e6ec655afaeb18db0
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:00028705ea4b466cd6f35282db6a53b21e25aa5aab1784ea6c5e899c24cbbb5f
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -34,6 +34,29 @@ services:
       - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+  automations:
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:8dbdf1785a13ca77259eb4cd8ace02c8ac180af2a88d51c93655cced5e8a3418
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10001:10001"
+    cpus: 0.25
+    mem_limit: 256m
+    pids_limit: 64
+    environment:
+      SCHOLARSERVER_INSTANCE_ID: ${SCHOLARSERVER_INSTANCE_ID}
+      SCHOLARSERVER_WORKSPACE_ID: ${SCHOLARSERVER_WORKSPACE_ID}
+    volumes:
+      - ${SCHOLARSERVER_DATA_AUTOMATION_STATE}:/state
+      - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
+    networks: [instance, edge]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8081/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       start_period: 10s

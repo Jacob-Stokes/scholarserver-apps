@@ -11,7 +11,7 @@ authenticated noVNC UI ── Zotero Desktop ── Zotero/Zotero-WebDAV sync
                               │
                     ┌─────────┴─────────┐
                     │                   │
-               Zotero MCP         attachment worker
+               Zotero MCP     Zotero automation worker
                                         │
                                   Docling service
 ```
@@ -31,6 +31,10 @@ The Desktop image is built from Zotero's official, checksum-pinned native Linux
 tarballs for amd64 and arm64. It does not use architecture emulation. The web desktop
 has no independent VNC password because it is reachable only through ScholarServer's
 authenticated ingress; VNC itself listens on container-localhost.
+
+The automation worker belongs to the Zotero application stack. It owns the curated
+Zotero-to-Docling action, its settings, schedule and run history; Docling remains a
+reusable conversion service and does not contain Zotero workflow logic.
 
 ## Storage adapters
 

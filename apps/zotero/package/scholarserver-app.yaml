@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.3.1
+packageVersion: 0.4.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -18,7 +18,7 @@ delivery:
 tenancy:
   mode: per-workspace
 capabilities:
-  provides: [references.zotero-library, attachments.resolve, mcp.zotero]
+  provides: [references.zotero-library, attachments.resolve, mcp.zotero, automations.zotero]
   requires: [gateway.mcp]
   conflicts: []
 resources:
@@ -36,7 +36,9 @@ images:
   - service: desktop
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:1d90ec0b016bd2090d204f75f55dd5758e74f0d8f871f70be969ef19c3158dc6
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:67fa99d1bf8f89cb64421111da64f7d1f99475740b21681e6ec655afaeb18db0
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:00028705ea4b466cd6f35282db6a53b21e25aa5aab1784ea6c5e899c24cbbb5f
+  - service: automations
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:8dbdf1785a13ca77259eb4cd8ace02c8ac180af2a88d51c93655cced5e8a3418
   - service: mcp
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:3856f59ff167879ac4bb214501566b927928bf82369bc36c5f60551971c71c3c
 data:
@@ -70,6 +72,12 @@ data:
       mountable: true
       access: read-write
       content: documents
+  - id: automation-state
+    mountPath: /state
+    owner: zotero-automations
+    filesystem: { uid: 10001, gid: 10001, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
 endpoints:
   - id: desktop
     service: desktop
@@ -110,6 +118,7 @@ onboarding:
     - Choose how attachments are stored and downloaded
     - Authorize ScholarServer for local library access
     - Run the first synchronization
+    - Configure optional Zotero automations
   actions:
     - id: status
       data: runtime
