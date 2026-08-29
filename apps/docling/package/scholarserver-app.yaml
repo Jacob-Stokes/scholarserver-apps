@@ -36,7 +36,7 @@ images:
   - service: docling
     reference: quay.io/docling-project/docling-serve-cpu@sha256:32ba1a1dded8d8fd21f9d8da1b9837e04cfee164ef891d9513174c3d989dcee9
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-docling-controller@sha256:a82a7be6612cdc01ed9e38b2a08a88792bea96d7bbd5b1cda7c4e0d2e6ae88e6
+    reference: ghcr.io/jacob-stokes/scholarserver-docling-controller@sha256:5e1c19c459a8c0d053add0aa042aa0f029f99cd33a05e895d74cb310883f3e73
 data:
   - id: runtime
     mountPath: /runtime
