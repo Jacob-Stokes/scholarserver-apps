@@ -9,6 +9,8 @@ RUN npm run build
 
 FROM python:3.12-alpine@sha256:d09d15e60962ca365d1cd544a48773bac9d33f2fb1b00f2aa0deec78ade7dc31
 
+LABEL org.opencontainers.image.source="https://github.com/Jacob-Stokes/scholarserver-apps"
+
 RUN addgroup -g 10001 scholarserver \
     && adduser -D -H -u 10001 -G scholarserver scholarserver
 
