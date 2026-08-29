@@ -1,6 +1,6 @@
 services:
   sync:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:d0978af846be117830b2e27574c84afca231db1e6b357f15a5571896e0f5923c
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:24c220b37094d24dd591bba8b1f6e7e0d1c052e16a1b1f774650703cbd4c6a2a
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
