@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 18
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:ef9644d2910778eaea0dcba8e769bf7c01b30e55e8e54be6c7fe7b6cddff6510
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:e14d321fe67990fc7970b81f0f657a3ce05b1f432058d88690b44775afac0380
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -39,7 +39,7 @@ services:
       start_period: 10s
       retries: 12
   automations:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:cb49f3c41941539cdcab98b575c5fbfe6fd2bac30348dbfe9df96902aaed83c6
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:51054dc1397e466f3ab303ec238ed0bcf81bf1082848b25322c2e60fdc472174
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
