@@ -43,7 +43,7 @@ export function AutomationsTab({ request, setNotice, setError }: {
       const result = await request<{ automations: AutomationView[] }>("automations");
       const next = result.automations[0] ?? null;
       setView(next);
-      setDraft(next ? { enabled: next.configuration.enabled, intervalMinutes: next.configuration.intervalMinutes, configuration: { ...next.configuration.configuration } } : null);
+      setDraft((current) => current ?? (next ? { enabled: next.configuration.enabled, intervalMinutes: next.configuration.intervalMinutes, configuration: { ...next.configuration.configuration } } : null));
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load Zotero automations"); }
   }, [request, setError]);
 
