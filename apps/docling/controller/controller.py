@@ -226,6 +226,45 @@ def list_pdfs(folder: str, limit: int) -> list[str]:
     return found
 
 
+def browse_folders(folder: str) -> dict[str, Any]:
+    folder_text = folder.strip().replace("\\", "/") if isinstance(folder, str) else ""
+    if "\x00" in folder_text or folder_text.startswith("/"):
+        raise ValueError("The folder must stay inside Research documents")
+    parts = [part for part in folder_text.split("/") if part]
+    if any(part in (".", "..") for part in parts):
+        raise ValueError("The folder must stay inside Research documents")
+    root = DOCUMENTS.resolve(strict=True)
+    unresolved = root
+    for part in parts:
+        unresolved /= part
+        if unresolved.is_symlink():
+            raise ValueError("Linked folders cannot be browsed")
+    target = unresolved.resolve(strict=True)
+    if target != root and root not in target.parents:
+        raise ValueError("The folder leaves Research documents")
+    if not target.is_dir():
+        raise ValueError("That folder does not exist")
+    folders: list[dict[str, str]] = []
+    for candidate in sorted(target.iterdir(), key=lambda item: item.name.casefold()):
+        if candidate.name.startswith(".") or candidate.is_symlink():
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+            if resolved.is_dir() and root in resolved.parents:
+                relative = resolved.relative_to(root).as_posix()
+                folders.append({"name": candidate.name, "path": relative})
+        except OSError:
+            continue
+        if len(folders) >= 250:
+            break
+    canonical = "/".join(parts)
+    return {
+        "path": canonical,
+        "parent": "/".join(parts[:-1]) if parts else None,
+        "folders": folders,
+    }
+
+
 def discover_pdfs(folder: str, limit: int) -> list[dict[str, Any]]:
     return [
         {"path": relative, "bytes": (DOCUMENTS / relative).stat().st_size}
@@ -435,6 +474,8 @@ def action(request: dict[str, Any]) -> Any:
         return {"discovered": len(paths), "jobs": jobs}
     if action_id == "discover":
         return {"files": discover_pdfs(input_value.get("folder", ""), int(input_value.get("limit", 100)))}
+    if action_id == "browse-folders":
+        return browse_folders(input_value.get("path", ""))
     if action_id == "job-status":
         job_id = str(input_value.get("jobId", "")).strip().lower()
         row = find_job(job_id)

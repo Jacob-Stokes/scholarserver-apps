@@ -43,6 +43,26 @@ class ControllerTest(unittest.TestCase):
         (generated / "ignored.pdf").write_bytes(b"fixture")
         self.assertEqual(self.controller.list_pdfs("", 1), ["a.pdf"])
 
+    def test_folder_browser_is_bounded_to_visible_directories(self):
+        (self.controller.DOCUMENTS / "Articles" / "Drafts").mkdir(parents=True)
+        (self.controller.DOCUMENTS / "Books").mkdir()
+        (self.controller.DOCUMENTS / ".scholarserver").mkdir()
+        (self.controller.DOCUMENTS / "paper.pdf").write_bytes(b"fixture")
+        listing = self.controller.browse_folders("")
+        self.assertEqual(listing, {
+            "path": "",
+            "parent": None,
+            "folders": [
+                {"name": "Articles", "path": "Articles"},
+                {"name": "Books", "path": "Books"},
+            ],
+        })
+        self.assertEqual(self.controller.browse_folders("Articles")["folders"], [
+            {"name": "Drafts", "path": "Articles/Drafts"},
+        ])
+        with self.assertRaisesRegex(ValueError, "stay inside"):
+            self.controller.browse_folders("../outside")
+
     def test_writes_markdown_and_manifest(self):
         (self.controller.DOCUMENTS / "paper.pdf").write_bytes(b"%PDF fixture")
         job = self.controller.enqueue("paper.pdf", None, True)
