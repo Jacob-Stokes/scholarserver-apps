@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.docling
 name: Docling
-packageVersion: 0.2.1
+packageVersion: 0.3.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1

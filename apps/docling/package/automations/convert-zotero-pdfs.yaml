@@ -1,0 +1,100 @@
+schemaVersion: 1
+id: org.scholarserver.automation.convert-zotero-pdfs
+version: 0.1.0
+name: Convert Zotero PDFs
+description: Find Zotero-linked PDFs, convert them to Markdown with Docling, and attach the result to the matching Zotero item.
+ownerPackage: org.scholarserver.docling
+support:
+  tier: official
+roles:
+  references:
+    capability: references.zotero-library
+    actions: [match-attachment, attach-docling-result]
+  converter:
+    capability: documents.convert-markdown
+    actions: [discover, enqueue, job-status]
+configuration:
+  fields:
+    - id: folder
+      label: Folder
+      help: Search this folder inside the shared research storage. Leave empty for the whole folder.
+      type: string
+      default: ""
+    - id: limit
+      label: PDFs per run
+      help: Keep the first runs small. Files already converted with the same settings are reused.
+      type: number
+      default: 3
+      minimum: 1
+      maximum: 100
+    - id: ocr
+      label: Use OCR
+      help: Enable only for scanned or image-only PDFs because it uses considerably more processing power.
+      type: boolean
+      default: false
+    - id: attachMarkdown
+      label: Attach Markdown to Zotero
+      help: Add the generated Markdown beside the source PDF on its Zotero item.
+      type: boolean
+      default: true
+scheduling:
+  supported: true
+  defaultIntervalMinutes: 60
+  minimumIntervalMinutes: 15
+runtime:
+  kind: pipeline
+  timeoutSeconds: 7200
+  steps:
+    - id: discover
+      kind: action
+      role: converter
+      action: discover
+      input:
+        folder: $config.folder
+        limit: $config.limit
+    - id: documents
+      kind: for-each
+      items: $steps.discover.files
+      steps:
+        - id: match
+          kind: action
+          role: references
+          action: match-attachment
+          input:
+            sourcePath: $item.path
+        - id: matched
+          kind: when
+          value: $steps.match.state
+          equals: matched
+          steps:
+            - id: enqueue
+              kind: action
+              role: converter
+              action: enqueue
+              input:
+                sourcePath: $item.path
+                sourceAttachmentKey: $steps.match.attachmentKey
+                ocr: $config.ocr
+            - id: converted
+              kind: wait-action
+              role: converter
+              action: job-status
+              input:
+                jobId: $steps.enqueue.id
+              state: $result.state
+              terminal: [succeeded, failed]
+              success: [succeeded]
+              intervalSeconds: 5
+              timeoutSeconds: 3600
+            - id: attach-enabled
+              kind: when
+              value: $config.attachMarkdown
+              equals: true
+              steps:
+                - id: attach
+                  kind: action
+                  role: references
+                  action: attach-docling-result
+                  input:
+                    sourceAttachmentKey: $steps.match.attachmentKey
+                    relativePath: $steps.converted.outputPath
