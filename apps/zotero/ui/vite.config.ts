@@ -1,4 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({ base: "./", plugins: [react()], build: { outDir: "dist", emptyOutDir: true } });
+export default defineConfig({
+  base: "./",
+  plugins: [react()],
+  resolve: { preserveSymlinks: true },
+  build: { outDir: "dist", emptyOutDir: true },
+});

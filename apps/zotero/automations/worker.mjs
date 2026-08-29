@@ -11,6 +11,7 @@ const zoteroUrl = process.env.SCHOLARSERVER_ZOTERO_URL ?? "http://desktop:8080";
 const workspaceId = process.env.SCHOLARSERVER_WORKSPACE_ID ?? "personal";
 const port = Number(process.env.SCHOLARSERVER_AUTOMATION_PORT ?? 8081);
 const statePath = path.join(stateRoot, "automations.json");
+let stateMutation = Promise.resolve();
 
 const definition = Object.freeze({
   id: "convert-zotero-pdfs",
@@ -51,6 +52,17 @@ async function loadState() {
   const value = initialState();
   await atomicJson(statePath, value);
   return value;
+}
+
+async function mutateState(mutator) {
+  const operation = stateMutation.then(async () => {
+    const state = await loadState();
+    const result = await mutator(state);
+    await atomicJson(statePath, state);
+    return result;
+  });
+  stateMutation = operation.catch(() => undefined);
+  return operation;
 }
 
 function cleanRelativePath(value) {
@@ -177,23 +189,24 @@ async function execute(configuration) {
 }
 
 async function updateRun(runId, update) {
-  const state = await loadState();
-  const automation = state.automations[definition.id];
-  const run = automation.runs.find((candidate) => candidate.id === runId);
-  if (!run) return;
-  Object.assign(run, update);
-  automation.runs = automation.runs.slice(0, 50);
-  await atomicJson(statePath, state);
+  await mutateState((state) => {
+    const automation = state.automations[definition.id];
+    const run = automation.runs.find((candidate) => candidate.id === runId);
+    if (!run) return;
+    Object.assign(run, update);
+    automation.runs = automation.runs.slice(0, 50);
+  });
 }
 
 async function startRun(trigger = "manual") {
-  const state = await loadState();
-  const automation = state.automations[definition.id];
-  if (automation.runs.some((run) => run.state === "running")) throw new Error("This automation is already running");
-  const run = { id: randomUUID(), state: "running", trigger, startedAt: new Date().toISOString(), finishedAt: null, summary: null, error: null };
-  automation.runs.unshift(run);
-  await atomicJson(statePath, state);
-  void execute(automation.configuration).then(
+  const { run, configuration } = await mutateState((state) => {
+    const automation = state.automations[definition.id];
+    if (automation.runs.some((candidate) => candidate.state === "running")) throw new Error("This automation is already running");
+    const run = { id: randomUUID(), state: "running", trigger, startedAt: new Date().toISOString(), finishedAt: null, summary: null, error: null };
+    automation.runs.unshift(run);
+    return { run, configuration: { ...automation.configuration } };
+  });
+  void execute(configuration).then(
     (summary) => updateRun(run.id, { state: "succeeded", summary, finishedAt: new Date().toISOString() }),
     (error) => updateRun(run.id, { state: "failed", error: error instanceof Error ? error.message : "Automation failed", finishedAt: new Date().toISOString() })
   );
@@ -215,16 +228,31 @@ async function saveAutomation(input) {
   if (typeof input.enabled !== "boolean") throw new Error("Schedule must be true or false");
   const intervalMinutes = Number(input.intervalMinutes);
   if (!Number.isInteger(intervalMinutes) || intervalMinutes < 15 || intervalMinutes > 10080) throw new Error("Schedule interval must be between 15 minutes and one week");
-  const state = await loadState();
-  state.automations[definition.id] = {
-    ...state.automations[definition.id],
-    enabled: input.enabled,
-    intervalMinutes,
-    configuration: validateConfiguration(input.configuration),
-    updatedAt: new Date().toISOString()
-  };
-  await atomicJson(statePath, state);
-  return state.automations[definition.id];
+  const configuration = validateConfiguration(input.configuration);
+  return mutateState((state) => {
+    state.automations[definition.id] = {
+      ...state.automations[definition.id],
+      enabled: input.enabled,
+      intervalMinutes,
+      configuration,
+      updatedAt: new Date().toISOString()
+    };
+    return state.automations[definition.id];
+  });
+}
+
+async function recoverInterruptedRuns() {
+  await mutateState((state) => {
+    const finishedAt = new Date().toISOString();
+    for (const run of state.automations[definition.id].runs) {
+      if (run.state !== "running") continue;
+      Object.assign(run, {
+        state: "failed",
+        error: "The automation worker restarted before this run completed",
+        finishedAt
+      });
+    }
+  });
 }
 
 function send(response, status, value) {
@@ -281,7 +309,7 @@ async function scheduler() {
 }
 
 export async function main() {
-  await loadState();
+  await recoverInterruptedRuns();
   createServer((request, response) => { void handler(request, response); }).listen(port, "0.0.0.0");
   void scheduler();
 }
