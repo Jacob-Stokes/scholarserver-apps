@@ -21,10 +21,10 @@ build() {
   docker push "$target"
 }
 
-build obsidian-sync apps/obsidian/sync/Dockerfile apps/obsidian/sync
+build obsidian-sync apps/obsidian/sync/Dockerfile .
 build obsidian-api apps/obsidian/api/Dockerfile apps/obsidian/api
 build obsidian-mcp apps/obsidian/mcp/Dockerfile .
 build zotero-desktop apps/zotero/desktop/Dockerfile apps/zotero/desktop
-build zotero-controller apps/zotero/controller/Dockerfile apps/zotero/controller
+build zotero-controller apps/zotero/controller/Dockerfile .
 build zotero-mcp apps/zotero/mcp/Dockerfile .
 build docling-app apps/docling/controller/Dockerfile .

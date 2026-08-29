@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, open, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const vaultPath = "/vault";
@@ -11,11 +12,13 @@ const statusPath = path.join(runtimePath, "status.json");
 const tokenPath = path.join(runtimePath, "service-token");
 const enrollmentPath = path.join(runtimePath, "enrollment.json");
 const scopePath = path.join(runtimePath, "scope-path");
+const uiPath = "/app/ui";
 
 let syncProcess = null;
 let state = {
   state: "setup-required",
   remoteVault: null,
+  scopePath: "/",
   lastSyncAt: null,
   lastError: null,
   workerRunning: false,
@@ -106,7 +109,7 @@ async function connectVault(input) {
   await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
   await atomicJson(enrollmentPath, { remoteVault: input.vault, mode: "bidirectional", scopePath: mcpScope });
   startContinuousSync();
-  await updateStatus({ state: "ready", remoteVault: input.vault, lastSyncAt: new Date().toISOString(), lastError: null });
+  await updateStatus({ state: "ready", remoteVault: input.vault, scopePath: mcpScope, lastSyncAt: new Date().toISOString(), lastError: null });
   return { ...state, workerRunning: true };
 }
 
@@ -169,10 +172,79 @@ async function processRequest(fileName) {
 async function restore() {
   try {
     const enrollment = JSON.parse(await readFile(enrollmentPath, "utf8"));
-    state = { ...state, state: "ready", remoteVault: enrollment.remoteVault };
+    state = { ...state, state: "ready", remoteVault: enrollment.remoteVault, scopePath: enrollment.scopePath || "/" };
     startContinuousSync();
   } catch {}
   await updateStatus();
+}
+
+function headers(response, contentType = "application/json; charset=utf-8") {
+  response.setHeader("Content-Type", contentType);
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("X-Frame-Options", "DENY");
+}
+
+function json(response, statusCode, value) {
+  const output = Buffer.from(JSON.stringify(value));
+  response.statusCode = statusCode;
+  headers(response);
+  response.setHeader("Content-Length", output.length);
+  response.end(output);
+}
+
+async function body(request) {
+  const declared = Number(request.headers["content-length"] ?? 0);
+  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024) throw new Error("Request body is too large");
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of request) {
+    length += chunk.length;
+    if (length > 1024 * 1024) throw new Error("Request body is too large");
+    chunks.push(chunk);
+  }
+  const value = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  if (!value || Array.isArray(value) || typeof value !== "object") throw new Error("Request body must be an object");
+  return value;
+}
+
+const contentTypes = new Map([
+  [".css", "text/css; charset=utf-8"], [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"], [".json", "application/json; charset=utf-8"],
+  [".svg", "image/svg+xml"], [".png", "image/png"], [".ico", "image/x-icon"],
+]);
+
+async function sendStatic(requestPath, response) {
+  const root = path.resolve(uiPath);
+  let candidate = path.resolve(root, requestPath.replace(/^\/+/, ""));
+  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) return json(response, 404, { error: "Not found" });
+  try { if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html"); }
+  catch { candidate = path.join(root, "index.html"); }
+  try {
+    const content = await readFile(candidate);
+    response.statusCode = 200;
+    headers(response, contentTypes.get(path.extname(candidate)) ?? "application/octet-stream");
+    response.setHeader("Content-Length", content.length);
+    response.end(content);
+  } catch { json(response, 503, { error: "Obsidian interface is unavailable" }); }
+}
+
+async function handleHttp(request, response) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  try {
+    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
+    if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await action({ action: "status" }));
+    if (request.method === "POST" && url.pathname === "/api/account/login") return json(response, 200, await login(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/vault/connect") return json(response, 200, await connectVault(await body(request)));
+    if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
+    return json(response, 404, { error: "Not found" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Obsidian request failed";
+    await updateStatus({ lastError: message });
+    return json(response, 400, { error: message.slice(0, 1000) });
+  }
 }
 
 await mkdir(vaultPath, { recursive: true });
@@ -180,6 +252,7 @@ await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureServiceToken();
 await restore();
+createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
 
 for (;;) {
   const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();

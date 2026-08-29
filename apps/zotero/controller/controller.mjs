@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
+import { createServer } from "node:http";
 import { lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -17,6 +18,7 @@ const bridgeRequestsPath = path.join(bridgePath, "requests");
 const bridgeResponsesPath = path.join(bridgePath, "responses");
 const zoteroBaseUrl = "http://127.0.0.1:23119/api";
 const connectorPingUrl = "http://127.0.0.1:23119/connector/ping";
+const uiPath = "/app/ui";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
 
@@ -420,10 +422,86 @@ async function processRequest(fileName) {
   await atomicJson(responseFile, response);
 }
 
+function headers(response, contentType = "application/json; charset=utf-8") {
+  response.setHeader("Content-Type", contentType);
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("X-Frame-Options", "DENY");
+}
+
+function json(response, statusCode, value) {
+  const output = Buffer.from(JSON.stringify(value));
+  response.statusCode = statusCode;
+  headers(response);
+  response.setHeader("Content-Length", output.length);
+  response.end(output);
+}
+
+async function body(request) {
+  const declared = Number(request.headers["content-length"] ?? 0);
+  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024) throw new Error("Request body is too large");
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of request) {
+    length += chunk.length;
+    if (length > 1024 * 1024) throw new Error("Request body is too large");
+    chunks.push(chunk);
+  }
+  const value = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  if (!value || Array.isArray(value) || typeof value !== "object") throw new Error("Request body must be an object");
+  return value;
+}
+
+const contentTypes = new Map([
+  [".css", "text/css; charset=utf-8"], [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"], [".json", "application/json; charset=utf-8"],
+  [".svg", "image/svg+xml"], [".png", "image/png"], [".ico", "image/x-icon"],
+]);
+
+async function sendStatic(requestPath, response) {
+  const root = path.resolve(uiPath);
+  let candidate = path.resolve(root, requestPath.replace(/^\/+/, ""));
+  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) return json(response, 404, { error: "Not found" });
+  try { if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html"); }
+  catch { candidate = path.join(root, "index.html"); }
+  try {
+    const content = await readFile(candidate);
+    response.statusCode = 200;
+    headers(response, contentTypes.get(path.extname(candidate)) ?? "application/octet-stream");
+    response.setHeader("Content-Length", content.length);
+    response.end(content);
+  } catch { json(response, 503, { error: "Zotero interface is unavailable" }); }
+}
+
+async function handleHttp(request, response) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  try {
+    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
+    if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
+    if (request.method === "POST" && url.pathname === "/api/account/start") return json(response, 200, await startAccountLink());
+    if (request.method === "POST" && url.pathname === "/api/account/complete") return json(response, 200, await completeAccountLink());
+    if (request.method === "POST" && url.pathname === "/api/storage") return json(response, 200, await configureStorage(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/storage/webdav") return json(response, 200, await configureWebDAV(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/authorize") { await body(request); return json(response, 200, await authorize()); }
+    if (request.method === "POST" && url.pathname === "/api/sync") { await body(request); return json(response, 200, await syncNow()); }
+    if (request.method === "POST" && url.pathname === "/api/attachments/resolve") return json(response, 200, await resolveAttachment(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/attachments/match") return json(response, 200, await matchAttachment(await body(request)));
+    if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
+    return json(response, 404, { error: "Not found" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Zotero request failed";
+    await currentStatus(message);
+    return json(response, 400, { error: message.slice(0, 1000) });
+  }
+}
+
 await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureRandomFile(serviceTokenPath);
 await currentStatus();
+createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
 
 for (;;) {
   const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();

@@ -1,0 +1,12 @@
+.ss-alert { margin-bottom: 1rem; }
+.ss-loading { display: flex; align-items: center; gap: .65rem; color: var(--muted-foreground); }
+.ss-details { display: grid; grid-template-columns: 10rem 1fr; gap: .75rem 1rem; margin: 1rem 0 0; font-size: .875rem; }
+.ss-details dt { color: var(--muted-foreground); }
+.ss-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.ss-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.ss-step { border: 1px solid var(--border); border-radius: .65rem; padding: .9rem; color: var(--muted-foreground); font-size: .82rem; }
+.ss-step strong { display: block; margin-bottom: .25rem; color: var(--foreground); }
+.ss-step-active { border-color: var(--ring); background: var(--accent); }
+.ss-form-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.ss-callout { border-left: 3px solid var(--primary); background: var(--accent); padding: .85rem 1rem; color: var(--secondary-foreground); font-size: .875rem; }
+@media (max-width: 720px) { .ss-steps { grid-template-columns: 1fr; } .ss-details { grid-template-columns: 1fr; gap: .25rem; } .ss-details dd { margin-bottom: .65rem; } }
