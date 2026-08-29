@@ -7,11 +7,9 @@
     "./styles.css": "./styles.css",
     "./folder-picker": "./folder-picker.tsx"
   },
-  "dependencies": {
-    "@radix-ui/react-dialog": "1.1.15",
-    "lucide-react": "0.475.0"
-  },
   "peerDependencies": {
+    "@radix-ui/react-dialog": ">=1.1.15",
+    "lucide-react": ">=0.475.0",
     "react": ">=18",
     "react-dom": ">=18"
   },

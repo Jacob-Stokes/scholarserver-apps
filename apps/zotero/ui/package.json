@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": { "build": "vite build", "typecheck": "tsc --noEmit" },
   "dependencies": {
+    "@radix-ui/react-dialog": "1.1.15",
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
+    "lucide-react": "0.475.0",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },
