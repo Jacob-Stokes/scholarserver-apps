@@ -46,9 +46,9 @@ export function FolderPicker({ label, help, value, disabled = false, onChange, b
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="ss-dialog-overlay" />
-        <Dialog.Content className="ss-dialog-content" aria-describedby="folder-picker-description">
+        <Dialog.Content className="ss-dialog-content">
           <div className="ss-dialog-header">
-            <div><Dialog.Title className="ss-dialog-title">Choose a folder</Dialog.Title><Dialog.Description id="folder-picker-description" className="ss-dialog-description">Select a folder inside the shared storage attached to this application. ScholarServer cannot browse anywhere else.</Dialog.Description></div>
+            <div><Dialog.Title className="ss-dialog-title">Choose a folder</Dialog.Title><Dialog.Description className="ss-dialog-description">Select a folder inside the shared storage attached to this application. ScholarServer cannot browse anywhere else.</Dialog.Description></div>
             <Dialog.Close className="ss-icon-button" aria-label="Close"><X size={18} /></Dialog.Close>
           </div>
           <div className="ss-dialog-body">
