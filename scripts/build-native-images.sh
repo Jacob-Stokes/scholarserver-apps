@@ -27,4 +27,4 @@ build obsidian-mcp apps/obsidian/mcp/Dockerfile .
 build zotero-desktop apps/zotero/desktop/Dockerfile apps/zotero/desktop
 build zotero-controller apps/zotero/controller/Dockerfile apps/zotero/controller
 build zotero-mcp apps/zotero/mcp/Dockerfile .
-build docling-controller apps/docling/controller/Dockerfile .
+build docling-app apps/docling/controller/Dockerfile .
