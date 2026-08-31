@@ -1,6 +1,6 @@
 services:
   sync:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:4a219fbf4ad7a4edc4cf4bb618bf2510ba0f15633fda18c35f818e623b9a6998
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:06162f1cd203bf4578b9e7545c502fc70f1b261e13788c0a1064eb3ac4ba8548
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -84,7 +84,7 @@ services:
       start_period: 30s
       retries: 18
   livesync-worker:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:66fbeb818329a93f02142c51c0424b80bc71cb3d2db3e8e323653de98ddd69ef
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:1103d26d52fcf839c5378df21b70ee4dcee7d3b0728185979609891be68dd9bd
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
