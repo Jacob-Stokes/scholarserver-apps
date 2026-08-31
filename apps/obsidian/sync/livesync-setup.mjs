@@ -122,7 +122,7 @@ export async function provisionCouchDb({ internalUrl, username, password, databa
   });
 }
 
-export async function generateSetupUri({ url, username, password, database, vaultPassphrase, requestApi = false, setupPassphrase = generateSecret() }) {
+export function createScholarServerLiveSyncSettings({ url, username, password, database, vaultPassphrase, requestApi = false }) {
   const settings = createNewVaultSettings();
   Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED, {
     couchDB_URI: normalizeCouchDbUrl(url),
@@ -130,10 +130,14 @@ export async function generateSetupUri({ url, username, password, database, vaul
     couchDB_PASSWORD: password,
     couchDB_DBNAME: validateDatabaseName(database),
     batchSave: true,
+    liveSync: true,
     periodicReplication: true,
+    syncOnSave: true,
+    syncOnEditorSave: true,
     syncOnStart: true,
     syncOnFileOpen: true,
     syncAfterMerge: true,
+    keepReplicationActiveInBackground: true,
     isConfigured: true,
     encrypt: true,
     passphrase: vaultPassphrase,
@@ -141,6 +145,11 @@ export async function generateSetupUri({ url, username, password, database, vaul
     useRequestAPI: requestApi
   });
   upsertRemoteConfigurationInPlace(settings, "couchdb", { activate: true });
+  return settings;
+}
+
+export async function generateSetupUri({ url, username, password, database, vaultPassphrase, requestApi = false, setupPassphrase = generateSecret() }) {
+  const settings = createScholarServerLiveSyncSettings({ url, username, password, database, vaultPassphrase, requestApi });
   const setupURI = await encodeSettingsToSetupURI(settings, setupPassphrase, [
     "pluginSyncExtendedSetting",
     "doNotUseFixedRevisionForChunks"
