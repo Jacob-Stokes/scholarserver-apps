@@ -69,9 +69,10 @@ jobs:
         run: |
           publish_manifest() {
             target="$1"
+            source_suffix="${2:-}"
             for attempt in 1 2 3; do
               docker manifest rm "$target" 2>/dev/null || true
-              if docker manifest create "$target" "$IMAGE:sha-$REVISION-amd64" "$IMAGE:sha-$REVISION-arm64" \
+              if docker manifest create "$target" "$IMAGE:sha-$REVISION$source_suffix-amd64" "$IMAGE:sha-$REVISION$source_suffix-arm64" \
                 && docker manifest push "$target"; then
                 return 0
               fi
@@ -81,3 +82,9 @@ jobs:
           }
           publish_manifest "$IMAGE:sha-$REVISION"
           publish_manifest "$IMAGE:edge"
+          if [ "$IMAGE" = "ghcr.io/jacob-stokes/scholarserver-obsidian-sync" ]; then
+            publish_manifest "$IMAGE:sha-$REVISION-livesync-couchdb" "-livesync-couchdb"
+            publish_manifest "$IMAGE:edge-livesync-couchdb" "-livesync-couchdb"
+            publish_manifest "$IMAGE:sha-$REVISION-livesync-worker" "-livesync-worker"
+            publish_manifest "$IMAGE:edge-livesync-worker" "-livesync-worker"
+          fi
