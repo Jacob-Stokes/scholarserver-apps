@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { generateSecret, generateSetupUri, initializeCouchDb, normalizeCouchDbUrl, provisionCouchDb } from "./livesync-setup.mjs";
+import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -242,7 +243,14 @@ async function configureLiveSync(input) {
     vaultPassphrase
   });
   const revision = Date.now();
-  await atomicJson(liveSyncWorkerPath, { enabled: true, revision, setupURI: server.setupURI, setupPassphrase: server.setupPassphrase });
+  // The first Obsidian device must initialise the new remote database before
+  // the empty server replica joins it. Starting both sides at once causes
+  // LiveSync to engage its rebuild lock.
+  await atomicJson(liveSyncWorkerPath, prepareLiveSyncWorker({
+    revision,
+    setupURI: server.setupURI,
+    setupPassphrase: server.setupPassphrase
+  }));
   await atomicJson(liveSyncOnboardingPath, {
     revision,
     accessMethod,
@@ -261,13 +269,25 @@ async function configureLiveSync(input) {
 async function completeLiveSync(input) {
   if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync has not been prepared");
   if (input.confirmedPluginConnected !== true) throw new Error("Confirm that the plugin connected successfully in Obsidian");
+  if (state.state === "livesync-server-joining") return statusWithPrivateOnboarding();
   const worker = await readJson(liveSyncWorkerPath, null);
-  if (worker?.enabled) {
-    await atomicJson(liveSyncWorkerPath, { enabled: true, configured: true, revision: Date.now() });
-  }
-  await rm(liveSyncOnboardingPath, { force: true });
-  await updateStatus({ state: "ready", lastSyncAt: new Date().toISOString(), lastError: null });
+  await atomicJson(liveSyncWorkerPath, activateLiveSyncWorker(worker, Date.now()));
+  await updateStatus({ state: "livesync-server-joining", lastError: null });
   return statusWithPrivateOnboarding();
+}
+
+async function refreshLiveSyncCompletion() {
+  if (state.profile !== "livesync" || state.state !== "livesync-server-joining") return;
+  const worker = await readJson(liveSyncWorkerStatusPath, null);
+  const config = await readJson(liveSyncWorkerPath, null);
+  if (worker?.state === "ready" && worker.running && worker.activeRevision === config?.revision) {
+    await rm(liveSyncOnboardingPath, { force: true });
+    await updateStatus({ state: "ready", lastSyncAt: new Date().toISOString(), lastError: null });
+    return;
+  }
+  if ((worker?.state === "error" || worker?.state === "blocked") && worker.lastError && worker.lastError !== state.lastError) {
+    await updateStatus({ lastError: worker.lastError });
+  }
 }
 
 async function statusWithPrivateOnboarding() {
@@ -281,6 +301,7 @@ async function statusWithPrivateOnboarding() {
 async function action(request) {
   switch (request.action) {
     case "status": {
+      await refreshLiveSyncCompletion();
       if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync") return statusWithPrivateOnboarding();
       if (state.profile === "none") return statusWithPrivateOnboarding();
       try {
@@ -324,10 +345,11 @@ async function restore() {
   const enrollment = await readJson(enrollmentPath, null);
   if (enrollment?.profile === "livesync") {
     const onboarding = await readJson(liveSyncOnboardingPath, null);
+    const worker = await readJson(liveSyncWorkerPath, null);
     state = {
       ...state,
       profile: "livesync",
-      state: onboarding ? "livesync-device-setup" : "ready",
+      state: restoredLiveSyncState(onboarding, worker),
       remoteVault: "Self-hosted LiveSync",
       scopePath: enrollment.scopePath || "/"
     };

@@ -4,7 +4,7 @@ type RemoteVault = { id: string; name: string };
 type SyncProfile = "none" | "official" | "livesync";
 type LiveSyncAccessMethod = "tailscale" | "public";
 type Status = {
-  state: "setup-required" | "vault-selection-required" | "initial-sync" | "livesync-preparing" | "livesync-device-setup" | "ready";
+  state: "setup-required" | "vault-selection-required" | "initial-sync" | "livesync-preparing" | "livesync-device-setup" | "livesync-server-joining" | "ready";
   profile: SyncProfile;
   remoteVault: string | null;
   scopePath: string;
@@ -12,7 +12,7 @@ type Status = {
   lastError: string | null;
   workerRunning: boolean;
   vaults?: unknown;
-  liveSyncWorker?: { state: string; running: boolean; lastError: string | null } | null;
+  liveSyncWorker?: { state: string; running: boolean; activeRevision?: number | null; lastError: string | null } | null;
   liveSyncOnboarding?: { accessMethod: LiveSyncAccessMethod; connectionUrl: string; setupURI: string; setupPassphrase: string } | null;
 };
 type Tab = "overview" | "configuration";
@@ -96,6 +96,11 @@ export function App() {
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
+    if (status?.state !== "livesync-server-joining") return;
+    const timer = window.setInterval(() => void refresh(), 2_000);
+    return () => window.clearInterval(timer);
+  }, [refresh, status?.state]);
+  useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
@@ -138,8 +143,7 @@ export function App() {
   });
 
   const completeLiveSync = () => run(
-    () => request("livesync/complete", { method: "POST", body: JSON.stringify({ confirmedPluginConnected: pluginConnected }) }),
-    "Self-hosted LiveSync is connected."
+    () => request("livesync/complete", { method: "POST", body: JSON.stringify({ confirmedPluginConnected: pluginConnected }) })
   );
 
   const copy = async (value: string, label: string) => {
@@ -178,6 +182,7 @@ export function App() {
         {status.profile === "livesync" && status.state === "setup-required" ? <LiveSyncPrepare busy={busy} accessMethod={liveSyncAccess} setAccessMethod={setLiveSyncAccess} connectionUrl={connectionUrl} setConnectionUrl={setConnectionUrl} vaultPassphrase={vaultPassphrase} setVaultPassphrase={setVaultPassphrase} vaultPassphraseAgain={vaultPassphraseAgain} setVaultPassphraseAgain={setVaultPassphraseAgain} scopePath={scopePath} setScopePath={setScopePath} otherSyncOff={otherSyncOff} setOtherSyncOff={setOtherSyncOff} configure={configureLiveSync} /> : null}
         {status.profile === "livesync" && status.state === "livesync-preparing" ? <section className="ss-card ss-loading"><span className="ss-spinner" /><div><h2>Preparing LiveSync</h2><p className="ss-card-description">ScholarServer is starting CouchDB and creating your encrypted vault database.</p></div></section> : null}
         {status.profile === "livesync" && status.state === "livesync-device-setup" && status.liveSyncOnboarding ? <LiveSyncDevice onboarding={status.liveSyncOnboarding} busy={busy} pluginConnected={pluginConnected} setPluginConnected={setPluginConnected} copy={copy} complete={completeLiveSync} /> : null}
+        {status.profile === "livesync" && status.state === "livesync-server-joining" ? <section className="ss-card ss-loading"><span className="ss-spinner" /><div><h2>Connecting your server copy</h2><p className="ss-card-description">Your first device is ready. ScholarServer is now downloading the vault safely; this page updates automatically.</p>{status.lastError ? <div className="ss-alert ss-alert-error">{status.lastError}</div> : null}</div></section> : null}
         {status.state === "ready" ? <section className="ss-card"><div className="ss-toolbar"><div><h2>Obsidian is connected</h2><p className="ss-card-description">{profileLabel(status.profile)} is active. Keep other sync methods off when using LiveSync.</p></div><button className="ss-button ss-button-secondary" onClick={() => void refresh()}>Check connection</button></div></section> : null}
       </div> : null}
     </main>
@@ -208,5 +213,5 @@ function LiveSyncPrepare(props: PrepareProps) {
 
 type DeviceProps = { onboarding: NonNullable<Status["liveSyncOnboarding"]>; busy: boolean; pluginConnected: boolean; setPluginConnected: (value: boolean) => void; copy: (value: string, label: string) => Promise<void>; complete: () => Promise<void> };
 function LiveSyncDevice(props: DeviceProps) {
-  return <><div className="ss-steps"><div className="ss-step"><strong>1. Prepare</strong>LiveSync is ready.</div><div className="ss-step ss-step-active"><strong>2. Obsidian</strong>Connect this device.</div><div className="ss-step"><strong>3. Ready</strong>Repeat on other devices.</div></div><section className="ss-card ss-stack"><div><h2>Connect Obsidian</h2><p className="ss-card-description">Do these steps on a computer with your vault open.</p></div>{props.onboarding.accessMethod === "tailscale" ? <div className="ss-callout"><strong>First, check Tailscale.</strong> This device must be signed into the same Tailscale network as ScholarServer.</div> : null}<dl className="ss-details"><dt>Connection</dt><dd>{props.onboarding.accessMethod === "tailscale" ? "Private Tailscale" : "Public HTTPS"}</dd><dt>Address</dt><dd>{props.onboarding.connectionUrl}</dd></dl><ol className="ss-guide-list"><li><strong>Install Self-hosted LiveSync.</strong><p>Install the community plugin, then enable it.</p><a className="ss-button ss-button-secondary" href="obsidian://show-plugin?id=obsidian-livesync">Open plugin in Obsidian</a></li><li><strong>Apply your settings.</strong><p>The encrypted link configures the plugin.</p><a className="ss-button" href={props.onboarding.setupURI}>Open setup link in Obsidian</a><button className="ss-button ss-button-secondary" onClick={() => void props.copy(props.onboarding.setupURI, "Setup link")}>Copy setup link</button></li><li><strong>Enter the one-time setup password.</strong><p>This is the passphrase requested in the window shown in your screenshot.</p><div className="ss-secret-row"><code>{props.onboarding.setupPassphrase}</code><button className="ss-button ss-button-secondary" onClick={() => void props.copy(props.onboarding.setupPassphrase, "Setup password")}>Copy</button></div></li><li><strong>Finish the plugin prompts.</strong><p>Test the connection. For this new database, use this device's settings, then wait until LiveSync is up to date.</p></li></ol><div className="ss-alert ss-alert-warning"><strong>Do not turn another sync tool back on for this vault.</strong> On another device, install the plugin and create a fresh Setup URI from the first working device.</div><label className="ss-check"><input type="checkbox" checked={props.pluginConnected} onChange={(event) => props.setPluginConnected(event.target.checked)} /><span><strong>The plugin tested successfully and the vault is up to date.</strong></span></label><div><button className="ss-button" disabled={props.busy || !props.pluginConnected} onClick={() => void props.complete()}>{props.busy ? <span className="ss-spinner" /> : null}Finish setup</button></div></section></>;
+  return <><div className="ss-steps"><div className="ss-step"><strong>1. Prepare</strong>LiveSync is ready.</div><div className="ss-step ss-step-active"><strong>2. Obsidian</strong>Connect this device.</div><div className="ss-step"><strong>3. Ready</strong>ScholarServer joins safely.</div></div><section className="ss-card ss-stack"><div><h2>Connect Obsidian</h2><p className="ss-card-description">Do these steps on a computer with your vault open. ScholarServer will wait until you finish.</p></div>{props.onboarding.accessMethod === "tailscale" ? <div className="ss-callout"><strong>First, check Tailscale.</strong> This device must be signed into the same Tailscale network as ScholarServer.</div> : null}<dl className="ss-details"><dt>Connection</dt><dd>{props.onboarding.accessMethod === "tailscale" ? "Private Tailscale" : "Public HTTPS"}</dd><dt>Address</dt><dd>{props.onboarding.connectionUrl}</dd></dl><ol className="ss-guide-list"><li><strong>Install Self-hosted LiveSync.</strong><p>Install the community plugin, then enable it.</p><a className="ss-button ss-button-secondary" href="obsidian://show-plugin?id=obsidian-livesync">Open plugin in Obsidian</a></li><li><strong>Apply your settings.</strong><p>The encrypted link configures the plugin.</p><a className="ss-button" href={props.onboarding.setupURI}>Open setup link in Obsidian</a><button className="ss-button ss-button-secondary" onClick={() => void props.copy(props.onboarding.setupURI, "Setup link")}>Copy setup link</button></li><li><strong>Enter the one-time setup password.</strong><p>This is the passphrase requested in the window shown in your screenshot.</p><div className="ss-secret-row"><code>{props.onboarding.setupPassphrase}</code><button className="ss-button ss-button-secondary" onClick={() => void props.copy(props.onboarding.setupPassphrase, "Setup password")}>Copy</button></div></li><li><strong>Make this device the first copy.</strong><p>Test the connection, choose “I am setting up a new server for the first time”, then wait until LiveSync says it is up to date.</p></li></ol><div className="ss-alert ss-alert-warning"><strong>Do not turn another sync tool back on for this vault.</strong> On another device, install the plugin and create a fresh Setup URI from the first working device.</div><label className="ss-check"><input type="checkbox" checked={props.pluginConnected} onChange={(event) => props.setPluginConnected(event.target.checked)} /><span><strong>The plugin tested successfully and the vault is up to date.</strong></span></label><div><button className="ss-button" disabled={props.busy || !props.pluginConnected} onClick={() => void props.complete()}>{props.busy ? <span className="ss-spinner" /> : null}Connect ScholarServer</button></div></section></>;
 }
