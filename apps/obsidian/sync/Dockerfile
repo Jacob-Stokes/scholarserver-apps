@@ -23,6 +23,7 @@ RUN addgroup -g 1000 obsidian \
 
 COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/controller.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/livesync-settings.mjs /app/livesync-settings.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-lifecycle.mjs /app/livesync-lifecycle.mjs
 COPY --from=ui-build --chown=1000:1000 /source/apps/obsidian/ui/dist /app/ui
 
