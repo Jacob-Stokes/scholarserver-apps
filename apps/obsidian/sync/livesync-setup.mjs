@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { createNewVaultSettings, PREFERRED_SETTING_SELF_HOSTED } from "@vrtmrz/livesync-commonlib/settings";
+import { applyScholarServerLiveSyncDefaults } from "./livesync-settings.mjs";
 
 const DEFAULT_ORIGINS = "app://obsidian.md,capacitor://localhost,http://localhost";
 
@@ -124,24 +125,14 @@ export async function provisionCouchDb({ internalUrl, username, password, databa
 
 export function createScholarServerLiveSyncSettings({ url, username, password, database, vaultPassphrase, requestApi = false }) {
   const settings = createNewVaultSettings();
-  Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED, {
+  Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED);
+  applyScholarServerLiveSyncDefaults(settings);
+  Object.assign(settings, {
     couchDB_URI: normalizeCouchDbUrl(url),
     couchDB_USER: username,
     couchDB_PASSWORD: password,
     couchDB_DBNAME: validateDatabaseName(database),
-    batchSave: true,
-    liveSync: true,
-    periodicReplication: true,
-    syncOnSave: true,
-    syncOnEditorSave: true,
-    syncOnStart: true,
-    syncOnFileOpen: true,
-    syncAfterMerge: true,
-    keepReplicationActiveInBackground: true,
-    isConfigured: true,
-    encrypt: true,
     passphrase: vaultPassphrase,
-    usePathObfuscation: true,
     useRequestAPI: requestApi
   });
   upsertRemoteConfigurationInPlace(settings, "couchdb", { activate: true });

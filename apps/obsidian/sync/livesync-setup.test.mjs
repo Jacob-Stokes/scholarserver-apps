@@ -1,15 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createScholarServerLiveSyncSettings } from "./livesync-setup.mjs";
+import { applyScholarServerLiveSyncDefaults } from "./livesync-settings.mjs";
 
 test("generated device settings enable automatic continuous synchronization", () => {
-  const settings = createScholarServerLiveSyncSettings({
-    url: "https://sync.example.test",
-    username: "scholarserver",
-    password: "correct horse battery staple",
-    database: "vault",
-    vaultPassphrase: "encrypted vault passphrase"
-  });
+  const settings = applyScholarServerLiveSyncDefaults({});
 
   assert.equal(settings.liveSync, true);
   assert.equal(settings.syncOnSave, true);
