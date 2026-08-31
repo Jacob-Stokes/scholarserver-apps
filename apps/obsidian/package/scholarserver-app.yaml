@@ -1,14 +1,14 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.2.1
+packageVersion: 0.4.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
 upstream:
-  name: Obsidian Headless
-  version: 0.0.14
-  license: UNLICENSED
+  name: Obsidian Headless + Self-hosted LiveSync
+  version: 0.0.14 / 1.0.21
+  license: Mixed (UNLICENSED / MIT)
 support:
   tier: official
   architectures: [amd64, arm64]
@@ -22,8 +22,8 @@ capabilities:
   requires: [gateway.mcp]
   conflicts: []
 resources:
-  minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
-  recommended: { cpu: 1, memory: 1GiB, disk: 10GiB }
+  minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
+  recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
 permissions:
   networkEgress: [sync-obsidian-net]
   hostMounts: []
@@ -34,11 +34,15 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:24c220b37094d24dd591bba8b1f6e7e0d1c052e16a1b1f774650703cbd4c6a2a
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:8cf52da231b7d62351433cf2f6babf577bd1c7e9a3c5ff3fdaf76e78ba1bbeed
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:783532d5bf27cdba9e6ed7c5487420d7d9910068c6fed9ec9d9624e367610f2f
   - service: mcp
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:ecc0c7d15653f99ca81ffbce00733c5ece07950b2052aeda3b672b70509064ef
+  - service: livesync-couchdb
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:bcbeda2a962891bb37e555d8702d9bb9685ae38178ac3b84a8e83c62dd7f426d
+  - service: livesync-worker
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:cd8cee02505261c89cc899dad2678d9fdc928908c362d26676dec05f876e571c
 data:
   - id: vault
     mountPath: /vault
@@ -58,6 +62,24 @@ data:
     owner: obsidian
     filesystem: { uid: 1000, gid: 1000, mode: "0700" }
     backup: reproducible
+    retention: preserve
+  - id: livesync-db
+    mountPath: /livesync-db
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: livesync-runtime
+    mountPath: /livesync-runtime
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0755" }
+    backup: reproducible
+    retention: preserve
+  - id: livesync-couchdb
+    mountPath: /opt/couchdb/data
+    owner: couchdb
+    filesystem: { uid: 5984, gid: 5984, mode: "0700" }
+    backup: application-consistent
     retention: preserve
 endpoints:
   - { id: vault-api, service: api, port: 3000, protocol: http, exposure: private, auth: service-identity }
@@ -79,6 +101,7 @@ endpoints:
       hostname: obsidian-mcp
       credentialData: runtime
       credentialFile: service-token
+  - { id: livesync-couchdb, service: livesync-couchdb, port: 5984, protocol: http, exposure: private, auth: none-private }
 ui:
   mode: standalone
   endpoint: app-ui
@@ -90,15 +113,21 @@ lifecycle:
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Connect an Obsidian Sync account
-    - Select the remote vault
-    - Complete the safe initial pull
+    - Choose paid Obsidian Sync or free Self-hosted LiveSync
+    - Connect the selected sync method
+    - Choose private Tailscale or public HTTPS for Self-hosted LiveSync
+    - Keep other vault sync methods turned off when using LiveSync
     - Choose the folder exposed through MCP
   actions:
     - id: status
       data: runtime
       timeoutSeconds: 10
       fields: []
+    - id: select-profile
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: profile, type: string, secret: false, required: true }
     - id: login
       data: runtime
       timeoutSeconds: 60
@@ -114,3 +143,18 @@ onboarding:
         - { id: vault, type: string, secret: false, required: true }
         - { id: encryptionPassword, type: string, secret: true, required: false }
         - { id: scopePath, type: string, secret: false, required: true }
+    - id: configure-livesync
+      data: runtime
+      timeoutSeconds: 180
+      activateGateway: true
+      fields:
+        - { id: accessMethod, type: string, secret: false, required: true }
+        - { id: connectionUrl, type: string, secret: false, required: true }
+        - { id: vaultPassphrase, type: string, secret: true, required: true }
+        - { id: scopePath, type: string, secret: false, required: true }
+        - { id: confirmedNoOtherSync, type: boolean, secret: false, required: true }
+    - id: complete-livesync
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: confirmedPluginConnected, type: boolean, secret: false, required: true }

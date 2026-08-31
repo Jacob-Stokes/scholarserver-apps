@@ -3,26 +3,38 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { generateSecret, generateSetupUri, initializeCouchDb, normalizeCouchDbUrl, provisionCouchDb } from "./livesync-setup.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
+const liveSyncRuntimePath = "/livesync-runtime";
 const requestsPath = path.join(runtimePath, "requests");
 const responsesPath = path.join(runtimePath, "responses");
 const statusPath = path.join(runtimePath, "status.json");
 const tokenPath = path.join(runtimePath, "service-token");
 const enrollmentPath = path.join(runtimePath, "enrollment.json");
 const scopePath = path.join(runtimePath, "scope-path");
+const couchDbSecretsPath = path.join(liveSyncRuntimePath, "livesync-couchdb.env");
+const liveSyncWorkerPath = path.join(liveSyncRuntimePath, "livesync-worker.json");
+const liveSyncWorkerStatusPath = path.join(liveSyncRuntimePath, "livesync-worker-status.json");
+const liveSyncOnboardingPath = path.join(liveSyncRuntimePath, "livesync-onboarding.json");
 const uiPath = "/app/ui";
 
 let syncProcess = null;
 let state = {
   state: "setup-required",
+  profile: "none",
   remoteVault: null,
   scopePath: "/",
   lastSyncAt: null,
   lastError: null,
   workerRunning: false,
 };
+
+function publicState(value = state) {
+  const { setupURI: _setupURI, setupPassphrase: _setupPassphrase, ...safe } = value;
+  return safe;
+}
 
 async function atomicJson(filePath, value, mode = 0o600) {
   const temporary = `${filePath}.${process.pid}.tmp`;
@@ -32,7 +44,31 @@ async function atomicJson(filePath, value, mode = 0o600) {
 
 async function updateStatus(patch = {}) {
   state = { ...state, ...patch, workerRunning: syncProcess !== null };
-  await atomicJson(statusPath, state, 0o644);
+  await atomicJson(statusPath, publicState(state), 0o644);
+}
+
+async function readJson(file, fallback = null) {
+  try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; }
+}
+
+async function ensureLiveSyncSecrets() {
+  try {
+    const content = await readFile(couchDbSecretsPath, "utf8");
+    const username = content.match(/^COUCHDB_USER=(.+)$/m)?.[1];
+    const password = content.match(/^COUCHDB_PASSWORD=(.+)$/m)?.[1];
+    if (username && password) return { username, password };
+  } catch {}
+  const username = "scholarserver";
+  const password = generateSecret(32);
+  const file = await open(couchDbSecretsPath, "wx", 0o644).catch(() => null);
+  if (file) {
+    try {
+      await file.writeFile(`COUCHDB_USER=${username}\nCOUCHDB_PASSWORD=${password}\n`);
+      await file.sync();
+    } finally { await file.close(); }
+    return { username, password };
+  }
+  return ensureLiveSyncSecrets();
 }
 
 async function ensureServiceToken() {
@@ -84,17 +120,19 @@ async function listRemoteVaults() {
 }
 
 async function login(input) {
+  if (state.profile === "livesync") throw new Error("Turn off Self-hosted LiveSync before connecting Obsidian Sync");
   if (typeof input.email !== "string" || !input.email.includes("@")) throw new Error("A valid email is required");
   if (typeof input.password !== "string" || input.password.length === 0) throw new Error("Password is required");
   const args = ["login", "--email", input.email, "--password", input.password];
   if (typeof input.mfa === "string" && input.mfa.length > 0) args.push("--mfa", input.mfa);
   await runOb(args, { credentialKind: "account" });
   const vaults = await listRemoteVaults();
-  await updateStatus({ state: "vault-selection-required", lastError: null });
+  await updateStatus({ state: "vault-selection-required", profile: "official", lastError: null });
   return { state: "vault-selection-required", vaults };
 }
 
 async function connectVault(input) {
+  if (state.profile === "livesync") throw new Error("Turn off Self-hosted LiveSync before connecting Obsidian Sync");
   if (typeof input.vault !== "string" || input.vault.length === 0) throw new Error("Remote vault is required");
   const setup = ["sync-setup", "--vault", input.vault, "--path", vaultPath, "--device-name", "ScholarServer", "--json"];
   if (typeof input.encryptionPassword === "string" && input.encryptionPassword.length > 0) setup.push("--password", input.encryptionPassword);
@@ -107,14 +145,14 @@ async function connectVault(input) {
   await runOb(["sync-config", "--path", vaultPath, "--mode", "bidirectional", "--json"]);
   const mcpScope = typeof input.scopePath === "string" && input.scopePath.trim() ? input.scopePath.trim() : "/";
   await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
-  await atomicJson(enrollmentPath, { remoteVault: input.vault, mode: "bidirectional", scopePath: mcpScope });
+  await atomicJson(enrollmentPath, { profile: "official", remoteVault: input.vault, mode: "bidirectional", scopePath: mcpScope });
   startContinuousSync();
-  await updateStatus({ state: "ready", remoteVault: input.vault, scopePath: mcpScope, lastSyncAt: new Date().toISOString(), lastError: null });
+  await updateStatus({ state: "ready", profile: "official", remoteVault: input.vault, scopePath: mcpScope, lastSyncAt: new Date().toISOString(), lastError: null });
   return { ...state, workerRunning: true };
 }
 
 function startContinuousSync() {
-  if (syncProcess) return;
+  if (syncProcess || state.profile !== "official") return;
   syncProcess = spawn("ob", ["sync", "--path", vaultPath, "--continuous"], {
     cwd: vaultPath,
     env: { HOME: "/home/obsidian", PATH: process.env.PATH },
@@ -124,31 +162,144 @@ function startContinuousSync() {
     syncProcess = null;
     void updateStatus({ lastError: code === 0 ? null : "Continuous sync stopped" });
     setTimeout(() => {
-      if (state.state !== "ready") return;
+      if (state.state !== "ready" || state.profile !== "official") return;
       startContinuousSync();
       void updateStatus({ lastError: null });
     }, 5_000);
   });
 }
 
+async function stopOfficialSync() {
+  if (!syncProcess) return;
+  const current = syncProcess;
+  syncProcess = null;
+  current.kill("SIGTERM");
+  await new Promise((resolve) => current.once("exit", resolve));
+}
+
+async function selectProfile(input) {
+  const profile = input.profile;
+  if (profile !== "official" && profile !== "livesync") throw new Error("Choose Obsidian Sync or Self-hosted LiveSync");
+  if (state.profile !== "none" && state.profile !== profile && state.state === "ready") {
+    throw new Error("Disconnect the current sync method before changing it");
+  }
+  await updateStatus({ profile, state: "setup-required", lastError: null });
+  return statusWithPrivateOnboarding();
+}
+
+function normalizeScope(value) {
+  const candidate = typeof value === "string" && value.trim() ? value.trim() : "/";
+  if (candidate.includes("..") || candidate.includes("\\") || candidate.startsWith("~")) throw new Error("Choose a folder inside the vault");
+  return candidate;
+}
+
+async function configureLiveSync(input) {
+  if (input.confirmedNoOtherSync !== true) {
+    throw new Error("Confirm that Obsidian Sync, iCloud, Git sync, and other vault sync tools are turned off");
+  }
+  const accessMethod = input.accessMethod;
+  if (accessMethod !== "tailscale" && accessMethod !== "public") {
+    throw new Error("Choose private Tailscale or public HTTPS access");
+  }
+  const connectionUrl = normalizeCouchDbUrl(input.connectionUrl ?? input.publicUrl);
+  if (!connectionUrl.startsWith("https://")) throw new Error("LiveSync needs an https:// address so phones and computers can connect safely");
+  const connectionHost = new URL(connectionUrl).hostname;
+  if (accessMethod === "tailscale" && !connectionHost.endsWith(".ts.net")) {
+    throw new Error("The private LiveSync address must be a Tailscale .ts.net address");
+  }
+  const vaultPassphrase = typeof input.vaultPassphrase === "string" ? input.vaultPassphrase : "";
+  if (vaultPassphrase.length < 12) throw new Error("Use a vault encryption passphrase of at least 12 characters");
+  const mcpScope = normalizeScope(input.scopePath);
+  const database = `vault-${randomBytes(9).toString("hex")}`;
+  const administrator = await ensureLiveSyncSecrets();
+  const clientCredentials = {
+    username: `vault-${randomBytes(6).toString("hex")}`,
+    password: generateSecret(32)
+  };
+  await stopOfficialSync();
+  await updateStatus({ profile: "livesync", state: "livesync-preparing", lastError: null });
+  await provisionCouchDb({
+    internalUrl: "http://livesync-couchdb:5984",
+    username: administrator.username,
+    password: administrator.password,
+    database,
+    clientUsername: clientCredentials.username,
+    clientPassword: clientCredentials.password
+  });
+  const clientSetup = await generateSetupUri({
+    url: connectionUrl,
+    username: clientCredentials.username,
+    password: clientCredentials.password,
+    database,
+    vaultPassphrase,
+    requestApi: accessMethod === "public"
+  });
+  const server = await generateSetupUri({
+    url: "http://livesync-couchdb:5984",
+    username: clientCredentials.username,
+    password: clientCredentials.password,
+    database,
+    vaultPassphrase
+  });
+  const revision = Date.now();
+  await atomicJson(liveSyncWorkerPath, { enabled: true, revision, setupURI: server.setupURI, setupPassphrase: server.setupPassphrase });
+  await atomicJson(liveSyncOnboardingPath, {
+    revision,
+    accessMethod,
+    connectionUrl,
+    database,
+    setupURI: clientSetup.setupURI,
+    setupPassphrase: clientSetup.setupPassphrase,
+    createdAt: new Date().toISOString()
+  });
+  await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
+  await atomicJson(enrollmentPath, { profile: "livesync", database, accessMethod, connectionUrl, scopePath: mcpScope });
+  await updateStatus({ profile: "livesync", state: "livesync-device-setup", remoteVault: "Self-hosted LiveSync", scopePath: mcpScope, lastError: null });
+  return statusWithPrivateOnboarding();
+}
+
+async function completeLiveSync(input) {
+  if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync has not been prepared");
+  if (input.confirmedPluginConnected !== true) throw new Error("Confirm that the plugin connected successfully in Obsidian");
+  const worker = await readJson(liveSyncWorkerPath, null);
+  if (worker?.enabled) {
+    await atomicJson(liveSyncWorkerPath, { enabled: true, configured: true, revision: Date.now() });
+  }
+  await rm(liveSyncOnboardingPath, { force: true });
+  await updateStatus({ state: "ready", lastSyncAt: new Date().toISOString(), lastError: null });
+  return statusWithPrivateOnboarding();
+}
+
+async function statusWithPrivateOnboarding() {
+  const worker = await readJson(liveSyncWorkerStatusPath, null);
+  const onboarding = state.profile === "livesync" && state.state === "livesync-device-setup"
+    ? await readJson(liveSyncOnboardingPath, null)
+    : null;
+  return { ...publicState(state), liveSyncWorker: worker, liveSyncOnboarding: onboarding };
+}
+
 async function action(request) {
   switch (request.action) {
     case "status": {
-      if (state.state === "ready" || state.state === "initial-sync") return state;
+      if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync") return statusWithPrivateOnboarding();
+      if (state.profile === "none") return statusWithPrivateOnboarding();
       try {
         const vaults = await listRemoteVaults();
-        if (vaults.length === 0) return state;
+        if (vaults.length === 0) return statusWithPrivateOnboarding();
         if (state.state !== "vault-selection-required") {
           await updateStatus({ state: "vault-selection-required", lastError: null });
         }
-        return { ...state, vaults };
+        return { ...await statusWithPrivateOnboarding(), vaults };
       } catch {
-        if (state.state !== "setup-required") await updateStatus({ state: "setup-required" });
-        return state;
+        if (state.state !== "setup-required") await updateStatus({ state: "setup-required", profile: state.profile === "official" ? "official" : "none" });
+        return statusWithPrivateOnboarding();
       }
     }
+    case "select-profile": return selectProfile(request.input ?? {});
     case "login": return login(request.input ?? {});
     case "connect-vault": return connectVault(request.input ?? {});
+    case "configure-livesync": return configureLiveSync(request.input ?? {});
+    case "complete-livesync": return completeLiveSync(request.input ?? {});
     default: throw new Error("Unsupported onboarding action");
   }
 }
@@ -170,11 +321,20 @@ async function processRequest(fileName) {
 }
 
 async function restore() {
-  try {
-    const enrollment = JSON.parse(await readFile(enrollmentPath, "utf8"));
-    state = { ...state, state: "ready", remoteVault: enrollment.remoteVault, scopePath: enrollment.scopePath || "/" };
+  const enrollment = await readJson(enrollmentPath, null);
+  if (enrollment?.profile === "livesync") {
+    const onboarding = await readJson(liveSyncOnboardingPath, null);
+    state = {
+      ...state,
+      profile: "livesync",
+      state: onboarding ? "livesync-device-setup" : "ready",
+      remoteVault: "Self-hosted LiveSync",
+      scopePath: enrollment.scopePath || "/"
+    };
+  } else if (enrollment) {
+    state = { ...state, profile: "official", state: "ready", remoteVault: enrollment.remoteVault, scopePath: enrollment.scopePath || "/" };
     startContinuousSync();
-  } catch {}
+  }
   await updateStatus();
 }
 
@@ -236,8 +396,11 @@ async function handleHttp(request, response) {
   try {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await action({ action: "status" }));
+    if (request.method === "POST" && url.pathname === "/api/profile/select") return json(response, 200, await selectProfile(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/account/login") return json(response, 200, await login(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/vault/connect") return json(response, 200, await connectVault(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/livesync/configure") return json(response, 200, await configureLiveSync(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/livesync/complete") return json(response, 200, await completeLiveSync(await body(request)));
     if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
     return json(response, 404, { error: "Not found" });
   } catch (error) {
@@ -248,9 +411,19 @@ async function handleHttp(request, response) {
 }
 
 await mkdir(vaultPath, { recursive: true });
+await mkdir(liveSyncRuntimePath, { recursive: true });
 await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureServiceToken();
+const liveSyncCredentials = await ensureLiveSyncSecrets();
+// Keep the optional local service fully initialized even when paid Obsidian Sync
+// is selected. This makes switching profiles immediate and avoids CouchDB
+// repeatedly reporting missing internal databases while it waits unused.
+await initializeCouchDb({
+  internalUrl: "http://livesync-couchdb:5984",
+  username: liveSyncCredentials.username,
+  password: liveSyncCredentials.password
+});
 await restore();
 createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
 

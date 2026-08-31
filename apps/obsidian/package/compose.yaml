@@ -1,6 +1,6 @@
 services:
   sync:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:24c220b37094d24dd591bba8b1f6e7e0d1c052e16a1b1f774650703cbd4c6a2a
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:8cf52da231b7d62351433cf2f6babf577bd1c7e9a3c5ff3fdaf76e78ba1bbeed
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -11,8 +11,9 @@ services:
       - ${SCHOLARSERVER_DATA_VAULT}:/vault
       - ${SCHOLARSERVER_DATA_HEADLESS_CONFIG}:/home/obsidian/.config
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_LIVESYNC_RUNTIME}:/livesync-runtime
     expose: ["8080"]
-    networks: [egress, edge]
+    networks: [instance, egress, edge]
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -57,6 +58,50 @@ services:
       interval: 10s
       timeout: 3s
       start_period: 30s
+      retries: 12
+  livesync-couchdb:
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:bcbeda2a962891bb37e555d8702d9bb9685ae38178ac3b84a8e83c62dd7f426d
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - "/tmp:rw,noexec,nosuid,nodev,size=32m"
+      - "/opt/couchdb/etc/local.d:rw,noexec,nosuid,nodev,size=4m,uid=5984,gid=5984,mode=0700"
+    volumes:
+      - ${SCHOLARSERVER_DATA_LIVESYNC_COUCHDB}:/opt/couchdb/data
+      - ${SCHOLARSERVER_DATA_LIVESYNC_RUNTIME}:/livesync-runtime:ro
+    expose: ["5984"]
+    networks:
+      instance:
+        aliases: [livesync-couchdb]
+      edge:
+        aliases: [obsidian-livesync]
+    healthcheck:
+      test: [CMD, /usr/local/bin/scholarserver-couchdb-healthcheck]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 18
+  livesync-worker:
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:cd8cee02505261c89cc899dad2678d9fdc928908c362d26676dec05f876e571c
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - "/tmp:rw,noexec,nosuid,nodev,size=32m"
+    volumes:
+      - ${SCHOLARSERVER_DATA_VAULT}:/vault
+      - ${SCHOLARSERVER_DATA_LIVESYNC_DB}:/livesync-db
+      - ${SCHOLARSERVER_DATA_LIVESYNC_RUNTIME}:/livesync-runtime
+    expose: ["8081"]
+    networks: [instance]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8081').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
       retries: 12
 networks:
   instance:

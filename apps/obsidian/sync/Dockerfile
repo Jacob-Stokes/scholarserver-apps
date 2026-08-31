@@ -13,12 +13,16 @@ LABEL org.opencontainers.image.source="https://github.com/Jacob-Stokes/scholarse
 
 RUN npm install --global obsidian-headless@0.0.14 \
     && (deluser --remove-home node 2>/dev/null || true)
+WORKDIR /app
+COPY apps/obsidian/sync/package.json apps/obsidian/sync/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
 RUN addgroup -g 1000 obsidian \
     && adduser -u 1000 -G obsidian -h /home/obsidian -s /bin/sh -D obsidian \
-    && mkdir -p /vault /runtime /home/obsidian/.config \
-    && chown -R 1000:1000 /vault /runtime /home/obsidian
+    && mkdir -p /vault /runtime /livesync-runtime /home/obsidian/.config \
+    && chown -R 1000:1000 /vault /runtime /livesync-runtime /home/obsidian
 
 COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/controller.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
 COPY --from=ui-build --chown=1000:1000 /source/apps/obsidian/ui/dist /app/ui
 
 ENV HOME=/home/obsidian
