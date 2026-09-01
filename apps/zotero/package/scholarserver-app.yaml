@@ -64,9 +64,9 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: desktop
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:1d90ec0b016bd2090d204f75f55dd5758e74f0d8f871f70be969ef19c3158dc6
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:4e220c032399bf6c2581ed45adfe2c0edaecaba489f3ec136127ed94ee4e7cf1
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:dfe1bb68c83b29d051c68886935b1be68408f1cc5aa5ef822d60b750ae7e9ff9
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:813e01b217b77a6ddb017cdd9a4127a90b7ed384302455843b973577f5e09461
   - service: automations
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:51054dc1397e466f3ab303ec238ed0bcf81bf1082848b25322c2e60fdc472174
   - service: mcp
