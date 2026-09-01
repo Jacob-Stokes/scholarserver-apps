@@ -26,6 +26,11 @@ Images are built separately on native amd64 and arm64 GitHub runners. The releas
 workflow then creates a multi-platform manifest; QEMU and architecture emulation are
 not used.
 
+Application icons are bundled into each checksummed package rather than loaded
+from a public CDN at runtime. `npm run icons:sync` reproducibly downloads the
+pinned assets in `icons.lock.json`; attribution is recorded in each manifest and
+in `THIRD_PARTY_NOTICES.md`.
+
 ## Local checks
 
 ```sh

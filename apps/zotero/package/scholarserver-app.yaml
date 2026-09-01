@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.4
+packageVersion: 0.5.5
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -147,6 +147,15 @@ ui:
   mode: standalone
   endpoint: app-ui
   defaultPath: /overview
+presentation:
+  icon:
+    path: assets/icons/zotero.webp
+    mediaType: image/webp
+    attribution:
+      name: selfh.st/icons
+      url: https://selfh.st/icons/
+      license: CC-BY-4.0
+      licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
 lifecycle:
   supportsDisable: true
   removeDataDefault: false

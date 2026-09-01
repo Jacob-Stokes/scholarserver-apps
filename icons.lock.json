@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "upstream": {
+    "repository": "selfhst/icons",
+    "commit": "4798f7b385ce4d9b18520e4f2091635be6370bc4",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "https://github.com/selfhst/icons/blob/main/LICENSE"
+  },
+  "icons": {
+    "docling": {
+      "reference": "docling",
+      "path": "apps/docling/package/assets/icons/docling.webp",
+      "sha256": "75841c55cac5c93fb6cb4aa5f679437a40bc2a247e611273086e1696de5b7b55"
+    },
+    "obsidian": {
+      "reference": "obsidian",
+      "path": "apps/obsidian/package/assets/icons/obsidian.webp",
+      "sha256": "b74849dd7624dc15e94410848d76c8a33e65d3274b23d1e4f4ed2381d8eb6f69"
+    },
+    "zotero": {
+      "reference": "zotero",
+      "path": "apps/zotero/package/assets/icons/zotero.webp",
+      "sha256": "3497d48df141529b57bc9dec25782c3540cb1368b139cd87ef7b7e8c1e927dab"
+    }
+  }
+}

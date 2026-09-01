@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -7,6 +8,7 @@ import { parse } from "yaml";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const applicationsRoot = path.join(repositoryRoot, "apps");
+const iconLock = JSON.parse(await readFile(path.join(repositoryRoot, "icons.lock.json"), "utf8"));
 
 async function packages() {
   const entries = await readdir(applicationsRoot, { withFileTypes: true });
@@ -50,6 +52,19 @@ test("every first-party package satisfies the reusable package boundary", async 
     unique([...services], `${label}: compose service names`);
     unique([...data], `${label}: data ids`);
     unique([...endpoints.keys()], `${label}: endpoint ids`);
+
+    assert.ok(manifest.presentation?.icon, `${label}: packaged application icon`);
+    const lockedIcon = iconLock.icons[directory];
+    assert.ok(lockedIcon, `${label}: icon is pinned in icons.lock.json`);
+    assert.equal(manifest.presentation.icon.mediaType, "image/webp", `${label}: safe raster icon format`);
+    assert.equal(manifest.presentation.icon.attribution.license, iconLock.upstream.license, `${label}: icon license`);
+    const iconPath = path.join(applicationsRoot, directory, "package", manifest.presentation.icon.path);
+    const iconInformation = await lstat(iconPath);
+    assert.ok(iconInformation.isFile() && !iconInformation.isSymbolicLink(), `${label}: icon is a regular file`);
+    const iconDigest = createHash("sha256")
+      .update(await readFile(iconPath))
+      .digest("hex");
+    assert.equal(iconDigest, lockedIcon.sha256, `${label}: packaged icon matches its pinned upstream asset`);
 
     for (const image of manifest.images ?? []) {
       assert.ok(services.has(image.service), `${label}: image service ${image.service} exists in Compose`);
