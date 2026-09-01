@@ -93,7 +93,10 @@ services:
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data:ro
       - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
     expose: ["7012"]
-    networks: [instance, egress]
+    networks:
+      instance:
+        aliases: [zotero-mcp]
+      egress: {}
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:7012/health]
       interval: 10s
