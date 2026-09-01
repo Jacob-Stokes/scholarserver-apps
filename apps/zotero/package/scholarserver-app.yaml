@@ -66,13 +66,13 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: desktop
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:533819e5acd707a99d3a103ca91992cb8c3fe2db22cb85fba2906ee2f40d6cfe
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:5541788986bc4bd429daa3232d0a603e7d086d306770188c69ab727b59d9c5c0
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:813e01b217b77a6ddb017cdd9a4127a90b7ed384302455843b973577f5e09461
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:cf001f388e81486e8f8a9d87637f99195290d3467569ff5d5f85c574d281f9c2
   - service: automations
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:51054dc1397e466f3ab303ec238ed0bcf81bf1082848b25322c2e60fdc472174
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:b337562871b94b3d5193e5467d8d6c7fc5110410a5c0e46c1dc3d78415ac7492
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:3856f59ff167879ac4bb214501566b927928bf82369bc36c5f60551971c71c3c
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:ee2dc050092ecc32c9d92ab8f0daefea72468b93ae6f8fcb2db89d8782d6f982
 data:
   - id: desktop-config
     mountPath: /config
