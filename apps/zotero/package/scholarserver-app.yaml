@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.4.2
+packageVersion: 0.4.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -36,7 +36,7 @@ images:
   - service: desktop
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:1d90ec0b016bd2090d204f75f55dd5758e74f0d8f871f70be969ef19c3158dc6
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:c8aeaf5cca1b5042eb9e950f7192a4497ade515ec3d9a218abbb249b649d4885
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:dfe1bb68c83b29d051c68886935b1be68408f1cc5aa5ef822d60b750ae7e9ff9
   - service: automations
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:51054dc1397e466f3ab303ec238ed0bcf81bf1082848b25322c2e60fdc472174
   - service: mcp
