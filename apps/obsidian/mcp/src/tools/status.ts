@@ -5,15 +5,13 @@ export const StatusInput = z.object({});
 export type StatusInput = z.infer<typeof StatusInput>;
 export const STATUS_TOOL = {
   name: "obsidian_status",
-  description: "Report backend health, vault statistics, path policies, limits and supported remote/desktop capabilities. Use this to discover what this deployment can safely do.",
-  inputSchema: StatusInput,
+  description:
+    "Report backend health, vault statistics, path policies, limits and supported remote/desktop capabilities. Use this to discover what this deployment can safely do.",
+  inputSchema: StatusInput
 };
 
 export async function handleStatus(ctx: ToolContext) {
-  const [health, stats] = await Promise.all([
-    ctx.client.get("/api/health"),
-    ctx.client.get("/api/stats"),
-  ]);
+  const [health, stats] = await Promise.all([ctx.client.get("/api/health"), ctx.client.get("/api/stats")]);
   return {
     service: "obsidian-mcp",
     version: "1.0.0",
@@ -23,7 +21,7 @@ export async function handleStatus(ctx: ToolContext) {
       dailyFolder: ctx.dailyFolder,
       timeZone: ctx.timeZone,
       maxAttachmentBytes: ctx.maxAttachmentBytes,
-      policy: ctx.policy.describe(),
+      policy: ctx.policy.describe()
     },
     capabilities: {
       remoteVault: true,
@@ -38,7 +36,7 @@ export async function handleStatus(ctx: ToolContext) {
       trashByDefault: true,
       desktopCommands: false,
       openInDesktopUi: false,
-      workspaceState: false,
-    },
+      workspaceState: false
+    }
   };
 }

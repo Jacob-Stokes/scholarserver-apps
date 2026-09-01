@@ -4,20 +4,33 @@ import { listMarkdownPaths, normalizeTag, type ToolContext } from "../lib/vault.
 
 export const SearchNotesInput = z.object({
   mode: z.enum(["text", "regex", "path", "tag", "frontmatter"]).default("text"),
-  query: z.string().default("").describe("Text/regex/path query or tag name. May be empty only for frontmatter existence checks."),
+  query: z
+    .string()
+    .default("")
+    .describe("Text/regex/path query or tag name. May be empty only for frontmatter existence checks."),
   path: z.string().optional().describe("Limit search to a vault subtree."),
   case_sensitive: z.boolean().default(false),
   frontmatter_field: z.string().optional().describe("Required for mode=frontmatter."),
-  frontmatter_value: z.string().optional().describe("Optional string representation to compare; omit to find notes containing the field."),
+  frontmatter_value: z
+    .string()
+    .optional()
+    .describe("Optional string representation to compare; omit to find notes containing the field."),
   max_results: z.number().int().positive().max(500).default(50),
-  max_scan: z.number().int().positive().max(5000).default(1000).describe("Maximum notes inspected for path/tag/frontmatter modes."),
+  max_scan: z
+    .number()
+    .int()
+    .positive()
+    .max(5000)
+    .default(1000)
+    .describe("Maximum notes inspected for path/tag/frontmatter modes.")
 });
 export type SearchNotesInput = z.infer<typeof SearchNotesInput>;
 
 export const SEARCH_NOTES_TOOL = {
   name: "obsidian_search_notes",
-  description: "Search notes by full text, regex, path, tag, or frontmatter field. Text results include matching lines; metadata modes return matching paths and values. Narrow with path on large vaults.",
-  inputSchema: SearchNotesInput,
+  description:
+    "Search notes by full text, regex, path, tag, or frontmatter field. Text results include matching lines; metadata modes return matching paths and values. Narrow with path on large vaults.",
+  inputSchema: SearchNotesInput
 };
 
 export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInput) {
@@ -32,13 +45,18 @@ export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInpu
     const params = new URLSearchParams({
       q: input.query,
       regex: String(input.mode === "regex"),
-      case: String(input.case_sensitive),
+      case: String(input.case_sensitive)
     });
     if (input.path) params.set("path", ctx.policy.assertBrowse(input.path));
     const result = await ctx.client.get(`/api/search?${params}`);
     const all = Array.isArray(result?.results) ? result.results : [];
     const allowed = all.filter((item: any) => {
-      try { ctx.policy.assertRead(item.path); return true; } catch { return false; }
+      try {
+        ctx.policy.assertRead(item.path);
+        return true;
+      } catch {
+        return false;
+      }
     });
     return {
       mode: input.mode,
@@ -48,8 +66,8 @@ export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInpu
       truncated: allowed.length > input.max_results,
       results: allowed.slice(0, input.max_results).map((item: any) => ({
         path: item.path,
-        matches: Array.isArray(item.matches) ? item.matches.slice(0, 10) : item.matches,
-      })),
+        matches: Array.isArray(item.matches) ? item.matches.slice(0, 10) : item.matches
+      }))
     };
   }
 
@@ -57,7 +75,7 @@ export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInpu
   if (input.mode === "path") {
     const needle = input.case_sensitive ? input.query : input.query.toLocaleLowerCase();
     const matches = listed.paths.filter((candidate) =>
-      (input.case_sensitive ? candidate : candidate.toLocaleLowerCase()).includes(needle),
+      (input.case_sensitive ? candidate : candidate.toLocaleLowerCase()).includes(needle)
     );
     return {
       mode: input.mode,
@@ -66,13 +84,13 @@ export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInpu
       scanTruncated: listed.truncated,
       total: matches.length,
       truncated: matches.length > input.max_results,
-      results: matches.slice(0, input.max_results).map((notePath) => ({ path: notePath })),
+      results: matches.slice(0, input.max_results).map((notePath) => ({ path: notePath }))
     };
   }
 
   const bulk = await ctx.client.post("/api/bulk/read", {
     paths: listed.paths,
-    frontmatterOnly: input.mode === "frontmatter",
+    frontmatterOnly: input.mode === "frontmatter"
   });
   const results: any[] = [];
   const wantedTag = input.mode === "tag" ? normalizeTag(input.query) : "";
@@ -100,6 +118,6 @@ export async function handleSearchNotes(ctx: ToolContext, input: SearchNotesInpu
     scanned: listed.paths.length,
     scanTruncated: listed.truncated,
     count: results.length,
-    results,
+    results
   };
 }

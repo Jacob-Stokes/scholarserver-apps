@@ -1,5 +1,5 @@
-import { parse, stringify } from "yaml";
 import path from "node:path";
+import { parse, stringify } from "yaml";
 
 export type FrontmatterSplit = {
   data: Record<string, unknown>;
@@ -51,7 +51,10 @@ export function findHeadingSection(content: string, heading: string, occurrence 
     let end = lines.length;
     for (let next = index + 1; next < lines.length; next++) {
       const nextHeading = lines[next].match(/^(#{1,6})\s+/);
-      if (nextHeading && nextHeading[1].length <= level) { end = next; break; }
+      if (nextHeading && nextHeading[1].length <= level) {
+        end = next;
+        break;
+      }
     }
     return { start: index, bodyStart: index + 1, end, heading: match[2], level };
   }
@@ -80,7 +83,7 @@ export function patchTarget(
   target: string,
   operation: "replace" | "append" | "prepend" | "delete" | "insert_before" | "insert_after",
   replacement = "",
-  occurrence = 1,
+  occurrence = 1
 ): string {
   const lines = content.split("\n");
   let start: number;
@@ -136,9 +139,7 @@ export function extractTags(content: string): { frontmatter: string[]; inline: s
     .filter((tag): tag is string => typeof tag === "string")
     .map((tag) => tag.replace(/^#/, ""))
     .filter(Boolean);
-  const withoutCode = body
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]*`/g, "");
+  const withoutCode = body.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "");
   const inline = [...withoutCode.matchAll(/(^|\s)#([\p{L}\p{N}_/-]+)/gu)].map((match) => match[2]);
   const unique = (values: string[]) => [...new Set(values)].sort();
   return { frontmatter: unique(frontmatter), inline: unique(inline), all: unique([...frontmatter, ...inline]) };
@@ -159,7 +160,12 @@ export function extractLinks(content: string): NoteLink[] {
   }
   const markdown = /(!)?\[([^\]]*)\]\((?!https?:|mailto:|obsidian:)([^)#]+)(?:#[^)]+)?\)/g;
   for (const match of content.matchAll(markdown)) {
-    links.push({ target: decodeURIComponent(match[3].trim()), alias: match[2] || undefined, embed: !!match[1], kind: "markdown" });
+    links.push({
+      target: decodeURIComponent(match[3].trim()),
+      alias: match[2] || undefined,
+      embed: !!match[1],
+      kind: "markdown"
+    });
   }
   return links;
 }
@@ -168,7 +174,7 @@ export function replaceInContent(
   content: string,
   find: string,
   replacement: string,
-  options: { regex: boolean; caseSensitive: boolean; replaceAll: boolean; maxReplacements: number },
+  options: { regex: boolean; caseSensitive: boolean; replaceAll: boolean; maxReplacements: number }
 ): { content: string; replacements: number } {
   const flags = `${options.replaceAll ? "g" : ""}${options.caseSensitive ? "" : "i"}`;
   let expression: RegExp;
@@ -193,14 +199,21 @@ export function resolveLinkTarget(sourcePath: string, target: string, notePaths:
   const exact = `${clean}.md`;
   const sourceDir = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : "";
   const relative = path.posix.normalize(sourceDir ? `${sourceDir}/${exact}` : exact).replace(/^\.\//, "");
-  const candidates = notePaths.filter((candidate) =>
-    candidate === target || candidate === exact || candidate === relative || candidate.replace(/\.md$/i, "").endsWith(`/${clean}`),
+  const candidates = notePaths.filter(
+    (candidate) =>
+      candidate === target ||
+      candidate === exact ||
+      candidate === relative ||
+      candidate.replace(/\.md$/i, "").endsWith(`/${clean}`)
   );
-  return candidates.length === 1 ? candidates[0] : candidates.find((candidate) => candidate === relative) ?? null;
+  return candidates.length === 1 ? candidates[0] : (candidates.find((candidate) => candidate === relative) ?? null);
 }
 
 function normalizeHeading(value: string): string {
-  return value.replace(/^#+\s*/, "").trim().toLocaleLowerCase();
+  return value
+    .replace(/^#+\s*/, "")
+    .trim()
+    .toLocaleLowerCase();
 }
 
 function escapeRegex(value: string): string {

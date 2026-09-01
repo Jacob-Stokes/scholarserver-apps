@@ -1,11 +1,11 @@
-import { startMcp } from "mcp-common";
 import { readFile } from "node:fs/promises";
-import { ZoteroClient, ZoteroError } from "./zotero-client.js";
-import { ITEMS_TOOL, ItemsInput, handleItems } from "./tools/items.js";
-import { COLLECTIONS_TOOL, CollectionsInput, handleCollections } from "./tools/collections.js";
+import { startMcp } from "mcp-common";
 import { ATTACHMENTS_TOOL, AttachmentsInput, handleAttachments } from "./tools/attachments.js";
-import { NOTES_TOOL, NotesInput, handleNotes } from "./tools/notes.js";
-import { TAGS_TOOL, TagsInput, handleTags } from "./tools/tags.js";
+import { COLLECTIONS_TOOL, CollectionsInput, handleCollections } from "./tools/collections.js";
+import { handleItems, ITEMS_TOOL, ItemsInput } from "./tools/items.js";
+import { handleNotes, NOTES_TOOL, NotesInput } from "./tools/notes.js";
+import { handleTags, TAGS_TOOL, TagsInput } from "./tools/tags.js";
+import { ZoteroClient, ZoteroError } from "./zotero-client.js";
 
 const PORT = parseInt(process.env.PORT || "7012", 10);
 const runtimePath = process.env.ZOTERO_RUNTIME_PATH || "/runtime";
@@ -24,7 +24,7 @@ async function requiredFile(name: string): Promise<string> {
   throw new Error(`ScholarServer runtime file was not created: ${name}`);
 }
 
-const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || await requiredFile("service-token");
+const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || (await requiredFile("service-token"));
 
 const client = new ZoteroClient(async () => {
   let configuration: { userId?: string | number };
@@ -35,19 +35,27 @@ const client = new ZoteroClient(async () => {
   }
   if (!configuration.userId) throw new Error("Zotero user ID is not configured");
   let token = "";
-  try { token = (await readFile(`${runtimePath}/${onlineLibrary ? "web-api-key" : "local-api-key"}`, "utf8")).trim(); } catch {}
-  if (onlineLibrary && !token) throw new Error("Zotero online-library setup is incomplete; connect the account in ScholarServer first");
+  try {
+    token = (await readFile(`${runtimePath}/${onlineLibrary ? "web-api-key" : "local-api-key"}`, "utf8")).trim();
+  } catch {}
+  if (onlineLibrary && !token)
+    throw new Error("Zotero online-library setup is incomplete; connect the account in ScholarServer first");
   const bridgeToken = onlineLibrary ? "" : await requiredFile("local-api-bridge-token");
   return {
     baseUrl: onlineLibrary ? "https://api.zotero.org" : ZOTERO_LOCAL_BASE_URL,
     userId: configuration.userId,
     token,
     local: !onlineLibrary,
-    headers: bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : undefined,
+    headers: bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : undefined
   };
 });
 
-const MIXED_WRITE = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false } as const;
+const MIXED_WRITE = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: false
+} as const;
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 
 const oauth = process.env.MCP_OAUTH_ISSUER
@@ -55,7 +63,7 @@ const oauth = process.env.MCP_OAUTH_ISSUER
       issuer: process.env.MCP_OAUTH_ISSUER,
       canonicalUrl: process.env.MCP_OAUTH_CANONICAL_URL!,
       audience: process.env.MCP_OAUTH_AUDIENCE,
-      scopesSupported: (process.env.MCP_OAUTH_SCOPES || "openid email profile").split(/\s+/),
+      scopesSupported: (process.env.MCP_OAUTH_SCOPES || "openid email profile").split(/\s+/)
     }
   : undefined;
 
@@ -69,16 +77,28 @@ await startMcp({
     `This is the remote ScholarServer Zotero integration backed by the user's ${onlineLibrary ? "zotero.org online library" : "private server-side Zotero Desktop"}. ` +
     "Prefer focused reads before mutation, use item versions for optimistic concurrency when available, and keep generated derivatives attached to their source item.",
   tools: [
-    { def: { ...ITEMS_TOOL, inputSchema: ItemsInput, annotations: MIXED_WRITE }, handler: (i) => handleItems(client, i) },
-    { def: { ...COLLECTIONS_TOOL, inputSchema: CollectionsInput, annotations: MIXED_WRITE }, handler: (i) => handleCollections(client, i) },
-    { def: { ...ATTACHMENTS_TOOL, inputSchema: AttachmentsInput, annotations: READ_ONLY }, handler: (i) => handleAttachments(client, i) },
-    { def: { ...NOTES_TOOL, inputSchema: NotesInput, annotations: MIXED_WRITE }, handler: (i) => handleNotes(client, i) },
-    { def: { ...TAGS_TOOL, inputSchema: TagsInput, annotations: MIXED_WRITE }, handler: (i) => handleTags(client, i) },
+    {
+      def: { ...ITEMS_TOOL, inputSchema: ItemsInput, annotations: MIXED_WRITE },
+      handler: (i) => handleItems(client, i)
+    },
+    {
+      def: { ...COLLECTIONS_TOOL, inputSchema: CollectionsInput, annotations: MIXED_WRITE },
+      handler: (i) => handleCollections(client, i)
+    },
+    {
+      def: { ...ATTACHMENTS_TOOL, inputSchema: AttachmentsInput, annotations: READ_ONLY },
+      handler: (i) => handleAttachments(client, i)
+    },
+    {
+      def: { ...NOTES_TOOL, inputSchema: NotesInput, annotations: MIXED_WRITE },
+      handler: (i) => handleNotes(client, i)
+    },
+    { def: { ...TAGS_TOOL, inputSchema: TagsInput, annotations: MIXED_WRITE }, handler: (i) => handleTags(client, i) }
   ],
   onBackendError: (e) => {
     if (e instanceof ZoteroError) {
       return `zotero error: ${e.method} ${e.path} → HTTP ${e.status}: ${JSON.stringify(e.detail).slice(0, 200)}`;
     }
     return null;
-  },
+  }
 });

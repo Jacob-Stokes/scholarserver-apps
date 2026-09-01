@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { ZoteroClient } from "../zotero-client.js";
-import { runBounded } from "../zotero-client.js";
 
 // Zotero notes are ITEMS of type "note" with parentItem set. The note body
 // is stored in `note` as HTML (Zotero's note editor produces HTML). Plain
@@ -16,57 +15,60 @@ export const NOTES_TOOL = {
     "• bulk_add — attach multiple notes to the same parent (up to 50).",
     "• update — edit a note's body.",
     "• delete — remove a note.",
-    "Zotero treats notes as items of itemType=note with parentItem set; each has its own key.",
-  ].join(" "),
+    "Zotero treats notes as items of itemType=note with parentItem set; each has its own key."
+  ].join(" ")
 } as const;
 
 export const NotesInput = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
-    item_key: z.string().length(8).describe("Parent item key (the paper/book the notes are attached to)."),
+    item_key: z.string().length(8).describe("Parent item key (the paper/book the notes are attached to).")
   }),
   z.object({
     action: z.literal("get"),
-    key: z.string().length(8).describe("The note's own item key."),
+    key: z.string().length(8).describe("The note's own item key.")
   }),
   z.object({
     action: z.literal("add"),
     item_key: z.string().length(8).describe("Parent item key."),
     body: z.string().min(1).describe("Note content (plain text or HTML)."),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional()
   }),
   z.object({
     action: z.literal("bulk_add"),
     item_key: z.string().length(8),
-    notes: z.array(z.object({
-      body: z.string().min(1),
-      tags: z.array(z.string()).optional(),
-    })).min(1).max(50),
+    notes: z
+      .array(
+        z.object({
+          body: z.string().min(1),
+          tags: z.array(z.string()).optional()
+        })
+      )
+      .min(1)
+      .max(50)
   }),
   z.object({
     action: z.literal("update"),
     key: z.string().length(8),
     body: z.string().min(1),
-    version: z.number().int().optional(),
+    version: z.number().int().optional()
   }),
   z.object({
     action: z.literal("delete"),
     key: z.string().length(8),
-    version: z.number().int().optional(),
-  }),
+    version: z.number().int().optional()
+  })
 ]);
 
 export async function handleNotes(client: ZoteroClient, input: z.infer<typeof NotesInput>) {
   switch (input.action) {
     case "list": {
       const { data } = await client.get<any[]>(client.userPath(`/items/${input.item_key}/children`));
-      const notes = (data ?? [])
-        .filter((it: any) => it.data?.itemType === "note")
-        .map(compactNote);
+      const notes = (data ?? []).filter((it: any) => it.data?.itemType === "note").map(compactNote);
       return {
         item_key: input.item_key,
         count: notes.length,
-        notes,
+        notes
       };
     }
 
@@ -89,7 +91,7 @@ export async function handleNotes(client: ZoteroClient, input: z.infer<typeof No
 
     case "update": {
       const headers = {
-        "If-Unmodified-Since-Version": input.version !== undefined ? String(input.version) : "*",
+        "If-Unmodified-Since-Version": input.version !== undefined ? String(input.version) : "*"
       };
       await client.patch(client.userPath(`/items/${input.key}`), { note: input.body }, headers);
       return { updated: input.key };
@@ -97,7 +99,7 @@ export async function handleNotes(client: ZoteroClient, input: z.infer<typeof No
 
     case "delete": {
       const headers = {
-        "If-Unmodified-Since-Version": input.version !== undefined ? String(input.version) : "*",
+        "If-Unmodified-Since-Version": input.version !== undefined ? String(input.version) : "*"
       };
       await client.delete(client.userPath(`/items/${input.key}`), headers);
       return { deleted: input.key };
@@ -109,7 +111,7 @@ function buildNote(parentKey: string, body: string, tags?: string[]) {
   const payload: any = {
     itemType: "note",
     parentItem: parentKey,
-    note: body,
+    note: body
   };
   if (tags) payload.tags = tags.map((t) => ({ tag: t }));
   return payload;
@@ -118,14 +120,18 @@ function buildNote(parentKey: string, body: string, tags?: string[]) {
 function compactNote(it: any) {
   const d = it.data ?? {};
   // Strip HTML for a preview; Zotero's note editor produces <div>/<p>.
-  const preview = (d.note || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+  const preview = (d.note || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
   return {
     key: d.key,
     version: d.version,
     parent: d.parentItem,
     preview,
     tags: (d.tags ?? []).map((t: any) => t.tag),
-    date_modified: d.dateModified,
+    date_modified: d.dateModified
   };
 }
 
@@ -135,7 +141,9 @@ function parseWriteResult(data: any) {
   return {
     succeeded: Object.keys(success).length,
     failed: Object.keys(failed).length,
-    keys: Object.values(success).map((v: any) => v?.data?.key).filter(Boolean),
-    failures: Object.values(failed),
+    keys: Object.values(success)
+      .map((v: any) => v?.data?.key)
+      .filter(Boolean),
+    failures: Object.values(failed)
   };
 }

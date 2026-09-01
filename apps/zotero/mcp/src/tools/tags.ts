@@ -13,31 +13,37 @@ export const TAGS_TOOL = {
     "• search — find tags matching a query.",
     "• delete — remove a tag from ALL items that have it (tag vanishes from the library).",
     "• rename — rename a tag across ALL items (no native endpoint; the MCP does the read-modify-write per item).",
-    "For per-item tag changes use zotero_items add_tags / remove_tags / bulk_tag_*.",
-  ].join(" "),
+    "For per-item tag changes use zotero_items add_tags / remove_tags / bulk_tag_*."
+  ].join(" ")
 } as const;
 
 export const TagsInput = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     limit: z.number().int().min(1).max(200).default(100),
-    start: z.number().int().min(0).default(0),
+    start: z.number().int().min(0).default(0)
   }),
   z.object({
     action: z.literal("search"),
     query: z.string().min(1),
-    limit: z.number().int().min(1).max(200).default(50),
+    limit: z.number().int().min(1).max(200).default(50)
   }),
   z.object({
     action: z.literal("delete"),
-    tag: z.string().min(1),
+    tag: z.string().min(1)
   }),
   z.object({
     action: z.literal("rename"),
     from: z.string().min(1),
     to: z.string().min(1),
-    max_items: z.number().int().min(1).max(500).default(200).describe("Safety cap — rename will refuse if more items carry the tag than this."),
-  }),
+    max_items: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(200)
+      .describe("Safety cap — rename will refuse if more items carry the tag than this.")
+  })
 ]);
 
 export async function handleTags(client: ZoteroClient, input: z.infer<typeof TagsInput>) {
@@ -45,7 +51,7 @@ export async function handleTags(client: ZoteroClient, input: z.infer<typeof Tag
     case "list": {
       const params = new URLSearchParams({
         limit: String(input.limit),
-        start: String(input.start),
+        start: String(input.start)
       });
       const { data, headers } = await client.get<any[]>(client.userPath(`/tags?${params}`));
       return {
@@ -54,23 +60,23 @@ export async function handleTags(client: ZoteroClient, input: z.infer<typeof Tag
         tags: data.map((t: any) => ({
           tag: t.tag,
           type: t.meta?.type ?? 0,
-          num_items: t.meta?.numItems ?? 0,
-        })),
+          num_items: t.meta?.numItems ?? 0
+        }))
       };
     }
 
     case "search": {
       const params = new URLSearchParams({
         q: input.query,
-        limit: String(input.limit),
+        limit: String(input.limit)
       });
       const { data } = await client.get<any[]>(client.userPath(`/tags?${params}`));
       return {
         count: data.length,
         tags: data.map((t: any) => ({
           tag: t.tag,
-          num_items: t.meta?.numItems ?? 0,
-        })),
+          num_items: t.meta?.numItems ?? 0
+        }))
       };
     }
 
@@ -78,10 +84,7 @@ export async function handleTags(client: ZoteroClient, input: z.infer<typeof Tag
       // DELETE /users/<id>/tags?tag=X — removes the tag from every item.
       // Requires If-Unmodified-Since-Version header; "*" = force.
       const params = new URLSearchParams({ tag: input.tag });
-      await client.delete(
-        client.userPath(`/tags?${params}`),
-        { "If-Unmodified-Since-Version": "*" },
-      );
+      await client.delete(client.userPath(`/tags?${params}`), { "If-Unmodified-Since-Version": "*" });
       return { deleted_tag: input.tag };
     }
 
@@ -90,29 +93,27 @@ export async function handleTags(client: ZoteroClient, input: z.infer<typeof Tag
       // then per-item: remove old + add new.
       const params = new URLSearchParams({
         tag: input.from,
-        limit: String(input.max_items),
+        limit: String(input.max_items)
       });
       const { data: items, headers } = await client.get<any[]>(client.userPath(`/items?${params}`));
       const total = Number(headers.get("total-results") ?? items.length);
       if (total > input.max_items) {
         throw new Error(
-          `rename refused: ${total} items carry tag '${input.from}', max_items=${input.max_items}. Raise max_items or do this in two batches.`,
+          `rename refused: ${total} items carry tag '${input.from}', max_items=${input.max_items}. Raise max_items or do this in two batches.`
         );
       }
       const results = await runBounded(items, 4, async (it: any) => {
         const k = it.data.key;
         const version = it.data.version;
         const existing: Array<{ tag: string }> = it.data.tags ?? [];
-        const next = existing
-          .filter((t) => t.tag !== input.from)
-          .concat([{ tag: input.to }]);
+        const next = existing.filter((t) => t.tag !== input.from).concat([{ tag: input.to }]);
         // Dedupe if 'to' already present
         const seen = new Set<string>();
         const deduped = next.filter((t) => (seen.has(t.tag) ? false : (seen.add(t.tag), true)));
         await client.patch(
           client.userPath(`/items/${k}`),
           { tags: deduped },
-          { "If-Unmodified-Since-Version": String(version) },
+          { "If-Unmodified-Since-Version": String(version) }
         );
         return { key: k };
       });
@@ -124,7 +125,7 @@ export async function handleTags(client: ZoteroClient, input: z.infer<typeof Tag
         total_items: total,
         succeeded: ok.length,
         failed: bad.length,
-        failures: bad.map((r) => ({ item: r.item?.data?.key, error: r.error })),
+        failures: bad.map((r) => ({ item: r.item?.data?.key, error: r.error }))
       };
     }
   }

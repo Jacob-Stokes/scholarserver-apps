@@ -7,7 +7,7 @@
     "dev": "node --watch src/server.mjs",
     "build": "node --check src/server.mjs",
     "start": "node src/server.mjs",
-    "test": "node --check src/server.mjs"
+    "test": "node --check src/server.mjs && node --test src/*.test.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",

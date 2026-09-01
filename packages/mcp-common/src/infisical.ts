@@ -23,7 +23,7 @@ async function getAuthToken(): Promise<string> {
   const res = await fetch(`${domain}/api/v1/auth/universal-auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId, clientSecret }),
+    body: JSON.stringify({ clientId, clientSecret })
   });
   if (!res.ok) throw new Error(`infisical login failed: HTTP ${res.status}`);
   const body = (await res.json()) as { accessToken: string; expiresIn?: number };

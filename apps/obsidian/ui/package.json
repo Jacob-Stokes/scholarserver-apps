@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "build": "vite build", "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
     "react": "19.1.1",

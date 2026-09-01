@@ -1,23 +1,49 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { zodToJsonSchema } from "mcp-common";
-import { GET_NOTE_TOOL, GetNoteInput, LIST_NOTES_TOOL, ListNotesInput, WRITE_NOTE_TOOL, WriteNoteInput,
-  APPEND_NOTE_TOOL, AppendNoteInput, PATCH_NOTE_TOOL, PatchNoteInput, REPLACE_NOTE_TOOL, ReplaceNoteInput,
-  MOVE_NOTE_TOOL, MoveNoteInput, DELETE_NOTE_TOOL, DeleteNoteInput } from "./notes.js";
-import { SEARCH_NOTES_TOOL, SearchNotesInput } from "./search-notes.js";
-import { FRONTMATTER_TOOL, FrontmatterInput, TAGS_TOOL, TagsInput, resolveTagsDryRun } from "./metadata.js";
-import { LINKS_TOOL, LinksInput } from "./links.js";
+import { ATTACHMENTS_TOOL, AttachmentsInput } from "./attachments.js";
 import { BULK_TOOL, BulkInput } from "./bulk.js";
 import { DAILY_TOOL, DailyInput } from "./daily.js";
-import { ATTACHMENTS_TOOL, AttachmentsInput } from "./attachments.js";
+import { LINKS_TOOL, LinksInput } from "./links.js";
+import { FRONTMATTER_TOOL, FrontmatterInput, resolveTagsDryRun, TAGS_TOOL, TagsInput } from "./metadata.js";
+import {
+  APPEND_NOTE_TOOL,
+  AppendNoteInput,
+  DELETE_NOTE_TOOL,
+  DeleteNoteInput,
+  GET_NOTE_TOOL,
+  GetNoteInput,
+  LIST_NOTES_TOOL,
+  ListNotesInput,
+  MOVE_NOTE_TOOL,
+  MoveNoteInput,
+  PATCH_NOTE_TOOL,
+  PatchNoteInput,
+  REPLACE_NOTE_TOOL,
+  ReplaceNoteInput,
+  WRITE_NOTE_TOOL,
+  WriteNoteInput
+} from "./notes.js";
+import { SEARCH_NOTES_TOOL, SearchNotesInput } from "./search-notes.js";
 import { STATUS_TOOL, StatusInput } from "./status.js";
 
 const focused = [
-  [GET_NOTE_TOOL, GetNoteInput], [LIST_NOTES_TOOL, ListNotesInput], [SEARCH_NOTES_TOOL, SearchNotesInput],
-  [WRITE_NOTE_TOOL, WriteNoteInput], [APPEND_NOTE_TOOL, AppendNoteInput], [PATCH_NOTE_TOOL, PatchNoteInput],
-  [REPLACE_NOTE_TOOL, ReplaceNoteInput], [MOVE_NOTE_TOOL, MoveNoteInput], [DELETE_NOTE_TOOL, DeleteNoteInput],
-  [FRONTMATTER_TOOL, FrontmatterInput], [TAGS_TOOL, TagsInput], [LINKS_TOOL, LinksInput],
-  [BULK_TOOL, BulkInput], [DAILY_TOOL, DailyInput], [ATTACHMENTS_TOOL, AttachmentsInput], [STATUS_TOOL, StatusInput],
+  [GET_NOTE_TOOL, GetNoteInput],
+  [LIST_NOTES_TOOL, ListNotesInput],
+  [SEARCH_NOTES_TOOL, SearchNotesInput],
+  [WRITE_NOTE_TOOL, WriteNoteInput],
+  [APPEND_NOTE_TOOL, AppendNoteInput],
+  [PATCH_NOTE_TOOL, PatchNoteInput],
+  [REPLACE_NOTE_TOOL, ReplaceNoteInput],
+  [MOVE_NOTE_TOOL, MoveNoteInput],
+  [DELETE_NOTE_TOOL, DeleteNoteInput],
+  [FRONTMATTER_TOOL, FrontmatterInput],
+  [TAGS_TOOL, TagsInput],
+  [LINKS_TOOL, LinksInput],
+  [BULK_TOOL, BulkInput],
+  [DAILY_TOOL, DailyInput],
+  [ATTACHMENTS_TOOL, AttachmentsInput],
+  [STATUS_TOOL, StatusInput]
 ] as const;
 
 test("focused tool names are unique and every contract emits an object schema", () => {

@@ -13,10 +13,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 RUNTIME = Path(os.environ.get("SCHOLARSERVER_RUNTIME", "/runtime"))
@@ -65,12 +66,17 @@ def atomic_json(path: Path, value: Any, mode: int = 0o600) -> None:
     atomic_write(path, json.dumps(value, indent=2, sort_keys=True) + "\n", mode)
 
 
-def connection() -> sqlite3.Connection:
+@contextmanager
+def connection() -> Iterator[sqlite3.Connection]:
     database = sqlite3.connect(DATABASE, timeout=30)
-    database.row_factory = sqlite3.Row
-    database.execute("PRAGMA journal_mode=WAL")
-    database.execute("PRAGMA foreign_keys=ON")
-    return database
+    try:
+        database.row_factory = sqlite3.Row
+        database.execute("PRAGMA journal_mode=WAL")
+        database.execute("PRAGMA foreign_keys=ON")
+        with database:
+            yield database
+    finally:
+        database.close()
 
 
 def migrate() -> None:

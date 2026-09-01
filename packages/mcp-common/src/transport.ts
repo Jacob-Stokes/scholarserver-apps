@@ -20,16 +20,13 @@
 //
 // Each MCP calls `startMcp(opts)` at the end of its own server.ts boot.
 
+import { randomUUID } from "node:crypto";
+import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { randomUUID } from "node:crypto";
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { createRemoteJWKSet, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { z } from "zod";
 import { zodToJsonSchema } from "./schema.js";
 
@@ -128,7 +125,7 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
     const jwksUri = oauth.jwksUri ?? new URL("jwks/", oauth.issuer).toString();
     jwks = createRemoteJWKSet(new URL(jwksUri), {
       cacheMaxAge: 10 * 60 * 1000, // 10 min
-      cooldownDuration: 30 * 1000, // 30s between fetches on failure
+      cooldownDuration: 30 * 1000 // 30s between fetches on failure
     });
 
     protectedResourceMetadata = {
@@ -136,7 +133,7 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
       authorization_servers: [oauth.issuer],
       bearer_methods_supported: ["header"],
       scopes_supported: oauth.scopesSupported ?? [],
-      resource_documentation: `${oauth.canonicalUrl}/health`,
+      resource_documentation: `${oauth.canonicalUrl}/health`
     };
 
     resourceMetadataPath = "/.well-known/oauth-protected-resource";
@@ -158,7 +155,7 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
       try {
         await jwtVerify(token, jwks, {
           issuer: oauth.issuer,
-          audience: oauth.audience ?? oauth.canonicalUrl,
+          audience: oauth.audience ?? oauth.canonicalUrl
         });
         return true;
       } catch {
@@ -181,15 +178,15 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
     res.writeHead(401, headers);
     res.end(
       JSON.stringify({
-        error: err === "missing_token" ? "authorization required" : "invalid token",
-      }),
+        error: err === "missing_token" ? "authorization required" : "invalid token"
+      })
     );
   }
 
   const buildServer = (): Server => {
     const server = new Server(
       { name, version },
-      { capabilities: { tools: {} }, ...(instructions ? { instructions } : {}) },
+      { capabilities: { tools: {} }, ...(instructions ? { instructions } : {}) }
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -197,8 +194,8 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
         name: t.def.name,
         description: t.def.description,
         inputSchema: zodToJsonSchema(t.def.inputSchema),
-        ...(t.def.annotations ? { annotations: t.def.annotations } : {}),
-      })),
+        ...(t.def.annotations ? { annotations: t.def.annotations } : {})
+      }))
     }));
 
     server.setRequestHandler(CallToolRequestSchema, async (req) => {
@@ -215,9 +212,9 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
               type: "text",
               text: `invalid input for ${toolName}: ${parsed.error.issues
                 .map((i) => `${i.path.join(".")}: ${i.message}`)
-                .join("; ")}`,
-            },
-          ],
+                .join("; ")}`
+            }
+          ]
         };
       }
       try {
@@ -268,7 +265,7 @@ export async function startMcp(opts: StartMcpOptions): Promise<void> {
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (newSessionId) => {
             streamableTransports.set(newSessionId, transport);
-          },
+          }
         });
         transport.onclose = () => {
           if (transport.sessionId) streamableTransports.delete(transport.sessionId);

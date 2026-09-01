@@ -51,14 +51,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
   });
-  const value = await response.json().catch(() => null) as T | { error?: string } | null;
+  const value = (await response.json().catch(() => null)) as T | { error?: string } | null;
   if (!response.ok) throw new Error((value as { error?: string } | null)?.error ?? "Docling request failed");
   return value as T;
 }
 
 function currentTab(): Tab {
   const value = window.location.pathname.split("/").filter(Boolean).at(-1);
-  return tabs.some((tab) => tab.id === value) ? value as Tab : "queue";
+  return tabs.some((tab) => tab.id === value) ? (value as Tab) : "queue";
 }
 
 function bytes(value: number): string {
@@ -93,7 +93,9 @@ export function App() {
       const next = await request<Status>("status");
       setStatus(next);
       setError(null);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load the queue"); }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load the queue");
+    }
   }, []);
 
   const discover = useCallback(async () => {
@@ -101,12 +103,19 @@ export function App() {
       const result = await request<{ files: FileEntry[] }>("files?limit=100");
       setFiles(result.files);
       setSourcePath((current) => current || result.files[0]?.path || "");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not list PDFs"); }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not list PDFs");
+    }
   }, []);
 
   useEffect(() => {
     void refresh();
-    void request<Settings>("settings").then((value) => { setSettings(value); setOcr(value.defaultOcr); }).catch(() => undefined);
+    void request<Settings>("settings")
+      .then((value) => {
+        setSettings(value);
+        setOcr(value.defaultOcr);
+      })
+      .catch(() => undefined);
     const timer = window.setInterval(() => void refresh(), 3000);
     return () => window.clearInterval(timer);
   }, [refresh]);
@@ -127,68 +136,362 @@ export function App() {
   };
 
   const run = async (operation: () => Promise<unknown>, success: string) => {
-    setBusy(true); setError(null); setNotice(null);
-    try { await operation(); setNotice(success); await refresh(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "The operation failed"); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await operation();
+      setNotice(success);
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The operation failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const queueOne = () => run(
-    () => request<Job>("jobs", { method: "POST", body: JSON.stringify({ sourcePath, sourceAttachmentKey: attachmentKey.trim().toUpperCase(), ocr }) }),
-    "The PDF was added to the queue."
-  );
+  const queueOne = () =>
+    run(
+      () =>
+        request<Job>("jobs", {
+          method: "POST",
+          body: JSON.stringify({ sourcePath, sourceAttachmentKey: attachmentKey.trim().toUpperCase(), ocr })
+        }),
+      "The PDF was added to the queue."
+    );
 
   const queueBackfill = async () => {
-    setBusy(true); setError(null); setNotice(null);
+    setBusy(true);
+    setError(null);
+    setNotice(null);
     try {
-      const result = await request<{ discovered: number; queued: number; existing: number }>("jobs/backfill", { method: "POST", body: JSON.stringify({ limit, ocr }) });
-      setNotice(`${result.discovered} PDFs checked: ${result.queued} waiting or running, ${result.existing} already converted.`);
+      const result = await request<{ discovered: number; queued: number; existing: number }>("jobs/backfill", {
+        method: "POST",
+        body: JSON.stringify({ limit, ocr })
+      });
+      setNotice(
+        `${result.discovered} PDFs checked: ${result.queued} waiting or running, ${result.existing} already converted.`
+      );
       await refresh();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not queue the backfill"); }
-    finally { setBusy(false); }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not queue the backfill");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const selected = useMemo(() => files.find((file) => file.path === sourcePath), [files, sourcePath]);
 
-  return <div className="ss-app">
-    <header className="ss-app-header"><div className="ss-app-header-inner">
-      <div className="ss-brand"><div className="ss-brand-mark">S</div><div><p className="ss-brand-title">ScholarServer</p><p className="ss-brand-context">Docling</p></div></div>
-      <a className="ss-button ss-button-secondary" href="/">Back to ScholarServer</a>
-    </div></header>
-    <main className="ss-main">
-      <div className="ss-page-heading"><div><h1>Docling</h1><p>Convert research PDFs into durable, AI-readable Markdown without blocking the rest of your workspace.</p></div>{status ? <span className={`ss-badge ${status.engine === "available" ? "ss-badge-success" : "ss-badge-warning"}`}>{status.engine === "available" ? "Engine ready" : "Engine unavailable"}</span> : null}</div>
-      <nav className="ss-tabs" aria-label="Docling sections">{tabs.map((item) => <button key={item.id} className="ss-tab" aria-selected={tab === item.id} onClick={() => navigate(item.id)}>{item.label}</button>)}</nav>
-      {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
-      {error ? <div className="ss-alert ss-alert-error" role="alert">{error}</div> : null}
-      {!status ? <div className="ss-card ss-loading"><span className="ss-spinner" /> Loading Docling…</div> : null}
-
-      {status && tab === "queue" ? <div className="ss-stack">
-        <div className="ss-grid ss-grid-3">
-          <div className="ss-card"><div className="ss-metric-label">Actively processing</div><div className="ss-metric-value">{status.counts.running}</div></div>
-          <div className="ss-card"><div className="ss-metric-label">Waiting</div><div className="ss-metric-value">{status.counts.queued}</div></div>
-          <div className="ss-card"><div className="ss-metric-label">Completed</div><div className="ss-metric-value">{status.counts.succeeded}</div></div>
+  return (
+    <div className="ss-app">
+      <header className="ss-app-header">
+        <div className="ss-app-header-inner">
+          <div className="ss-brand">
+            <div className="ss-brand-mark">S</div>
+            <div>
+              <p className="ss-brand-title">ScholarServer</p>
+              <p className="ss-brand-context">Docling</p>
+            </div>
+          </div>
+          <a className="ss-button ss-button-secondary" href="/">
+            Back to ScholarServer
+          </a>
         </div>
-        <section className="ss-card">
-          <div className="ss-toolbar"><div><h2>Conversion jobs</h2><p className="ss-card-description">Docling processes one document at a time to keep this server responsive.</p></div><button className="ss-button ss-button-secondary" onClick={() => void refresh()} disabled={busy}>Refresh</button></div>
-          {status.jobs.length === 0 ? <p className="ss-empty">No PDFs have been queued yet.</p> : <div className="ss-table-wrap"><table className="ss-table"><thead><tr><th>Document</th><th>Status</th><th>Started</th><th>Result</th><th></th></tr></thead><tbody>{status.jobs.map((job) => <tr key={job.id}><td><strong>{job.sourcePath}</strong><div className="ss-muted">{bytes(job.sourceBytes)} · {job.profile}{job.sourceAttachmentKey ? ` · Zotero ${job.sourceAttachmentKey}` : ""}</div>{job.error ? <div className="ss-job-error">{job.error}</div> : null}</td><td><span className={badge(job.state)}>{job.state}</span>{job.state === "running" ? <div className="ss-running"><span className="ss-spinner" /> Converting</div> : null}</td><td>{when(job.startedAt ?? job.createdAt)}</td><td>{job.outputPath ? <code className="ss-code">{job.outputPath}</code> : "—"}</td><td>{job.state === "failed" ? <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => void run(() => request(`jobs/${job.id}/retry`, { method: "POST" }), "The job was returned to the queue.")}>Retry</button> : null}</td></tr>)}</tbody></table></div>}
-        </section>
-      </div> : null}
+      </header>
+      <main className="ss-main">
+        <div className="ss-page-heading">
+          <div>
+            <h1>Docling</h1>
+            <p>Convert research PDFs into durable, AI-readable Markdown without blocking the rest of your workspace.</p>
+          </div>
+          {status ? (
+            <span className={`ss-badge ${status.engine === "available" ? "ss-badge-success" : "ss-badge-warning"}`}>
+              {status.engine === "available" ? "Engine ready" : "Engine unavailable"}
+            </span>
+          ) : null}
+        </div>
+        <nav className="ss-tabs" aria-label="Docling sections">
+          {tabs.map((item) => (
+            <button key={item.id} className="ss-tab" aria-selected={tab === item.id} onClick={() => navigate(item.id)}>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
+        {error ? (
+          <div className="ss-alert ss-alert-error" role="alert">
+            {error}
+          </div>
+        ) : null}
+        {!status ? (
+          <div className="ss-card ss-loading">
+            <span className="ss-spinner" /> Loading Docling…
+          </div>
+        ) : null}
 
-      {status && tab === "process" ? <div className="ss-process-grid">
-        <section className="ss-card ss-stack"><div className="ss-toolbar"><div><h2>Process one PDF</h2><p className="ss-card-description">Choose a document from the attached research storage.</p></div><button className="ss-button ss-button-ghost" onClick={() => void discover()}>Refresh files</button></div>
-          {files.length ? <label className="ss-field">PDF<select className="ss-input" value={sourcePath} onChange={(event) => setSourcePath(event.target.value)}>{files.map((file) => <option key={file.path} value={file.path}>{file.path} · {bytes(file.bytes)}</option>)}</select></label> : <div className="ss-empty">No PDFs were found in the attached storage.</div>}
-          <label className="ss-field">Zotero attachment key <span className="ss-field-help">Optional. Add the eight-character key when this file belongs to a Zotero attachment.</span><input className="ss-input" maxLength={8} placeholder="ABCD1234" value={attachmentKey} onChange={(event) => setAttachmentKey(event.target.value.toUpperCase())} /></label>
-          <label className="ss-check"><input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} /><span><strong>Use OCR</strong><small>Enable for scanned or image-only PDFs. It requires more processing time.</small></span></label>
-          <button className="ss-button" onClick={() => void queueOne()} disabled={busy || !selected || status.engine !== "available" || (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))}>{busy ? <span className="ss-spinner" /> : null}Queue this PDF</button>
-        </section>
-        <section className="ss-card ss-stack"><div><h2>Small backfill</h2><p className="ss-card-description">Check the first documents in storage and skip anything already converted.</p></div><label className="ss-field">Maximum PDFs<input className="ss-input" type="number" min={1} max={100} value={limit} onChange={(event) => setLimit(Math.max(1, Math.min(100, Number(event.target.value) || 1)))} /></label><label className="ss-check"><input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} /><span><strong>Use OCR for this backfill</strong><small>Leave disabled for normal text-based academic PDFs.</small></span></label><button className="ss-button ss-button-secondary" onClick={() => void queueBackfill()} disabled={busy || files.length === 0 || status.engine !== "available"}>{busy ? <span className="ss-spinner" /> : null}Queue first {Math.min(limit, files.length)}</button></section>
-      </div> : null}
+        {status && tab === "queue" ? (
+          <div className="ss-stack">
+            <div className="ss-grid ss-grid-3">
+              <div className="ss-card">
+                <div className="ss-metric-label">Actively processing</div>
+                <div className="ss-metric-value">{status.counts.running}</div>
+              </div>
+              <div className="ss-card">
+                <div className="ss-metric-label">Waiting</div>
+                <div className="ss-metric-value">{status.counts.queued}</div>
+              </div>
+              <div className="ss-card">
+                <div className="ss-metric-label">Completed</div>
+                <div className="ss-metric-value">{status.counts.succeeded}</div>
+              </div>
+            </div>
+            <section className="ss-card">
+              <div className="ss-toolbar">
+                <div>
+                  <h2>Conversion jobs</h2>
+                  <p className="ss-card-description">
+                    Docling processes one document at a time to keep this server responsive.
+                  </p>
+                </div>
+                <button className="ss-button ss-button-secondary" onClick={() => void refresh()} disabled={busy}>
+                  Refresh
+                </button>
+              </div>
+              {status.jobs.length === 0 ? (
+                <p className="ss-empty">No PDFs have been queued yet.</p>
+              ) : (
+                <div className="ss-table-wrap">
+                  <table className="ss-table">
+                    <thead>
+                      <tr>
+                        <th>Document</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Result</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {status.jobs.map((job) => (
+                        <tr key={job.id}>
+                          <td>
+                            <strong>{job.sourcePath}</strong>
+                            <div className="ss-muted">
+                              {bytes(job.sourceBytes)} · {job.profile}
+                              {job.sourceAttachmentKey ? ` · Zotero ${job.sourceAttachmentKey}` : ""}
+                            </div>
+                            {job.error ? <div className="ss-job-error">{job.error}</div> : null}
+                          </td>
+                          <td>
+                            <span className={badge(job.state)}>{job.state}</span>
+                            {job.state === "running" ? (
+                              <div className="ss-running">
+                                <span className="ss-spinner" /> Converting
+                              </div>
+                            ) : null}
+                          </td>
+                          <td>{when(job.startedAt ?? job.createdAt)}</td>
+                          <td>{job.outputPath ? <code className="ss-code">{job.outputPath}</code> : "—"}</td>
+                          <td>
+                            {job.state === "failed" ? (
+                              <button
+                                className="ss-button ss-button-secondary"
+                                disabled={busy}
+                                onClick={() =>
+                                  void run(
+                                    () => request(`jobs/${job.id}/retry`, { method: "POST" }),
+                                    "The job was returned to the queue."
+                                  )
+                                }
+                              >
+                                Retry
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+        ) : null}
 
-      {status && tab === "configuration" ? <div className="ss-stack">
-        <section className="ss-card ss-stack"><div><h2>Conversion defaults</h2><p className="ss-card-description">These defaults affect new jobs; existing queue entries remain unchanged.</p></div><label className="ss-check"><input type="checkbox" checked={settings.defaultOcr} onChange={(event) => setSettings({ defaultOcr: event.target.checked })} /><span><strong>Use OCR by default</strong><small>Recommended only when most of your library contains scanned pages.</small></span></label><div><button className="ss-button" disabled={busy} onClick={() => void run(() => request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) }), "Docling defaults were saved.")}>Save defaults</button></div></section>
-        <section className="ss-card"><div className="ss-toolbar"><div><h2>Queue control</h2><p className="ss-card-description">Pause after the current conversion, or resume waiting work.</p></div><button className="ss-button ss-button-secondary" disabled={busy} onClick={() => void run(() => request(`queue/${status.state === "paused" ? "resume" : "pause"}`, { method: "POST" }), status.state === "paused" ? "The queue resumed." : "The queue will remain paused after the active job.")}>{status.state === "paused" ? "Resume queue" : "Pause queue"}</button></div></section>
-        <section className="ss-card"><h2>Service details</h2><dl className="ss-details"><dt>Engine</dt><dd>{status.engine}</dd><dt>Parallel jobs</dt><dd>{status.workerConcurrency}</dd><dt>Markdown folder</dt><dd><code>{status.outputFolder}</code></dd><dt>Last checked</dt><dd>{when(status.updatedAt)}</dd></dl></section>
-      </div> : null}
-    </main>
-  </div>;
+        {status && tab === "process" ? (
+          <div className="ss-process-grid">
+            <section className="ss-card ss-stack">
+              <div className="ss-toolbar">
+                <div>
+                  <h2>Process one PDF</h2>
+                  <p className="ss-card-description">Choose a document from the attached research storage.</p>
+                </div>
+                <button className="ss-button ss-button-ghost" onClick={() => void discover()}>
+                  Refresh files
+                </button>
+              </div>
+              {files.length ? (
+                <label className="ss-field">
+                  PDF
+                  <select
+                    className="ss-input"
+                    value={sourcePath}
+                    onChange={(event) => setSourcePath(event.target.value)}
+                  >
+                    {files.map((file) => (
+                      <option key={file.path} value={file.path}>
+                        {file.path} · {bytes(file.bytes)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <div className="ss-empty">No PDFs were found in the attached storage.</div>
+              )}
+              <label className="ss-field">
+                Zotero attachment key{" "}
+                <span className="ss-field-help">
+                  Optional. Add the eight-character key when this file belongs to a Zotero attachment.
+                </span>
+                <input
+                  className="ss-input"
+                  maxLength={8}
+                  placeholder="ABCD1234"
+                  value={attachmentKey}
+                  onChange={(event) => setAttachmentKey(event.target.value.toUpperCase())}
+                />
+              </label>
+              <label className="ss-check">
+                <input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} />
+                <span>
+                  <strong>Use OCR</strong>
+                  <small>Enable for scanned or image-only PDFs. It requires more processing time.</small>
+                </span>
+              </label>
+              <button
+                className="ss-button"
+                onClick={() => void queueOne()}
+                disabled={
+                  busy ||
+                  !selected ||
+                  status.engine !== "available" ||
+                  (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))
+                }
+              >
+                {busy ? <span className="ss-spinner" /> : null}Queue this PDF
+              </button>
+            </section>
+            <section className="ss-card ss-stack">
+              <div>
+                <h2>Small backfill</h2>
+                <p className="ss-card-description">
+                  Check the first documents in storage and skip anything already converted.
+                </p>
+              </div>
+              <label className="ss-field">
+                Maximum PDFs
+                <input
+                  className="ss-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={limit}
+                  onChange={(event) => setLimit(Math.max(1, Math.min(100, Number(event.target.value) || 1)))}
+                />
+              </label>
+              <label className="ss-check">
+                <input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} />
+                <span>
+                  <strong>Use OCR for this backfill</strong>
+                  <small>Leave disabled for normal text-based academic PDFs.</small>
+                </span>
+              </label>
+              <button
+                className="ss-button ss-button-secondary"
+                onClick={() => void queueBackfill()}
+                disabled={busy || files.length === 0 || status.engine !== "available"}
+              >
+                {busy ? <span className="ss-spinner" /> : null}Queue first {Math.min(limit, files.length)}
+              </button>
+            </section>
+          </div>
+        ) : null}
+
+        {status && tab === "configuration" ? (
+          <div className="ss-stack">
+            <section className="ss-card ss-stack">
+              <div>
+                <h2>Conversion defaults</h2>
+                <p className="ss-card-description">
+                  These defaults affect new jobs; existing queue entries remain unchanged.
+                </p>
+              </div>
+              <label className="ss-check">
+                <input
+                  type="checkbox"
+                  checked={settings.defaultOcr}
+                  onChange={(event) => setSettings({ defaultOcr: event.target.checked })}
+                />
+                <span>
+                  <strong>Use OCR by default</strong>
+                  <small>Recommended only when most of your library contains scanned pages.</small>
+                </span>
+              </label>
+              <div>
+                <button
+                  className="ss-button"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      () => request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) }),
+                      "Docling defaults were saved."
+                    )
+                  }
+                >
+                  Save defaults
+                </button>
+              </div>
+            </section>
+            <section className="ss-card">
+              <div className="ss-toolbar">
+                <div>
+                  <h2>Queue control</h2>
+                  <p className="ss-card-description">Pause after the current conversion, or resume waiting work.</p>
+                </div>
+                <button
+                  className="ss-button ss-button-secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      () => request(`queue/${status.state === "paused" ? "resume" : "pause"}`, { method: "POST" }),
+                      status.state === "paused"
+                        ? "The queue resumed."
+                        : "The queue will remain paused after the active job."
+                    )
+                  }
+                >
+                  {status.state === "paused" ? "Resume queue" : "Pause queue"}
+                </button>
+              </div>
+            </section>
+            <section className="ss-card">
+              <h2>Service details</h2>
+              <dl className="ss-details">
+                <dt>Engine</dt>
+                <dd>{status.engine}</dd>
+                <dt>Parallel jobs</dt>
+                <dd>{status.workerConcurrency}</dd>
+                <dt>Markdown folder</dt>
+                <dd>
+                  <code>{status.outputFolder}</code>
+                </dd>
+                <dt>Last checked</dt>
+                <dd>{when(status.updatedAt)}</dd>
+              </dl>
+            </section>
+          </div>
+        ) : null}
+      </main>
+    </div>
+  );
 }

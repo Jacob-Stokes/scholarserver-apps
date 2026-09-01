@@ -1,17 +1,20 @@
 import { z } from "zod";
-import { encodeVaultPath } from "../obsidian-client.js";
 import type { ToolContext } from "../lib/vault.js";
+import { encodeVaultPath } from "../obsidian-client.js";
 
 export const FoldersInput = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
-    path: z.string().default("").describe("Folder path, empty string = vault root. e.g. 'Homelab', 'Homelab/Services', 'Journal'"),
+    path: z
+      .string()
+      .default("")
+      .describe("Folder path, empty string = vault root. e.g. 'Homelab', 'Homelab/Services', 'Journal'")
   }),
   z.object({
     action: z.literal("tree"),
     depth: z.number().int().min(1).max(5).default(2).describe("How many levels deep to traverse"),
-    path: z.string().optional().describe("Root path, omit for vault root"),
-  }),
+    path: z.string().optional().describe("Root path, omit for vault root")
+  })
 ]);
 
 export type FoldersInput = z.infer<typeof FoldersInput>;
@@ -22,7 +25,7 @@ export const FOLDERS_TOOL = {
     "DEPRECATED compatibility tool; prefer obsidian_list_notes. Explore the vault structure. action=list returns children of a single folder with names + " +
     "modified dates + sizes. action=tree returns a nested overview up to N levels — use for " +
     "discovering what exists before writing.",
-  inputSchema: FoldersInput,
+  inputSchema: FoldersInput
 };
 
 export async function handleFolders(ctx: ToolContext, input: FoldersInput): Promise<any> {
@@ -42,7 +45,7 @@ export async function handleFolders(ctx: ToolContext, input: FoldersInput): Prom
           name: c.name,
           type: c.type ?? (c.children !== undefined ? "folder" : "file"),
           size: c.size,
-          modified: c.modified,
+          modified: c.modified
         }));
       } else if (Array.isArray(res?.folders)) {
         // Root-level: synthesize child records from the flat path list.

@@ -12,6 +12,6 @@
 // Not published to npm; consumed only by sibling MCPs.
 
 export { fetchSecret } from "./infisical.js";
-export { zodToJsonSchema, isDefaulted } from "./schema.js";
+export { isDefaulted, zodToJsonSchema } from "./schema.js";
+export type { OAuthOptions, StartMcpOptions, ToolDefinition, ToolRegistration } from "./transport.js";
 export { startMcp } from "./transport.js";
-export type { ToolDefinition, ToolRegistration, StartMcpOptions, OAuthOptions } from "./transport.js";

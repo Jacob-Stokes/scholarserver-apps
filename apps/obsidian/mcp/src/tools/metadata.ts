@@ -6,12 +6,15 @@ import {
   normalizeTag,
   readNote,
   runBounded,
-  writeNoteContent,
   type ToolContext,
+  writeNoteContent
 } from "../lib/vault.js";
 
 const NotePath = z.string().min(1).describe("Vault-relative Markdown path ending in .md.");
-const ExpectedHash = z.string().regex(/^[a-f0-9]{64}$/).optional();
+const ExpectedHash = z
+  .string()
+  .regex(/^[a-f0-9]{64}$/)
+  .optional();
 
 export const FrontmatterInput = z.discriminatedUnion("action", [
   z.object({ action: z.literal("get"), path: NotePath }),
@@ -20,28 +23,29 @@ export const FrontmatterInput = z.discriminatedUnion("action", [
     path: NotePath,
     fields: z.record(z.unknown()).describe("Fields to merge. A null value deletes that key."),
     expected_hash: ExpectedHash,
-    dry_run: z.boolean().default(false),
+    dry_run: z.boolean().default(false)
   }),
   z.object({
     action: z.literal("replace"),
     path: NotePath,
     fields: z.record(z.unknown()).describe("Complete replacement frontmatter mapping."),
     expected_hash: ExpectedHash,
-    dry_run: z.boolean().default(false),
+    dry_run: z.boolean().default(false)
   }),
   z.object({
     action: z.literal("delete_keys"),
     path: NotePath,
     keys: z.array(z.string().min(1)).min(1).max(100),
     expected_hash: ExpectedHash,
-    dry_run: z.boolean().default(false),
-  }),
+    dry_run: z.boolean().default(false)
+  })
 ]);
 export type FrontmatterInput = z.infer<typeof FrontmatterInput>;
 export const FRONTMATTER_TOOL = {
   name: "obsidian_manage_frontmatter",
-  description: "Read, merge, replace, or delete YAML frontmatter fields while preserving the note body. Values may be scalars, arrays or nested objects. Null deletes a field during merge. Mutations support expected_hash and dry_run.",
-  inputSchema: FrontmatterInput,
+  description:
+    "Read, merge, replace, or delete YAML frontmatter fields while preserving the note body. Values may be scalars, arrays or nested objects. Null deletes a field during merge. Mutations support expected_hash and dry_run.",
+  inputSchema: FrontmatterInput
 };
 export async function handleFrontmatter(ctx: ToolContext, input: FrontmatterInput) {
   const existing = await readNote(ctx, input.path);
@@ -67,27 +71,30 @@ export async function handleFrontmatter(ctx: ToolContext, input: FrontmatterInpu
     overwrite: true,
     expectedHash: input.expected_hash,
     dryRun: input.dry_run,
-    existing,
+    existing
   });
   return { frontmatter: next, ...result };
 }
 
-const TagDryRun = z.boolean().optional().describe(
-  "Omit for contextual safety: add/remove and note-scoped rename execute; folder- or vault-wide rename previews only.",
-);
+const TagDryRun = z
+  .boolean()
+  .optional()
+  .describe(
+    "Omit for contextual safety: add/remove and note-scoped rename execute; folder- or vault-wide rename previews only."
+  );
 
 export const TagsInput = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     path: z.string().optional().describe("A note path or folder subtree. Omit for the whole vault."),
-    max_notes: z.number().int().positive().max(5000).default(1000),
+    max_notes: z.number().int().positive().max(5000).default(1000)
   }),
   z.object({
     action: z.literal("add"),
     path: NotePath,
     tags: z.array(z.string().min(1)).min(1).max(100),
     expected_hash: ExpectedHash,
-    dry_run: TagDryRun,
+    dry_run: TagDryRun
   }),
   z.object({
     action: z.literal("remove"),
@@ -95,7 +102,7 @@ export const TagsInput = z.discriminatedUnion("action", [
     tags: z.array(z.string().min(1)).min(1).max(100),
     locations: z.enum(["frontmatter", "inline", "both"]).default("frontmatter"),
     expected_hash: ExpectedHash,
-    dry_run: TagDryRun,
+    dry_run: TagDryRun
   }),
   z.object({
     action: z.literal("rename"),
@@ -104,8 +111,8 @@ export const TagsInput = z.discriminatedUnion("action", [
     path: z.string().optional().describe("Limit to one note or folder subtree."),
     locations: z.enum(["frontmatter", "inline", "both"]).default("both"),
     max_notes: z.number().int().positive().max(5000).default(1000),
-    dry_run: TagDryRun,
-  }),
+    dry_run: TagDryRun
+  })
 ]);
 export type TagsInput = z.infer<typeof TagsInput>;
 export function resolveTagsDryRun(input: { action: string; path?: string; dry_run?: boolean }): boolean {
@@ -114,8 +121,9 @@ export function resolveTagsDryRun(input: { action: string; path?: string; dry_ru
 }
 export const TAGS_TOOL = {
   name: "obsidian_manage_tags",
-  description: "List vault tags with counts, add/remove frontmatter tags on one note, or rename a tag across a note/folder/vault. Inline changes avoid code spans and fenced code. Add/remove and note-scoped rename execute by default; folder- or vault-wide rename defaults to dry_run.",
-  inputSchema: TagsInput,
+  description:
+    "List vault tags with counts, add/remove frontmatter tags on one note, or rename a tag across a note/folder/vault. Inline changes avoid code spans and fenced code. Add/remove and note-scoped rename execute by default; folder- or vault-wide rename defaults to dry_run.",
+  inputSchema: TagsInput
 };
 
 export async function handleTags(ctx: ToolContext, input: TagsInput) {
@@ -144,7 +152,7 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
       overwrite: true,
       expectedHash: input.expected_hash,
       dryRun,
-      existing,
+      existing
     });
     return { tags: extractTags(updated), ...result };
   }
@@ -154,7 +162,9 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
     ? { paths: [ctx.policy.assertRead(notePath)], total: 1, truncated: false }
     : await listMarkdownPaths(ctx, folderPath, { limit: input.max_notes });
   const bulk = await ctx.client.post("/api/bulk/read", { paths: listed.paths });
-  const readable = (Array.isArray(bulk?.results) ? bulk.results : []).filter((item: any) => typeof item.content === "string");
+  const readable = (Array.isArray(bulk?.results) ? bulk.results : []).filter(
+    (item: any) => typeof item.content === "string"
+  );
 
   if (input.action === "list") {
     const counts = new Map<string, { tag: string; notes: number; frontmatter: number; inline: number }>();
@@ -173,7 +183,7 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
       path: input.path,
       scanned: readable.length,
       scanTruncated: listed.truncated,
-      tags: [...counts.values()].sort((a, b) => b.notes - a.notes || a.tag.localeCompare(b.tag)),
+      tags: [...counts.values()].sort((a, b) => b.notes - a.notes || a.tag.localeCompare(b.tag))
     };
   }
 
@@ -181,7 +191,7 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
   const newTag = normalizeTag(input.new_tag);
   const dryRun = resolveTagsDryRun(input);
   const candidates = readable.filter((item: any) =>
-    extractTags(item.content).all.some((tag) => tag.toLocaleLowerCase() === oldTag.toLocaleLowerCase()),
+    extractTags(item.content).all.some((tag) => tag.toLocaleLowerCase() === oldTag.toLocaleLowerCase())
   );
   const changes = await runBounded(candidates, 4, async (item: any) => {
     const existing = await readNote(ctx, item.path);
@@ -190,7 +200,7 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
     let body = split.body;
     if (input.locations !== "inline") {
       data.tags = frontmatterTags(data.tags).map((tag) =>
-        tag.toLocaleLowerCase() === oldTag.toLocaleLowerCase() ? newTag : tag,
+        tag.toLocaleLowerCase() === oldTag.toLocaleLowerCase() ? newTag : tag
       );
       data.tags = [...new Set(data.tags as string[])].sort();
       if ((data.tags as string[]).length === 0) delete data.tags;
@@ -202,7 +212,7 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
     return writeNoteContent(ctx, item.path, updated, {
       overwrite: true,
       dryRun,
-      existing,
+      existing
     });
   });
   return {
@@ -214,7 +224,9 @@ export async function handleTags(ctx: ToolContext, input: TagsInput) {
     scanTruncated: listed.truncated,
     succeeded: changes.filter((change) => change.ok).length,
     failed: changes.filter((change) => !change.ok).length,
-    results: changes.map((change) => change.ok ? change.result : { path: (change.item as any).path, error: change.error }),
+    results: changes.map((change) =>
+      change.ok ? change.result : { path: (change.item as any).path, error: change.error }
+    )
   };
 }
 

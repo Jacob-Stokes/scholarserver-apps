@@ -66,11 +66,23 @@ export async function initializeCouchDb({ internalUrl, username, password }) {
     "Content-Type": "application/json"
   };
   await couchRequest("CouchDB startup", `${base}/_up`, { method: "GET", headers });
-  await couchRequest("single-node setup", `${base}/_cluster_setup`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ action: "enable_single_node", username, password, bind_address: "0.0.0.0", port: 5984, singlenode: true })
-  }, (response, text) => response.ok || ([400, 409].includes(response.status) && /already|finished/i.test(text)));
+  await couchRequest(
+    "single-node setup",
+    `${base}/_cluster_setup`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        action: "enable_single_node",
+        username,
+        password,
+        bind_address: "0.0.0.0",
+        port: 5984,
+        singlenode: true
+      })
+    },
+    (response, text) => response.ok || ([400, 409].includes(response.status) && /already|finished/i.test(text))
+  );
   const settings = [
     ["chttpd/require_valid_user", '"true"'],
     ["chttpd_auth/require_valid_user", '"true"'],
@@ -83,10 +95,19 @@ export async function initializeCouchDb({ internalUrl, username, password }) {
     ["cors/origins", JSON.stringify(DEFAULT_ORIGINS)]
   ];
   for (const [key, body] of settings) {
-    await couchRequest("CouchDB configuration", `${base}/_node/_local/_config/${key}`, { method: "PUT", headers, body });
+    await couchRequest("CouchDB configuration", `${base}/_node/_local/_config/${key}`, {
+      method: "PUT",
+      headers,
+      body
+    });
   }
   for (const database of ["_users", "_replicator", "_global_changes"]) {
-    await couchRequest("CouchDB system database creation", `${base}/${database}`, { method: "PUT", headers }, (response) => response.ok || response.status === 412);
+    await couchRequest(
+      "CouchDB system database creation",
+      `${base}/${database}`,
+      { method: "PUT", headers },
+      (response) => response.ok || response.status === 412
+    );
   }
 }
 
@@ -103,12 +124,22 @@ export async function provisionCouchDb({ internalUrl, username, password, databa
     "Content-Type": "application/json"
   };
   const userId = `org.couchdb.user:${client}`;
-  await couchRequest("vault account creation", `${base}/_users/${encodeURIComponent(userId)}`, {
-    method: "PUT",
-    headers,
-    body: JSON.stringify({ _id: userId, name: client, roles: [], type: "user", password: clientPassword })
-  }, (response) => response.ok || response.status === 409);
-  await couchRequest("vault database creation", `${base}/${encodeURIComponent(db)}`, { method: "PUT", headers }, (response) => response.ok || response.status === 412);
+  await couchRequest(
+    "vault account creation",
+    `${base}/_users/${encodeURIComponent(userId)}`,
+    {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ _id: userId, name: client, roles: [], type: "user", password: clientPassword })
+    },
+    (response) => response.ok || response.status === 409
+  );
+  await couchRequest(
+    "vault database creation",
+    `${base}/${encodeURIComponent(db)}`,
+    { method: "PUT", headers },
+    (response) => response.ok || response.status === 412
+  );
   await couchRequest("vault database permissions", `${base}/${encodeURIComponent(db)}/_security`, {
     method: "PUT",
     headers,
@@ -123,7 +154,14 @@ export async function provisionCouchDb({ internalUrl, username, password, databa
   });
 }
 
-export function createScholarServerLiveSyncSettings({ url, username, password, database, vaultPassphrase, requestApi = false }) {
+export function createScholarServerLiveSyncSettings({
+  url,
+  username,
+  password,
+  database,
+  vaultPassphrase,
+  requestApi = false
+}) {
   const settings = createNewVaultSettings();
   Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED);
   applyScholarServerLiveSyncDefaults(settings);
@@ -139,11 +177,28 @@ export function createScholarServerLiveSyncSettings({ url, username, password, d
   return settings;
 }
 
-export async function generateSetupUri({ url, username, password, database, vaultPassphrase, requestApi = false, setupPassphrase = generateSecret() }) {
-  const settings = createScholarServerLiveSyncSettings({ url, username, password, database, vaultPassphrase, requestApi });
-  const setupURI = await encodeSettingsToSetupURI(settings, setupPassphrase, [
-    "pluginSyncExtendedSetting",
-    "doNotUseFixedRevisionForChunks"
-  ], true);
+export async function generateSetupUri({
+  url,
+  username,
+  password,
+  database,
+  vaultPassphrase,
+  requestApi = false,
+  setupPassphrase = generateSecret()
+}) {
+  const settings = createScholarServerLiveSyncSettings({
+    url,
+    username,
+    password,
+    database,
+    vaultPassphrase,
+    requestApi
+  });
+  const setupURI = await encodeSettingsToSetupURI(
+    settings,
+    setupPassphrase,
+    ["pluginSyncExtendedSetting", "doNotUseFixedRevisionForChunks"],
+    true
+  );
   return { setupURI: setupURI.trim(), setupPassphrase };
 }

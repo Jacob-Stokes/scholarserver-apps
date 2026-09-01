@@ -6,3 +6,5 @@ catalog/dist/
 *.tgz
 .env
 *.local
+__pycache__/
+*.py[cod]

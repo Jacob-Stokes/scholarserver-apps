@@ -6,9 +6,20 @@ import { runBounded } from "../zotero-client.js";
 // common ones for agent UX. Less-common types can still be used via a
 // freeform string in custom payloads.
 const CommonItemType = z.enum([
-  "journalArticle", "book", "bookSection", "conferencePaper",
-  "thesis", "webpage", "report", "preprint", "magazineArticle",
-  "newspaperArticle", "blogPost", "presentation", "document", "note",
+  "journalArticle",
+  "book",
+  "bookSection",
+  "conferencePaper",
+  "thesis",
+  "webpage",
+  "report",
+  "preprint",
+  "magazineArticle",
+  "newspaperArticle",
+  "blogPost",
+  "presentation",
+  "document",
+  "note"
 ]);
 
 export const ITEMS_TOOL = {
@@ -21,15 +32,18 @@ export const ITEMS_TOOL = {
     "Tag ops: add_tags / remove_tags (single) + bulk_tag_add / bulk_tag_remove (many items, same tags)",
     "Collection ops: add_to_collection / remove_from_collection / move_to_collection (single) + bulk_move_to_collection (many)",
     "Updates accept both schema'd fields (title, creators, DOI, tags, collections, etc.) AND arbitrary extras via `extra_fields` (for type-specific fields like ISBN, pages, publisher, volume, issue).",
-    "Item keys are 8 chars. Versions are per-item monotonic counters for optimistic concurrency.",
-  ].join(" "),
+    "Item keys are 8 chars. Versions are per-item monotonic counters for optimistic concurrency."
+  ].join(" ")
 } as const;
 
 const Creator = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  name: z.string().optional().describe("For single-name entities (e.g. organizations) use `name` instead of first/last."),
-  creatorType: z.string().default("author").describe("e.g. 'author', 'editor', 'translator'"),
+  name: z
+    .string()
+    .optional()
+    .describe("For single-name entities (e.g. organizations) use `name` instead of first/last."),
+  creatorType: z.string().default("author").describe("e.g. 'author', 'editor', 'translator'")
 });
 
 const ItemSpec = z.object({
@@ -43,13 +57,18 @@ const ItemSpec = z.object({
   url: z.string().url().optional(),
   tags: z.array(z.string()).optional().describe("Tag names; Zotero creates them on demand."),
   collections: z.array(z.string()).optional().describe("Array of collection keys to assign."),
-  extra: z.string().optional().describe("Free-form notes field (used for Citation Key, PMID, arXiv ID etc.)."),
+  extra: z.string().optional().describe("Free-form notes field (used for Citation Key, PMID, arXiv ID etc.).")
 });
 
 // For partial updates — all base fields optional plus a catch-all for
 // item-type-specific fields (ISBN, pages, volume, publisher, etc.).
 const FieldsPatch = ItemSpec.partial().extend({
-  extra_fields: z.record(z.any()).optional().describe("Any Zotero field not in the base schema (ISBN, volume, issue, pages, publisher, journalAbbreviation, etc.). Passed straight through to the API."),
+  extra_fields: z
+    .record(z.any())
+    .optional()
+    .describe(
+      "Any Zotero field not in the base schema (ISBN, volume, issue, pages, publisher, journalAbbreviation, etc.). Passed straight through to the API."
+    )
 });
 
 export const ItemsInput = z.discriminatedUnion("action", [
@@ -62,14 +81,14 @@ export const ItemsInput = z.discriminatedUnion("action", [
     tag: z.string().optional().describe("Restrict to items with this tag."),
     collection: z.string().optional().describe("Restrict to a collection key."),
     limit: z.number().int().min(1).max(100).default(25),
-    start: z.number().int().min(0).default(0),
+    start: z.number().int().min(0).default(0)
   }),
   z.object({
     action: z.literal("list"),
     limit: z.number().int().min(1).max(100).default(25),
     start: z.number().int().min(0).default(0),
     sort: z.string().optional().describe("e.g. 'dateAdded', 'title', 'creator'"),
-    direction: z.enum(["asc", "desc"]).default("desc"),
+    direction: z.enum(["asc", "desc"]).default("desc")
   }),
   z.object({
     action: z.literal("top_level"),
@@ -77,86 +96,97 @@ export const ItemsInput = z.discriminatedUnion("action", [
     start: z.number().int().min(0).default(0),
     item_type: CommonItemType.or(z.string()).optional(),
     sort: z.string().optional(),
-    direction: z.enum(["asc", "desc"]).default("desc"),
+    direction: z.enum(["asc", "desc"]).default("desc")
   }),
   z.object({
     action: z.literal("get"),
-    key: z.string().length(8),
+    key: z.string().length(8)
   }),
   // ---- Write single ----
   z.object({
     action: z.literal("create"),
-    item: ItemSpec,
+    item: ItemSpec
   }),
   z.object({
     action: z.literal("bulk_create"),
-    items: z.array(ItemSpec).min(1).max(50),
+    items: z.array(ItemSpec).min(1).max(50)
   }),
   z.object({
     action: z.literal("update"),
     key: z.string().length(8),
     fields: FieldsPatch,
-    version: z.number().int().optional().describe("If-Unmodified-Since-Version for concurrency. Omit to force."),
+    version: z.number().int().optional().describe("If-Unmodified-Since-Version for concurrency. Omit to force.")
   }),
   z.object({
     action: z.literal("bulk_update"),
-    updates: z.array(z.object({
-      key: z.string().length(8),
-      fields: FieldsPatch,
-    })).min(1).max(50).describe("Each entry: {key, fields}. Zotero's POST /items accepts an array."),
+    updates: z
+      .array(
+        z.object({
+          key: z.string().length(8),
+          fields: FieldsPatch
+        })
+      )
+      .min(1)
+      .max(50)
+      .describe("Each entry: {key, fields}. Zotero's POST /items accepts an array.")
   }),
   z.object({
     action: z.literal("delete"),
     key: z.string().length(8),
-    version: z.number().int().optional(),
+    version: z.number().int().optional()
   }),
   z.object({
     action: z.literal("bulk_delete"),
-    keys: z.array(z.string().length(8)).min(1).max(50),
+    keys: z.array(z.string().length(8)).min(1).max(50)
   }),
   // ---- Tag mutations (per-item, convenience over update) ----
   z.object({
     action: z.literal("add_tags"),
     key: z.string().length(8),
-    tags: z.array(z.string()).min(1),
+    tags: z.array(z.string()).min(1)
   }),
   z.object({
     action: z.literal("remove_tags"),
     key: z.string().length(8),
-    tags: z.array(z.string()).min(1),
+    tags: z.array(z.string()).min(1)
   }),
   z.object({
     action: z.literal("bulk_tag_add"),
     keys: z.array(z.string().length(8)).min(1).max(50),
-    tags: z.array(z.string()).min(1).describe("Tags to add to EACH item (existing tags preserved)."),
+    tags: z.array(z.string()).min(1).describe("Tags to add to EACH item (existing tags preserved).")
   }),
   z.object({
     action: z.literal("bulk_tag_remove"),
     keys: z.array(z.string().length(8)).min(1).max(50),
-    tags: z.array(z.string()).min(1),
+    tags: z.array(z.string()).min(1)
   }),
   // ---- Collection operations ----
   z.object({
     action: z.literal("add_to_collection"),
     key: z.string().length(8),
-    collection_key: z.string().length(8),
+    collection_key: z.string().length(8)
   }),
   z.object({
     action: z.literal("remove_from_collection"),
     key: z.string().length(8),
-    collection_key: z.string().length(8),
+    collection_key: z.string().length(8)
   }),
   z.object({
     action: z.literal("move_to_collection"),
     key: z.string().length(8),
-    collection_key: z.string().length(8).describe("Destination. REPLACES all current collections with just this one."),
+    collection_key: z.string().length(8).describe("Destination. REPLACES all current collections with just this one.")
   }),
   z.object({
     action: z.literal("bulk_move_to_collection"),
     keys: z.array(z.string().length(8)).min(1).max(50),
     collection_key: z.string().length(8),
-    mode: z.enum(["replace", "add"]).default("add").describe("'add' = add items to the target collection, keep existing memberships. 'replace' = set each item's collection list to just [target]."),
-  }),
+    mode: z
+      .enum(["replace", "add"])
+      .default("add")
+      .describe(
+        "'add' = add items to the target collection, keep existing memberships. 'replace' = set each item's collection list to just [target]."
+      )
+  })
 ]);
 
 export async function handleItems(client: ZoteroClient, input: z.infer<typeof ItemsInput>) {
@@ -192,7 +222,7 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
       return {
         total,
         count: data.length,
-        items: data.map(compactItem),
+        items: data.map(compactItem)
       };
     }
 
@@ -224,7 +254,7 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
       // OR update — if a `key` is present, it's treated as an update.
       const payload = input.updates.map((u) => ({
         key: u.key,
-        ...buildUpdatePayload(u.fields),
+        ...buildUpdatePayload(u.fields)
       }));
       const { data } = await client.post(client.userPath("/items"), payload);
       return parseWriteResult(data);
@@ -239,10 +269,7 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
     case "bulk_delete": {
       // DELETE /items?itemKey=K1,K2,...  — up to 50 per call.
       const headers: Record<string, string> = { "If-Unmodified-Since-Version": "*" };
-      await client.delete(
-        client.userPath(`/items?itemKey=${input.keys.join(",")}`),
-        headers,
-      );
+      await client.delete(client.userPath(`/items?itemKey=${input.keys.join(",")}`), headers);
       return { deleted: input.keys.length, keys: input.keys };
     }
 
@@ -275,7 +302,7 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
       await client.patch(
         client.userPath(`/items/${input.key}`),
         { collections: next },
-        { "If-Unmodified-Since-Version": String(version) },
+        { "If-Unmodified-Since-Version": String(version) }
       );
       return { key: input.key, collections: next };
     }
@@ -286,7 +313,7 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
       await client.patch(
         client.userPath(`/items/${input.key}`),
         { collections: [input.collection_key] },
-        { "If-Unmodified-Since-Version": String(version) },
+        { "If-Unmodified-Since-Version": String(version) }
       );
       return { key: input.key, collections: [input.collection_key] };
     }
@@ -297,13 +324,16 @@ export async function handleItems(client: ZoteroClient, input: z.infer<typeof It
         const { data: item } = await client.get<any>(client.userPath(`/items/${k}`));
         const version = item?.version ?? item?.data?.version;
         const current: string[] = item?.data?.collections ?? [];
-        const next = mode === "replace"
-          ? [collection_key]
-          : (current.includes(collection_key) ? current : [...current, collection_key]);
+        const next =
+          mode === "replace"
+            ? [collection_key]
+            : current.includes(collection_key)
+              ? current
+              : [...current, collection_key];
         await client.patch(
           client.userPath(`/items/${k}`),
           { collections: next },
-          { "If-Unmodified-Since-Version": String(version) },
+          { "If-Unmodified-Since-Version": String(version) }
         );
         return { key: k, collections: next };
       });
@@ -322,7 +352,7 @@ async function mutateTags(
   client: ZoteroClient,
   key: string,
   tags: string[],
-  op: "add" | "remove",
+  op: "add" | "remove"
 ): Promise<{ key: string; tags: string[] }> {
   const { data: item } = await client.get<any>(client.userPath(`/items/${key}`));
   const version = item?.version ?? item?.data?.version;
@@ -339,7 +369,7 @@ async function mutateTags(
   await client.patch(
     client.userPath(`/items/${key}`),
     { tags: next },
-    { "If-Unmodified-Since-Version": String(version) },
+    { "If-Unmodified-Since-Version": String(version) }
   );
   return { key, tags: next.map((t) => t.tag) };
 }
@@ -353,16 +383,22 @@ function summarize(action: string, results: Array<{ ok: boolean; item: any; resu
     succeeded: ok.length,
     failed: bad.length,
     results: ok.map((r) => r.result),
-    failures: bad.map((r) => ({ item: r.item, error: r.error })),
+    failures: bad.map((r) => ({ item: r.item, error: r.error }))
   };
 }
 
 function buildItem(spec: z.infer<typeof ItemSpec>) {
   const payload: any = {
     itemType: spec.itemType,
-    title: spec.title,
+    title: spec.title
   };
-  if (spec.creators) payload.creators = spec.creators.map((c) => ({ creatorType: c.creatorType ?? "author", firstName: c.firstName, lastName: c.lastName, name: c.name }));
+  if (spec.creators)
+    payload.creators = spec.creators.map((c) => ({
+      creatorType: c.creatorType ?? "author",
+      firstName: c.firstName,
+      lastName: c.lastName,
+      name: c.name
+    }));
   if (spec.abstractNote !== undefined) payload.abstractNote = spec.abstractNote;
   if (spec.publicationTitle !== undefined) payload.publicationTitle = spec.publicationTitle;
   if (spec.date !== undefined) payload.date = spec.date;
@@ -379,7 +415,12 @@ function buildUpdatePayload(fields: z.infer<typeof FieldsPatch>): any {
   if (fields.itemType !== undefined) payload.itemType = fields.itemType;
   if (fields.title !== undefined) payload.title = fields.title;
   if (fields.creators !== undefined) {
-    payload.creators = fields.creators.map((c) => ({ creatorType: c.creatorType ?? "author", firstName: c.firstName, lastName: c.lastName, name: c.name }));
+    payload.creators = fields.creators.map((c) => ({
+      creatorType: c.creatorType ?? "author",
+      firstName: c.firstName,
+      lastName: c.lastName,
+      name: c.name
+    }));
   }
   if (fields.abstractNote !== undefined) payload.abstractNote = fields.abstractNote;
   if (fields.publicationTitle !== undefined) payload.publicationTitle = fields.publicationTitle;
@@ -409,7 +450,7 @@ function compactItem(item: any) {
     url: d.url,
     tags: (d.tags ?? []).map((t: any) => t.tag),
     collections: d.collections ?? [],
-    added: d.dateAdded,
+    added: d.dateAdded
   };
 }
 
@@ -419,7 +460,9 @@ function parseWriteResult(data: any) {
   return {
     succeeded: Object.keys(success).length,
     failed: Object.keys(failed).length,
-    keys: Object.values(success).map((v: any) => v?.data?.key).filter(Boolean),
-    failures: Object.values(failed),
+    keys: Object.values(success)
+      .map((v: any) => v?.data?.key)
+      .filter(Boolean),
+    failures: Object.values(failed)
   };
 }

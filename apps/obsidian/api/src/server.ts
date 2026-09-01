@@ -1,7 +1,7 @@
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
 import fs from "node:fs";
 import path from "node:path";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
 
 const app = new Hono();
 
@@ -18,8 +18,7 @@ app.use("*", async (c, next) => {
   if (!API_KEY) {
     return c.json({ error: "API_KEY not configured" }, 500);
   }
-  const key =
-    c.req.query("apiKey") || c.req.header("x-api-key") || "";
+  const key = c.req.query("apiKey") || c.req.header("x-api-key") || "";
   if (key !== API_KEY) {
     return c.json({ error: "Invalid API key" }, 401);
   }
@@ -35,11 +34,7 @@ function resolvePath(filePath: string): string | null {
   return resolved;
 }
 
-function walkDir(
-  dir: string,
-  base: string,
-  results: string[] = [],
-): string[] {
+function walkDir(dir: string, base: string, results: string[] = []): string[] {
   if (!fs.existsSync(dir)) return results;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     // Skip hidden files/dirs (.obsidian, .trash, etc.)
@@ -82,7 +77,7 @@ app.get("/files/*", (c) => {
     path: filePath,
     content,
     size: stat.size,
-    modified: stat.mtime.toISOString(),
+    modified: stat.mtime.toISOString()
   });
 });
 
@@ -138,9 +133,7 @@ app.get("/search", (c) => {
   const query = c.req.query("q");
   if (!query) return c.json({ error: "q param required" }, 400);
 
-  const files = walkDir(VAULT_PATH, "").filter((f) =>
-    f.endsWith(".md"),
-  );
+  const files = walkDir(VAULT_PATH, "").filter((f) => f.endsWith(".md"));
   const lower = query.toLowerCase();
   const results: Array<{
     path: string;
@@ -154,12 +147,10 @@ app.get("/search", (c) => {
     if (content.toLowerCase().includes(lower)) {
       // Return matching lines for context.
       const lines = content.split("\n");
-      const matching = lines.filter((l) =>
-        l.toLowerCase().includes(lower),
-      );
+      const matching = lines.filter((l) => l.toLowerCase().includes(lower));
       results.push({
         path: file,
-        matches: matching.slice(0, 5),
+        matches: matching.slice(0, 5)
       });
     }
   }
@@ -186,11 +177,7 @@ app.post("/daily/append", async (c) => {
 
   // If file doesn't exist, create with a header.
   if (!fs.existsSync(resolved)) {
-    fs.writeFileSync(
-      resolved,
-      `# ${today}\n\n${body.content}\n`,
-      "utf-8",
-    );
+    fs.writeFileSync(resolved, `# ${today}\n\n${body.content}\n`, "utf-8");
   } else {
     fs.appendFileSync(resolved, `\n${body.content}\n`, "utf-8");
   }

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ObsidianClient } from "../obsidian-client.js";
-import { ObsidianError, encodeVaultPath } from "../obsidian-client.js";
+import { encodeVaultPath, ObsidianError } from "../obsidian-client.js";
 
 export type ToolContext = {
   client: ObsidianClient;
@@ -33,8 +33,12 @@ function configuredPrefixes(name: string): string[] | null {
 }
 
 export class VaultPolicy {
-  private readPrefixes() { return configuredPrefixes("OBSIDIAN_READ_PATHS"); }
-  private writePrefixes() { return configuredPrefixes("OBSIDIAN_WRITE_PATHS"); }
+  private readPrefixes() {
+    return configuredPrefixes("OBSIDIAN_READ_PATHS");
+  }
+  private writePrefixes() {
+    return configuredPrefixes("OBSIDIAN_WRITE_PATHS");
+  }
 
   resolveDefaultPath(rawPath: string): string {
     const normalized = normalizeVaultPath(rawPath);
@@ -60,7 +64,12 @@ export class VaultPolicy {
   }
 
   canRead(rawPath: string): boolean {
-    try { this.assertRead(rawPath); return true; } catch { return false; }
+    try {
+      this.assertRead(rawPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   canSee(rawPath: string): boolean {
@@ -68,8 +77,12 @@ export class VaultPolicy {
       const normalized = normalizeVaultPath(rawPath);
       this.assertNotPrivate(normalized);
       const prefixes = this.readPrefixes();
-      return !prefixes || prefixes.some((prefix) =>
-        normalized === prefix || normalized.startsWith(`${prefix}/`) || prefix.startsWith(`${normalized}/`),
+      return (
+        !prefixes ||
+        prefixes.some(
+          (prefix) =>
+            normalized === prefix || normalized.startsWith(`${prefix}/`) || prefix.startsWith(`${normalized}/`)
+        )
       );
     } catch {
       return false;
@@ -91,14 +104,16 @@ export class VaultPolicy {
     return {
       readPaths: this.readPrefixes() ?? ["*"],
       writePaths: this.writePrefixes() ?? ["*"],
-      alwaysDenied: [".obsidian", ".trash"],
+      alwaysDenied: [".obsidian", ".trash"]
     };
   }
 
   private assertNotPrivate(normalized: string) {
     if (
-      normalized === ".obsidian" || normalized.startsWith(".obsidian/") ||
-      normalized === ".trash" || normalized.startsWith(".trash/")
+      normalized === ".obsidian" ||
+      normalized.startsWith(".obsidian/") ||
+      normalized === ".trash" ||
+      normalized.startsWith(".trash/")
     ) {
       throw new Error("access to private Obsidian folders is not exposed through the remote MCP");
     }
@@ -142,7 +157,7 @@ export async function readNote(ctx: ToolContext, rawPath: string): Promise<NoteS
     content,
     size: result?.size,
     modified: result?.modified,
-    hash: sha256(content),
+    hash: sha256(content)
   };
 }
 
@@ -159,7 +174,7 @@ export function assertExpectedHash(snapshot: NoteSnapshot | null, expectedHash?:
   if (!expectedHash) return;
   if (!snapshot || snapshot.hash !== expectedHash) {
     throw new Error(
-      `note changed since it was read (expected ${expectedHash}, current ${snapshot?.hash ?? "missing"}); read it again before writing`,
+      `note changed since it was read (expected ${expectedHash}, current ${snapshot?.hash ?? "missing"}); read it again before writing`
     );
   }
 }
@@ -173,7 +188,7 @@ export async function writeNoteContent(
     expectedHash?: string;
     dryRun?: boolean;
     existing?: NoteSnapshot | null;
-  } = {},
+  } = {}
 ) {
   const notePath = assertMarkdownPath(ctx.policy.assertWrite(rawPath));
   const existing = options.existing === undefined ? await readNoteIfExists(ctx, notePath) : options.existing;
@@ -190,7 +205,7 @@ export async function writeNoteContent(
       wouldChange: beforeHash !== afterHash,
       beforeHash,
       afterHash,
-      size: Buffer.byteLength(content),
+      size: Buffer.byteLength(content)
     };
   }
 
@@ -202,14 +217,14 @@ export async function writeNoteContent(
     beforeHash,
     hash: afterHash,
     size: Buffer.byteLength(content),
-    ...result,
+    ...result
   };
 }
 
 export async function listMarkdownPaths(
   ctx: ToolContext,
   rawPath = "",
-  options: { recursive?: boolean; maxDepth?: number; limit?: number } = {},
+  options: { recursive?: boolean; maxDepth?: number; limit?: number } = {}
 ): Promise<{ paths: string[]; total: number; truncated: boolean }> {
   const base = rawPath ? ctx.policy.assertBrowse(rawPath) : "";
   const params = new URLSearchParams({ ext: "md" });
@@ -221,7 +236,12 @@ export async function listMarkdownPaths(
     ? result.files.filter((candidate: unknown): candidate is string => typeof candidate === "string")
     : [];
   const allowed = all.filter((candidate: string) => {
-    try { ctx.policy.assertRead(candidate); return true; } catch { return false; }
+    try {
+      ctx.policy.assertRead(candidate);
+      return true;
+    } catch {
+      return false;
+    }
   });
   const limit = options.limit ?? 500;
   return { paths: allowed.slice(0, limit), total: allowed.length, truncated: allowed.length > limit };
@@ -230,7 +250,7 @@ export async function listMarkdownPaths(
 export async function runBounded<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T) => Promise<R>,
+  fn: (item: T) => Promise<R>
 ): Promise<Array<{ ok: boolean; item: T; result?: R; error?: string }>> {
   const output: Array<{ ok: boolean; item: T; result?: R; error?: string }> = [];
   let cursor = 0;

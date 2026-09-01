@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { lstat, mkdir, readdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { lstat, mkdir, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -16,7 +16,8 @@ let stateMutation = Promise.resolve();
 const definition = Object.freeze({
   id: "convert-zotero-pdfs",
   name: "Convert Zotero PDFs",
-  description: "Convert PDFs from Zotero's shared attachment folder to Markdown with Docling, then attach the result to the matching Zotero item.",
+  description:
+    "Convert PDFs from Zotero's shared attachment folder to Markdown with Docling, then attach the result to the matching Zotero item.",
   category: "Documents",
   keywords: ["PDF", "Markdown", "Docling", "attachments", "full text"],
   requires: ["org.scholarserver.docling"],
@@ -76,7 +77,13 @@ async function mutateState(mutator) {
 }
 
 function cleanRelativePath(value) {
-  const normalized = typeof value === "string" ? value.trim().replaceAll("\\", "/").replace(/^\/+|\/+$/g, "") : "";
+  const normalized =
+    typeof value === "string"
+      ? value
+          .trim()
+          .replaceAll("\\", "/")
+          .replace(/^\/+|\/+$/g, "")
+      : "";
   const parts = normalized ? normalized.split("/") : [];
   if (parts.some((part) => !part || part === "." || part === ".." || part.startsWith("."))) {
     throw new Error("The folder must stay inside shared storage and cannot include hidden folders");
@@ -99,10 +106,13 @@ export async function browseFolders(value = "") {
     if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new Error("The selected folder is unavailable");
   }
   const resolved = await realpath(current);
-  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) throw new Error("The selected folder leaves shared storage");
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`))
+    throw new Error("The selected folder leaves shared storage");
   const entries = await readdir(resolved, { withFileTypes: true });
   const folders = [];
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }))) {
+  for (const entry of entries.sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" })
+  )) {
     if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name.startsWith(".")) continue;
     const childRelative = relative ? `${relative}/${entry.name}` : entry.name;
     const child = path.join(resolved, entry.name);
@@ -117,14 +127,16 @@ export async function browseFolders(value = "") {
 }
 
 export function validateConfiguration(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Automation settings must be an object");
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Automation settings must be an object");
   const allowed = new Set(["folder", "limit", "ocr", "attachMarkdown"]);
   const unknown = Object.keys(value).find((key) => !allowed.has(key));
   if (unknown) throw new Error(`Unknown automation setting: ${unknown}`);
   const folder = cleanRelativePath(value.folder ?? "");
   const limit = Number(value.limit ?? 3);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("PDFs per run must be between 1 and 100");
-  if (typeof value.ocr !== "boolean" || typeof value.attachMarkdown !== "boolean") throw new Error("OCR and attachment settings must be true or false");
+  if (typeof value.ocr !== "boolean" || typeof value.attachMarkdown !== "boolean")
+    throw new Error("OCR and attachment settings must be true or false");
   return { folder, limit, ocr: value.ocr, attachMarkdown: value.attachMarkdown };
 }
 
@@ -137,25 +149,39 @@ async function jsonRequest(url, init = {}, timeoutMs = 120_000) {
 
 async function doclingInstance() {
   const overview = await jsonRequest(`${managerUrl}/api/v1/overview`, {}, 10_000);
-  const instance = overview.instances?.find((item) => item.workspaceId === workspaceId && item.packageId === "org.scholarserver.docling" && item.desiredState === "enabled" && item.observedState === "healthy");
+  const instance = overview.instances?.find(
+    (item) =>
+      item.workspaceId === workspaceId &&
+      item.packageId === "org.scholarserver.docling" &&
+      item.desiredState === "enabled" &&
+      item.observedState === "healthy"
+  );
   if (!instance) throw new Error("Install and start Docling before running this automation");
   return instance.id;
 }
 
 async function doclingAction(instanceId, action, input, timeoutMs = 120_000) {
-  return jsonRequest(`${managerUrl}/api/v1/instances/${encodeURIComponent(workspaceId)}/${encodeURIComponent(instanceId)}/actions/${encodeURIComponent(action)}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input)
-  }, timeoutMs);
+  return jsonRequest(
+    `${managerUrl}/api/v1/instances/${encodeURIComponent(workspaceId)}/${encodeURIComponent(instanceId)}/actions/${encodeURIComponent(action)}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input)
+    },
+    timeoutMs
+  );
 }
 
 async function zoteroPost(route, input, timeoutMs = 120_000) {
-  return jsonRequest(`${zoteroUrl}/api/${route}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input)
-  }, timeoutMs);
+  return jsonRequest(
+    `${zoteroUrl}/api/${route}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input)
+    },
+    timeoutMs
+  );
 }
 
 async function waitForJob(instanceId, jobId) {
@@ -171,14 +197,22 @@ async function waitForJob(instanceId, jobId) {
 
 async function execute(configuration) {
   const instanceId = await doclingInstance();
-  const discovered = await doclingAction(instanceId, "discover", { folder: configuration.folder, limit: configuration.limit }, 15 * 60_000);
+  const discovered = await doclingAction(
+    instanceId,
+    "discover",
+    { folder: configuration.folder, limit: configuration.limit },
+    15 * 60_000
+  );
   let matched = 0;
   let converted = 0;
   let attached = 0;
   let skipped = 0;
   for (const file of discovered.files ?? []) {
     const match = await zoteroPost("attachments/match", { sourcePath: file.path });
-    if (match.state !== "matched") { skipped += 1; continue; }
+    if (match.state !== "matched") {
+      skipped += 1;
+      continue;
+    }
     matched += 1;
     const job = await doclingAction(instanceId, "enqueue", {
       sourcePath: file.path,
@@ -212,14 +246,28 @@ async function startRun(trigger = "manual") {
   const { run, configuration } = await mutateState((state) => {
     const automation = state.automations[definition.id];
     if (!automation.active) throw new Error("Activate this automation before running it");
-    if (automation.runs.some((candidate) => candidate.state === "running")) throw new Error("This automation is already running");
-    const run = { id: randomUUID(), state: "running", trigger, startedAt: new Date().toISOString(), finishedAt: null, summary: null, error: null };
+    if (automation.runs.some((candidate) => candidate.state === "running"))
+      throw new Error("This automation is already running");
+    const run = {
+      id: randomUUID(),
+      state: "running",
+      trigger,
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      summary: null,
+      error: null
+    };
     automation.runs.unshift(run);
     return { run, configuration: { ...automation.configuration } };
   });
   void execute(configuration).then(
     (summary) => updateRun(run.id, { state: "succeeded", summary, finishedAt: new Date().toISOString() }),
-    (error) => updateRun(run.id, { state: "failed", error: error instanceof Error ? error.message : "Automation failed", finishedAt: new Date().toISOString() })
+    (error) =>
+      updateRun(run.id, {
+        state: "failed",
+        error: error instanceof Error ? error.message : "Automation failed",
+        finishedAt: new Date().toISOString()
+      })
   );
   return run;
 }
@@ -228,18 +276,27 @@ async function views() {
   const state = await loadState();
   const automation = state.automations[definition.id];
   let readiness = { ready: false, message: "Docling is not available" };
-  try { await doclingInstance(); readiness = { ready: true, message: "Zotero and Docling are ready" }; } catch (error) { readiness.message = error instanceof Error ? error.message : readiness.message; }
+  try {
+    await doclingInstance();
+    readiness = { ready: true, message: "Zotero and Docling are ready" };
+  } catch (error) {
+    readiness.message = error instanceof Error ? error.message : readiness.message;
+  }
   return [{ definition, configuration: automation, readiness }];
 }
 
 export function validateAutomationUpdate(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Automation update must be an object");
-  const unknown = Object.keys(input).find((key) => !["active", "enabled", "intervalMinutes", "configuration"].includes(key));
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw new Error("Automation update must be an object");
+  const unknown = Object.keys(input).find(
+    (key) => !["active", "enabled", "intervalMinutes", "configuration"].includes(key)
+  );
   if (unknown) throw new Error(`Unknown automation update: ${unknown}`);
   if (typeof input.active !== "boolean") throw new Error("Activation state must be true or false");
   if (typeof input.enabled !== "boolean") throw new Error("Schedule must be true or false");
   const intervalMinutes = Number(input.intervalMinutes);
-  if (!Number.isInteger(intervalMinutes) || intervalMinutes < 15 || intervalMinutes > 10080) throw new Error("Schedule interval must be between 15 minutes and one week");
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes < 15 || intervalMinutes > 10080)
+    throw new Error("Schedule interval must be between 15 minutes and one week");
   const configuration = validateConfiguration(input.configuration);
   return { active: input.active, enabled: input.active && input.enabled, intervalMinutes, configuration };
 }
@@ -283,7 +340,8 @@ function send(response, status, value) {
 
 async function requestBody(request) {
   const declared = Number(request.headers["content-length"] ?? 0);
-  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024) throw new Error("Request body is too large");
+  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024)
+    throw new Error("Request body is too large");
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
@@ -300,13 +358,21 @@ async function handler(request, response) {
   const url = new URL(request.url ?? "/", "http://localhost");
   try {
     if (request.method === "GET" && url.pathname === "/health") return send(response, 200, { status: "ok" });
-    if (request.method === "GET" && url.pathname === "/v1/automations") return send(response, 200, { automations: await views() });
-    if (request.method === "GET" && url.pathname === "/v1/folders") return send(response, 200, await browseFolders(url.searchParams.get("path") ?? ""));
-    if (request.method === "PUT" && url.pathname === `/v1/automations/${definition.id}`) return send(response, 200, await saveAutomation(await requestBody(request)));
-    if (request.method === "POST" && url.pathname === `/v1/automations/${definition.id}/runs`) { await requestBody(request); return send(response, 202, await startRun()); }
+    if (request.method === "GET" && url.pathname === "/v1/automations")
+      return send(response, 200, { automations: await views() });
+    if (request.method === "GET" && url.pathname === "/v1/folders")
+      return send(response, 200, await browseFolders(url.searchParams.get("path") ?? ""));
+    if (request.method === "PUT" && url.pathname === `/v1/automations/${definition.id}`)
+      return send(response, 200, await saveAutomation(await requestBody(request)));
+    if (request.method === "POST" && url.pathname === `/v1/automations/${definition.id}/runs`) {
+      await requestBody(request);
+      return send(response, 202, await startRun());
+    }
     return send(response, 404, { error: "Not found" });
   } catch (error) {
-    return send(response, 400, { error: (error instanceof Error ? error.message : "Automation request failed").slice(0, 1000) });
+    return send(response, 400, {
+      error: (error instanceof Error ? error.message : "Automation request failed").slice(0, 1000)
+    });
   }
 }
 
@@ -319,7 +385,11 @@ async function scheduler() {
       if (!automation.active || !automation.enabled || automation.runs.some((run) => run.state === "running")) continue;
       const latest = automation.runs[0];
       if (latest && Date.now() - new Date(latest.startedAt).getTime() < automation.intervalMinutes * 60_000) continue;
-      try { await doclingInstance(); } catch { continue; }
+      try {
+        await doclingInstance();
+      } catch {
+        continue;
+      }
       await startRun("scheduled");
     } catch {}
   }
@@ -327,7 +397,9 @@ async function scheduler() {
 
 export async function main() {
   await recoverInterruptedRuns();
-  createServer((request, response) => { void handler(request, response); }).listen(port, "0.0.0.0");
+  createServer((request, response) => {
+    void handler(request, response);
+  }).listen(port, "0.0.0.0");
   void scheduler();
 }
 

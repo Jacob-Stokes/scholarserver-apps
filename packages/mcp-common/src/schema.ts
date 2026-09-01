@@ -27,7 +27,7 @@ export function zodToJsonSchema(schema: z.ZodType): any {
     const discriminatorValues: string[] = [];
     const allProperties: Record<string, any> = {};
     for (const opt of def.options as z.ZodObject<any>[]) {
-      const shape = ((opt as any)._def.shape)();
+      const shape = (opt as any)._def.shape();
       for (const [k, v] of Object.entries(shape)) {
         if (k === discriminator) {
           const litDef = (v as any)._def;
@@ -43,13 +43,13 @@ export function zodToJsonSchema(schema: z.ZodType): any {
       type: "string",
       enum: discriminatorValues,
       description:
-        "Which operation to perform. Other fields are required/optional depending on the value chosen — see tool description.",
+        "Which operation to perform. Other fields are required/optional depending on the value chosen — see tool description."
     };
     return {
       type: "object",
       properties: allProperties,
       required: [discriminator],
-      additionalProperties: false,
+      additionalProperties: false
     };
   }
 

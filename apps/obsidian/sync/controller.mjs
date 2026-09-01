@@ -1,10 +1,16 @@
-import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { generateSecret, generateSetupUri, initializeCouchDb, normalizeCouchDbUrl, provisionCouchDb } from "./livesync-setup.mjs";
 import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
+import {
+  generateSecret,
+  generateSetupUri,
+  initializeCouchDb,
+  normalizeCouchDbUrl,
+  provisionCouchDb
+} from "./livesync-setup.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -21,7 +27,8 @@ const liveSyncWorkerStatusPath = path.join(liveSyncRuntimePath, "livesync-worker
 const liveSyncOnboardingPath = path.join(liveSyncRuntimePath, "livesync-onboarding.json");
 const uiPath = "/app/ui";
 const installedVariant = process.env.SCHOLARSERVER_VARIANT || "";
-const installedProfile = installedVariant === "obsidian-sync" ? "official" : installedVariant === "self-hosted-livesync" ? "livesync" : "none";
+const installedProfile =
+  installedVariant === "obsidian-sync" ? "official" : installedVariant === "self-hosted-livesync" ? "livesync" : "none";
 
 let syncProcess = null;
 let state = {
@@ -31,7 +38,7 @@ let state = {
   scopePath: "/",
   lastSyncAt: null,
   lastError: null,
-  workerRunning: false,
+  workerRunning: false
 };
 
 function publicState(value = state) {
@@ -51,7 +58,11 @@ async function updateStatus(patch = {}) {
 }
 
 async function readJson(file, fallback = null) {
-  try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; }
+  try {
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    return fallback;
+  }
 }
 
 async function ensureLiveSyncSecrets() {
@@ -68,7 +79,9 @@ async function ensureLiveSyncSecrets() {
     try {
       await file.writeFile(`COUCHDB_USER=${username}\nCOUCHDB_PASSWORD=${password}\n`);
       await file.sync();
-    } finally { await file.close(); }
+    } finally {
+      await file.close();
+    }
     return { username, password };
   }
   return ensureLiveSyncSecrets();
@@ -94,12 +107,16 @@ function runOb(args, { credentialKind = null } = {}) {
     const child = spawn("ob", args, {
       cwd: vaultPath,
       env: { HOME: "/home/obsidian", PATH: process.env.PATH },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"]
     });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) return resolve(stdout.trim());
@@ -138,7 +155,8 @@ async function connectVault(input) {
   if (state.profile === "livesync") throw new Error("Turn off Self-hosted LiveSync before connecting Obsidian Sync");
   if (typeof input.vault !== "string" || input.vault.length === 0) throw new Error("Remote vault is required");
   const setup = ["sync-setup", "--vault", input.vault, "--path", vaultPath, "--device-name", "ScholarServer", "--json"];
-  if (typeof input.encryptionPassword === "string" && input.encryptionPassword.length > 0) setup.push("--password", input.encryptionPassword);
+  if (typeof input.encryptionPassword === "string" && input.encryptionPassword.length > 0)
+    setup.push("--password", input.encryptionPassword);
   await runOb(setup, { credentialKind: "vault" });
 
   // An empty server replica must never upload before the first successful pull.
@@ -148,9 +166,21 @@ async function connectVault(input) {
   await runOb(["sync-config", "--path", vaultPath, "--mode", "bidirectional", "--json"]);
   const mcpScope = typeof input.scopePath === "string" && input.scopePath.trim() ? input.scopePath.trim() : "/";
   await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
-  await atomicJson(enrollmentPath, { profile: "official", remoteVault: input.vault, mode: "bidirectional", scopePath: mcpScope });
+  await atomicJson(enrollmentPath, {
+    profile: "official",
+    remoteVault: input.vault,
+    mode: "bidirectional",
+    scopePath: mcpScope
+  });
   startContinuousSync();
-  await updateStatus({ state: "ready", profile: "official", remoteVault: input.vault, scopePath: mcpScope, lastSyncAt: new Date().toISOString(), lastError: null });
+  await updateStatus({
+    state: "ready",
+    profile: "official",
+    remoteVault: input.vault,
+    scopePath: mcpScope,
+    lastSyncAt: new Date().toISOString(),
+    lastError: null
+  });
   return { ...state, workerRunning: true };
 }
 
@@ -159,7 +189,7 @@ function startContinuousSync() {
   syncProcess = spawn("ob", ["sync", "--path", vaultPath, "--continuous"], {
     cwd: vaultPath,
     env: { HOME: "/home/obsidian", PATH: process.env.PATH },
-    stdio: ["ignore", "inherit", "inherit"],
+    stdio: ["ignore", "inherit", "inherit"]
   });
   syncProcess.once("exit", (code) => {
     syncProcess = null;
@@ -192,7 +222,8 @@ async function selectProfile(input) {
 
 function normalizeScope(value) {
   const candidate = typeof value === "string" && value.trim() ? value.trim() : "/";
-  if (candidate.includes("..") || candidate.includes("\\") || candidate.startsWith("~")) throw new Error("Choose a folder inside the vault");
+  if (candidate.includes("..") || candidate.includes("\\") || candidate.startsWith("~"))
+    throw new Error("Choose a folder inside the vault");
   return candidate;
 }
 
@@ -205,7 +236,8 @@ async function configureLiveSync(input) {
     throw new Error("Choose private Tailscale or public HTTPS access");
   }
   const connectionUrl = normalizeCouchDbUrl(input.connectionUrl ?? input.publicUrl);
-  if (!connectionUrl.startsWith("https://")) throw new Error("LiveSync needs an https:// address so phones and computers can connect safely");
+  if (!connectionUrl.startsWith("https://"))
+    throw new Error("LiveSync needs an https:// address so phones and computers can connect safely");
   const connectionHost = new URL(connectionUrl).hostname;
   if (accessMethod === "tailscale" && !connectionHost.endsWith(".ts.net")) {
     throw new Error("The private LiveSync address must be a Tailscale .ts.net address");
@@ -248,11 +280,14 @@ async function configureLiveSync(input) {
   // The first Obsidian device must initialise the new remote database before
   // the empty server replica joins it. Starting both sides at once causes
   // LiveSync to engage its rebuild lock.
-  await atomicJson(liveSyncWorkerPath, prepareLiveSyncWorker({
-    revision,
-    setupURI: server.setupURI,
-    setupPassphrase: server.setupPassphrase
-  }));
+  await atomicJson(
+    liveSyncWorkerPath,
+    prepareLiveSyncWorker({
+      revision,
+      setupURI: server.setupURI,
+      setupPassphrase: server.setupPassphrase
+    })
+  );
   await atomicJson(liveSyncOnboardingPath, {
     revision,
     accessMethod,
@@ -264,13 +299,20 @@ async function configureLiveSync(input) {
   });
   await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
   await atomicJson(enrollmentPath, { profile: "livesync", database, accessMethod, connectionUrl, scopePath: mcpScope });
-  await updateStatus({ profile: "livesync", state: "livesync-device-setup", remoteVault: "Self-hosted LiveSync", scopePath: mcpScope, lastError: null });
+  await updateStatus({
+    profile: "livesync",
+    state: "livesync-device-setup",
+    remoteVault: "Self-hosted LiveSync",
+    scopePath: mcpScope,
+    lastError: null
+  });
   return statusWithPrivateOnboarding();
 }
 
 async function completeLiveSync(input) {
   if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync has not been prepared");
-  if (input.confirmedPluginConnected !== true) throw new Error("Confirm that the plugin connected successfully in Obsidian");
+  if (input.confirmedPluginConnected !== true)
+    throw new Error("Confirm that the plugin connected successfully in Obsidian");
   if (state.state === "livesync-server-joining") return statusWithPrivateOnboarding();
   const worker = await readJson(liveSyncWorkerPath, null);
   await atomicJson(liveSyncWorkerPath, activateLiveSyncWorker(worker, Date.now()));
@@ -287,16 +329,21 @@ async function refreshLiveSyncCompletion() {
     await updateStatus({ state: "ready", lastSyncAt: new Date().toISOString(), lastError: null });
     return;
   }
-  if ((worker?.state === "error" || worker?.state === "blocked") && worker.lastError && worker.lastError !== state.lastError) {
+  if (
+    (worker?.state === "error" || worker?.state === "blocked") &&
+    worker.lastError &&
+    worker.lastError !== state.lastError
+  ) {
     await updateStatus({ lastError: worker.lastError });
   }
 }
 
 async function statusWithPrivateOnboarding() {
   const worker = await readJson(liveSyncWorkerStatusPath, null);
-  const onboarding = state.profile === "livesync" && state.state === "livesync-device-setup"
-    ? await readJson(liveSyncOnboardingPath, null)
-    : null;
+  const onboarding =
+    state.profile === "livesync" && state.state === "livesync-device-setup"
+      ? await readJson(liveSyncOnboardingPath, null)
+      : null;
   return { ...publicState(state), liveSyncWorker: worker, liveSyncOnboarding: onboarding };
 }
 
@@ -304,7 +351,8 @@ async function action(request) {
   switch (request.action) {
     case "status": {
       await refreshLiveSyncCompletion();
-      if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync") return statusWithPrivateOnboarding();
+      if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync")
+        return statusWithPrivateOnboarding();
       if (state.profile === "none") return statusWithPrivateOnboarding();
       try {
         const vaults = await listRemoteVaults();
@@ -312,18 +360,25 @@ async function action(request) {
         if (state.state !== "vault-selection-required") {
           await updateStatus({ state: "vault-selection-required", lastError: null });
         }
-        return { ...await statusWithPrivateOnboarding(), vaults };
+        return { ...(await statusWithPrivateOnboarding()), vaults };
       } catch {
-        if (state.state !== "setup-required") await updateStatus({ state: "setup-required", profile: state.profile === "official" ? "official" : "none" });
+        if (state.state !== "setup-required")
+          await updateStatus({ state: "setup-required", profile: state.profile === "official" ? "official" : "none" });
         return statusWithPrivateOnboarding();
       }
     }
-    case "select-profile": return selectProfile(request.input ?? {});
-    case "login": return login(request.input ?? {});
-    case "connect-vault": return connectVault(request.input ?? {});
-    case "configure-livesync": return configureLiveSync(request.input ?? {});
-    case "complete-livesync": return completeLiveSync(request.input ?? {});
-    default: throw new Error("Unsupported onboarding action");
+    case "select-profile":
+      return selectProfile(request.input ?? {});
+    case "login":
+      return login(request.input ?? {});
+    case "connect-vault":
+      return connectVault(request.input ?? {});
+    case "configure-livesync":
+      return configureLiveSync(request.input ?? {});
+    case "complete-livesync":
+      return completeLiveSync(request.input ?? {});
+    default:
+      throw new Error("Unsupported onboarding action");
   }
 }
 
@@ -356,7 +411,13 @@ async function restore() {
       scopePath: enrollment.scopePath || "/"
     };
   } else if (enrollment) {
-    state = { ...state, profile: "official", state: "ready", remoteVault: enrollment.remoteVault, scopePath: enrollment.scopePath || "/" };
+    state = {
+      ...state,
+      profile: "official",
+      state: "ready",
+      remoteVault: enrollment.remoteVault,
+      scopePath: enrollment.scopePath || "/"
+    };
     startContinuousSync();
   }
   await updateStatus();
@@ -365,7 +426,10 @@ async function restore() {
 function headers(response, contentType = "application/json; charset=utf-8") {
   response.setHeader("Content-Type", contentType);
   response.setHeader("Cache-Control", "no-store");
-  response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+  response.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+  );
   response.setHeader("Referrer-Policy", "no-referrer");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("X-Frame-Options", "DENY");
@@ -381,7 +445,8 @@ function json(response, statusCode, value) {
 
 async function body(request) {
   const declared = Number(request.headers["content-length"] ?? 0);
-  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024) throw new Error("Request body is too large");
+  if (!Number.isInteger(declared) || declared < 0 || declared > 1024 * 1024)
+    throw new Error("Request body is too large");
   const chunks = [];
   let length = 0;
   for await (const chunk of request) {
@@ -395,36 +460,52 @@ async function body(request) {
 }
 
 const contentTypes = new Map([
-  [".css", "text/css; charset=utf-8"], [".html", "text/html; charset=utf-8"],
-  [".js", "text/javascript; charset=utf-8"], [".json", "application/json; charset=utf-8"],
-  [".svg", "image/svg+xml"], [".png", "image/png"], [".ico", "image/x-icon"],
+  [".css", "text/css; charset=utf-8"],
+  [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".svg", "image/svg+xml"],
+  [".png", "image/png"],
+  [".ico", "image/x-icon"]
 ]);
 
 async function sendStatic(requestPath, response) {
   const root = path.resolve(uiPath);
   let candidate = path.resolve(root, requestPath.replace(/^\/+/, ""));
-  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) return json(response, 404, { error: "Not found" });
-  try { if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html"); }
-  catch { candidate = path.join(root, "index.html"); }
+  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`))
+    return json(response, 404, { error: "Not found" });
+  try {
+    if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html");
+  } catch {
+    candidate = path.join(root, "index.html");
+  }
   try {
     const content = await readFile(candidate);
     response.statusCode = 200;
     headers(response, contentTypes.get(path.extname(candidate)) ?? "application/octet-stream");
     response.setHeader("Content-Length", content.length);
     response.end(content);
-  } catch { json(response, 503, { error: "Obsidian interface is unavailable" }); }
+  } catch {
+    json(response, 503, { error: "Obsidian interface is unavailable" });
+  }
 }
 
 async function handleHttp(request, response) {
   const url = new URL(request.url ?? "/", "http://localhost");
   try {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
-    if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await action({ action: "status" }));
-    if (request.method === "POST" && url.pathname === "/api/profile/select") return json(response, 200, await selectProfile(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/account/login") return json(response, 200, await login(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/vault/connect") return json(response, 200, await connectVault(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/livesync/configure") return json(response, 200, await configureLiveSync(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/livesync/complete") return json(response, 200, await completeLiveSync(await body(request)));
+    if (request.method === "GET" && url.pathname === "/api/status")
+      return json(response, 200, await action({ action: "status" }));
+    if (request.method === "POST" && url.pathname === "/api/profile/select")
+      return json(response, 200, await selectProfile(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/account/login")
+      return json(response, 200, await login(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/vault/connect")
+      return json(response, 200, await connectVault(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/livesync/configure")
+      return json(response, 200, await configureLiveSync(await body(request)));
+    if (request.method === "POST" && url.pathname === "/api/livesync/complete")
+      return json(response, 200, await completeLiveSync(await body(request)));
     if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
     return json(response, 404, { error: "Not found" });
   } catch (error) {
@@ -449,7 +530,9 @@ await initializeCouchDb({
   password: liveSyncCredentials.password
 });
 await restore();
-createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
+createServer((request, response) => {
+  void handleHttp(request, response);
+}).listen(8080, "0.0.0.0");
 
 for (;;) {
   const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
