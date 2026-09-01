@@ -110,11 +110,11 @@ export function App() {
   useEffect(() => {
     if (!status || setupInitialized.current) return;
     setupInitialized.current = true;
-    setSetupStage(status.state === "ready" || status.localApi === "authorized"
+    setSetupStage(status.state === "ready"
       ? "ready"
-      : status.storageMode
-        ? status.connectionMode === "online-library" ? "ready" : "authorization"
-        : status.accountConnected
+      : status.state === "authorization-required"
+        ? "authorization"
+        : status.state === "storage-required"
           ? "storage"
           : "account");
   }, [status]);

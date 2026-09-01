@@ -210,7 +210,7 @@ async function currentStatus(lastError = null) {
     let accountError = null;
     try { account = await inspectOnlineAccount(); }
     catch (error) { accountError = error instanceof Error ? error.message : "Could not reach Zotero"; }
-    const storageMode = onlineStorageModes.has(config?.storageMode) ? config.storageMode : null;
+    const storageMode = config?.mode === "online-library" && onlineStorageModes.has(config?.storageMode) ? config.storageMode : null;
     const state = !account ? "account-required" : !storageMode ? "storage-required" : "ready";
     const value = {
       state,
@@ -221,8 +221,8 @@ async function currentStatus(lastError = null) {
       localApi: "not-applicable",
       storageMode,
       accountConnected: Boolean(account),
-      userId: account?.userId ?? config?.userId ?? null,
-      username: account?.username ?? config?.username ?? null,
+      userId: account?.userId ?? (config?.mode === "online-library" ? config?.userId : null) ?? null,
+      username: account?.username ?? (config?.mode === "online-library" ? config?.username : null) ?? null,
       permissions: account?.permissions ?? null,
       downloadMode: storageMode === "zotero-storage" ? "on-demand" : null,
       groupFileSync: false,
@@ -263,11 +263,12 @@ async function currentStatus(lastError = null) {
       localApi = error instanceof Error && /HTTP 403/.test(error.message) ? "disabled" : "unavailable";
     }
   }
+  const storageMode = storageModes.has(config?.storageMode) ? config.storageMode : null;
   let state = "setup-required";
   if (desktop === "available" && engine && !engine.accountConnected) state = "account-required";
-  else if (desktop === "available" && engine?.accountConnected && !config?.storageMode) state = "storage-required";
-  else if (config?.storageMode && localApi === "authorized") state = "ready";
-  else if (config?.storageMode) state = "authorization-required";
+  else if (desktop === "available" && engine?.accountConnected && !storageMode) state = "storage-required";
+  else if (storageMode && localApi === "authorized") state = "ready";
+  else if (storageMode) state = "authorization-required";
   const value = {
     state,
     variant,
@@ -275,7 +276,7 @@ async function currentStatus(lastError = null) {
     desktop,
     version,
     localApi,
-    storageMode: config?.storageMode ?? null,
+    storageMode,
     accountConnected: engine?.accountConnected ?? false,
     userId: config?.userId ?? engine?.userId ?? null,
     username: engine?.username ?? null,
