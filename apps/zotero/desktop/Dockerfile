@@ -30,6 +30,7 @@ RUN apt-get update \
       libxt6t64 \
       novnc \
       openbox \
+      python3-minimal \
       tini \
       tigervnc-standalone-server \
       websockify \

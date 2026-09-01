@@ -185,6 +185,14 @@ async function currentStatus(lastError = null) {
   return value;
 }
 
+async function healthStatus() {
+  const engine = await callBridge("status", {}, 2_000);
+  if (!engine || typeof engine.accountConnected !== "boolean") {
+    throw new Error("The Zotero setup bridge is unavailable");
+  }
+  return { status: "ok" };
+}
+
 async function startAccountLink() {
   const result = await callBridge("account-start");
   await atomicJson(accountSessionPath, { sessionToken: result.sessionToken });
@@ -504,7 +512,7 @@ async function sendStatic(requestPath, response) {
 async function handleHttp(request, response) {
   const url = new URL(request.url ?? "/", "http://localhost");
   try {
-    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
+    if (request.method === "GET" && url.pathname === "/health") return json(response, 200, await healthStatus());
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
     if (request.method === "POST" && url.pathname === "/api/account/start") return json(response, 200, await startAccountLink());
     if (request.method === "POST" && url.pathname === "/api/account/complete") return json(response, 200, await completeAccountLink());

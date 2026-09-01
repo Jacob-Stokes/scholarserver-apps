@@ -26,6 +26,65 @@ for extension_id in setup-bridge@scholarserver.com zotmoov@wileyy.com; do
   cp "/opt/zotero/distribution/extensions/${extension_id}.xpi" "${profile}/extensions/${extension_id}.xpi"
 done
 
+# Zotero treats extensions copied into an existing profile as foreign sideloads
+# and disables them unless the profile opts into managed extensions. Both
+# ScholarServer's setup bridge and ZotMoov are part of this managed image, so
+# keep only those two known IDs enabled without changing any user-installed
+# plugins.
+cat > "${profile}/user.js" <<'EOF'
+user_pref("extensions.autoDisableScopes", 0);
+user_pref("extensions.enabledScopes", 15);
+EOF
+
+extensions_registry="${profile}/extensions.json"
+if [[ -f "${extensions_registry}" ]]; then
+  python3 - "${extensions_registry}" "${profile}/addonStartup.json.lz4" <<'PY'
+import json
+import os
+import sys
+import tempfile
+
+registry_path, startup_cache_path = sys.argv[1:]
+managed_ids = {"setup-bridge@scholarserver.com", "zotmoov@wileyy.com"}
+
+with open(registry_path, encoding="utf-8") as source:
+    registry = json.load(source)
+
+changed = False
+for addon in registry.get("addons", []):
+    if addon.get("id") not in managed_ids:
+        continue
+    desired = {
+        "active": True,
+        "seen": True,
+        "softDisabled": False,
+        "userDisabled": False,
+    }
+    for key, value in desired.items():
+        if addon.get(key) != value:
+            addon[key] = value
+            changed = True
+
+if changed:
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix="extensions.", suffix=".json", dir=os.path.dirname(registry_path)
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as destination:
+            json.dump(registry, destination, separators=(",", ":"))
+            destination.flush()
+            os.fsync(destination.fileno())
+        os.replace(temporary_path, registry_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.unlink(temporary_path)
+    try:
+        os.unlink(startup_cache_path)
+    except FileNotFoundError:
+        pass
+PY
+fi
+
 if [[ ! -e "${HOME}/Zotero" ]]; then
   ln -s /data "${HOME}/Zotero"
 fi

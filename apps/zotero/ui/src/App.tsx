@@ -132,6 +132,11 @@ export function App() {
   const connectAccount = async () => {
     setBusy(true); setError(null); setNotice(null);
     const popup = window.open("about:blank", "_blank");
+    if (popup) {
+      popup.document.title = "Opening Zotero sign-in…";
+      popup.document.body.style.cssText = "font: 16px system-ui; margin: 3rem; color: #1f2937";
+      popup.document.body.textContent = "Preparing your secure Zotero sign-in…";
+    }
     try {
       const result = await request<{ loginUrl: string }>("account/start", { method: "POST" });
       if (!result.loginUrl || new URL(result.loginUrl).protocol !== "https:") throw new Error("Zotero returned an invalid sign-in address");
