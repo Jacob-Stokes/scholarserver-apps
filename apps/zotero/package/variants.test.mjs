@@ -30,5 +30,6 @@ test("controller and MCP do not share the desktop network namespace", async () =
   assert.equal(compose.services["local-api-bridge"].network_mode, "service:desktop");
   assert.equal(manifest.endpoints.find((endpoint) => endpoint.id === "app-ui").service, "controller");
   assert.equal(manifest.endpoints.find((endpoint) => endpoint.id === "mcp").service, "mcp");
+  assert.equal(manifest.endpoints.find((endpoint) => endpoint.id === "mcp").gateway.hostname, "zotero-mcp");
   assert.deepEqual(compose.services.desktop.expose, ["3000"]);
 });
