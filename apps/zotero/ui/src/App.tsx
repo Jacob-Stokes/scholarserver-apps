@@ -148,6 +148,14 @@ export function App() {
     ? request<Status>("storage/webdav", { method: "POST", body: JSON.stringify({ url: webdavUrl, username: webdavUsername, password: webdavPassword, downloadMode, groupFileSync }) })
     : request<Status>("storage", { method: "POST", body: JSON.stringify({ storageMode, downloadMode, groupFileSync }) }),
   "Attachment storage settings were saved.", () => { setWebdavPassword(""); setSetupStage("authorization"); });
+  const openDesktopAndAuthorize = () => {
+    window.open(`${base}/endpoints/desktop/`, "_blank", "noopener,noreferrer");
+    void run(
+      () => request<Status>("authorize", { method: "POST" }),
+      "ScholarServer is authorized to use the Zotero local API.",
+      () => setSetupStage("ready")
+    );
+  };
   const ready = status?.state === "ready";
 
   return <div className="ss-app">
@@ -189,8 +197,8 @@ export function App() {
             : <div className="ss-callout ss-callout-warning"><strong>Attach External Storage first.</strong> Connect the same folder under ScholarServer Storage, install ZotMoov on each desktop that adds PDFs, and use matching relative paths. Linked files do not work in group libraries, Zotero Web Library, or Zotero mobile.</div> : null}
         </SetupPanel> : null}
 
-        {setupStage === "authorization" ? <SetupPanel stage={3} total={4} title="Authorize ScholarServer" description="Zotero asks once before ScholarServer can use its supported local API." back={() => setSetupStage("storage")} next={status.localApi === "authorized" ? () => setSetupStage("ready") : () => void run(() => request<Status>("authorize", { method: "POST" }), "ScholarServer is authorized to use the Zotero local API.", () => setSetupStage("ready"))} nextLabel={status.localApi === "authorized" ? "Finish setup" : "Authorize ScholarServer"} nextDisabled={!status.storageMode} busy={busy}>
-          <div className="ss-callout"><strong>One confirmation remains.</strong> Open the private Zotero desktop from the ScholarServer dashboard. Zotero displays the authorization request inside the desktop.</div>
+        {setupStage === "authorization" ? <SetupPanel stage={3} total={4} title="Authorize ScholarServer" description="Zotero asks once before ScholarServer can use its supported local API." back={() => setSetupStage("storage")} next={status.localApi === "authorized" ? () => setSetupStage("ready") : openDesktopAndAuthorize} nextLabel={status.localApi === "authorized" ? "Finish setup" : "Open Zotero and authorize"} nextDisabled={!status.storageMode} busy={busy}>
+          <div className="ss-callout ss-stack"><div><strong>One confirmation remains.</strong> ScholarServer opens the private Zotero desktop in a new tab. Approve the request shown inside Zotero.</div><div className="ss-form-actions"><a className="ss-button ss-button-secondary" href={`${base}/endpoints/desktop/`} target="_blank" rel="noreferrer">Open Zotero desktop</a></div></div>
           {status.localApi === "authorized" ? <div className="ss-alert ss-alert-success">ScholarServer is authorized.</div> : null}
         </SetupPanel> : null}
 
