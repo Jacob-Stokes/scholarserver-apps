@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.3
+packageVersion: 0.5.4
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -50,7 +50,7 @@ variants:
       - Gives approved AI tools access to citations, collections, tags, and notes
       - Can fetch Zotero Storage attachments when needed
     limitations:
-      - Does not include a browser-based Zotero desktop or desktop plugins
+      - Browser-based Zotero desktop or desktop plugins
       - WebDAV and linked-file contents are not available through the Zotero Web API
       - Server-side attachment automations require files stored in Zotero Storage
 resources:
