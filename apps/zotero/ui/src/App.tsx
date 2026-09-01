@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { AutomationsTab } from "./AutomationsTab";
 
 type Status = {
@@ -10,9 +11,16 @@ type Status = {
 };
 type Tab = "overview" | "attachments" | "automations" | "configuration";
 type StorageMode = "zotero-storage" | "webdav" | "linked-folder" | "server-only";
+type SetupStage = "account" | "storage" | "authorization" | "ready";
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "overview", label: "Overview" }, { id: "attachments", label: "Attachments" }, { id: "automations", label: "Automations" }, { id: "configuration", label: "Configuration" }
+];
+const setupStages: Array<{ id: SetupStage; label: string }> = [
+  { id: "account", label: "Account" },
+  { id: "storage", label: "Attachments" },
+  { id: "authorization", label: "Authorization" },
+  { id: "ready", label: "Ready" }
 ];
 const storageOptions: Array<{ value: StorageMode; title: string; detail: string }> = [
   { value: "zotero-storage", title: "Zotero Storage", detail: "The simplest option. Zotero synchronizes references and attachments." },
@@ -66,6 +74,8 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [setupStage, setSetupStage] = useState<SetupStage>("account");
+  const setupInitialized = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -79,6 +89,17 @@ export function App() {
   }, []);
 
   useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 5000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => {
+    if (!status || setupInitialized.current) return;
+    setupInitialized.current = true;
+    setSetupStage(status.state === "ready" || status.localApi === "authorized"
+      ? "ready"
+      : status.storageMode
+        ? "authorization"
+        : status.accountConnected
+          ? "storage"
+          : "account");
+  }, [status]);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
@@ -121,7 +142,7 @@ export function App() {
   const saveStorage = () => run(() => storageMode === "webdav"
     ? request<Status>("storage/webdav", { method: "POST", body: JSON.stringify({ url: webdavUrl, username: webdavUsername, password: webdavPassword, downloadMode, groupFileSync }) })
     : request<Status>("storage", { method: "POST", body: JSON.stringify({ storageMode, downloadMode, groupFileSync }) }),
-  "Attachment storage settings were saved.", () => setWebdavPassword(""));
+  "Attachment storage settings were saved.", () => { setWebdavPassword(""); setSetupStage("authorization"); });
   const ready = status?.state === "ready";
 
   return <div className="ss-app">
@@ -148,17 +169,30 @@ export function App() {
       {status && tab === "automations" ? <AutomationsTab base={base} request={request} setNotice={setNotice} setError={setError} /> : null}
 
       {status && tab === "configuration" ? <div className="ss-stack">
-        <section className="ss-card ss-stack"><div className="ss-toolbar"><div><h2>1. Zotero account</h2><p className="ss-card-description">Sign in on Zotero's website. ScholarServer never receives your Zotero password.</p></div>{status.accountConnected ? <span className="ss-badge ss-badge-success">Connected</span> : null}</div>{status.accountConnected ? <div className="ss-callout">Connected as <strong>{status.username ?? status.userId}</strong>. Zotero stores its own account token.</div> : <><div className="ss-form-actions"><button className="ss-button" disabled={busy || checkingAccount} onClick={() => void connectAccount()}>{busy || checkingAccount ? <span className="ss-spinner" /> : null}{checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}</button>{authorizationUrl ? <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">Open Zotero sign-in</a> : null}</div></>}</section>
-        <section className="ss-card ss-stack"><div><h2>2. Attachment storage</h2><p className="ss-card-description">Choose independently how the server obtains attachment files.</p></div><label className="ss-field">Storage profile<select className="ss-input" value={storageMode} onChange={(event) => { const next = event.target.value as StorageMode; setStorageMode(next); setGroupFileSync(next === "zotero-storage"); }} disabled={!status.accountConnected}>{storageOptions.map((option) => <option key={option.value} value={option.value}>{option.title}</option>)}</select><span className="ss-field-help ss-storage-description">{storageOptions.find((option) => option.value === storageMode)?.detail}</span></label>
+        <SetupProgress stages={setupStages} current={setupStage} />
+        {setupStage === "account" ? <SetupPanel stage={1} total={4} title="Connect your Zotero account" description="Sign in on Zotero's website. ScholarServer never receives your Zotero password." next={status.accountConnected ? () => setSetupStage("storage") : undefined} nextLabel="Choose attachment storage">
+          {status.accountConnected ? <div className="ss-callout">Connected as <strong>{status.username ?? status.userId}</strong>. Zotero stores its own account token.</div> : <div className="ss-form-actions"><button className="ss-button" disabled={busy || checkingAccount} onClick={() => void connectAccount()}>{busy || checkingAccount ? <span className="ss-spinner" /> : null}{checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}</button>{authorizationUrl ? <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">Open Zotero sign-in</a> : null}</div>}
+        </SetupPanel> : null}
+
+        {setupStage === "storage" ? <SetupPanel stage={2} total={4} title="Choose where attachments live" description="Your references always synchronize through Zotero. Choose separately how this server obtains PDFs and other files." back={() => setSetupStage("account")} next={() => void saveStorage()} nextLabel="Save and continue" nextDisabled={!status.accountConnected || (storageMode === "webdav" && (!webdavUrl || !webdavUsername || !webdavPassword))} busy={busy}>
+          <label className="ss-field">Storage profile<select className="ss-input" value={storageMode} onChange={(event) => { const next = event.target.value as StorageMode; setStorageMode(next); setGroupFileSync(next === "zotero-storage"); }}>{storageOptions.map((option) => <option key={option.value} value={option.value}>{option.title}</option>)}</select><span className="ss-field-help ss-storage-description">{storageOptions.find((option) => option.value === storageMode)?.detail}</span></label>
           {storageMode === "webdav" ? <><label className="ss-field">WebDAV URL<input className="ss-input" type="url" placeholder="https://dav.example.org/zotero" value={webdavUrl} onChange={(event) => setWebdavUrl(event.target.value)} /></label><label className="ss-field">WebDAV username<input className="ss-input" autoComplete="username" value={webdavUsername} onChange={(event) => setWebdavUsername(event.target.value)} /></label><label className="ss-field">WebDAV password <span className="ss-field-help">Sent directly to Zotero's credential store and discarded after configuration.</span><input className="ss-input" type="password" autoComplete="current-password" value={webdavPassword} onChange={(event) => setWebdavPassword(event.target.value)} /></label></> : null}
           {storageMode !== "server-only" && storageMode !== "linked-folder" ? <label className="ss-field">Download attachments<select className="ss-input" value={downloadMode} onChange={(event) => setDownloadMode(event.target.value)}><option value="on-demand">When opened — saves server disk space</option><option value="on-sync">During every sync — keeps a complete local copy</option></select></label> : null}
           {storageMode === "zotero-storage" || storageMode === "webdav" ? <label className="ss-check"><input type="checkbox" checked={groupFileSync} onChange={(event) => setGroupFileSync(event.target.checked)} /><span><strong>Synchronize group-library files with Zotero Storage</strong><small>WebDAV applies only to personal libraries; group files always use Zotero Storage.</small></span></label> : null}
           {storageMode === "linked-folder" ? status.storageMode === "linked-folder" && status.linkedFolderAutomation
             ? <div className="ss-callout"><strong>Shared storage is active.</strong> ZotMoov moves server-added PDFs into <code>{status.linkedFolder ?? "/linked"}</code>. Desktop computers that add PDFs need ZotMoov pointed at the same shared folder.</div>
             : <div className="ss-callout ss-callout-warning"><strong>Attach External Storage first.</strong> Connect the same folder under ScholarServer Storage, install ZotMoov on each desktop that adds PDFs, and use matching relative paths. Linked files do not work in group libraries, Zotero Web Library, or Zotero mobile.</div> : null}
-          <div><button className="ss-button" disabled={busy || !status.accountConnected || (storageMode === "webdav" && (!webdavUrl || !webdavUsername || !webdavPassword))} onClick={() => void saveStorage()}>{busy ? <span className="ss-spinner" /> : null}Save storage choice</button></div>
-        </section>
-        <section className="ss-card"><div className="ss-toolbar"><div><h2>3. Local authorization</h2><p className="ss-card-description">Open the private Zotero desktop from the ScholarServer dashboard. Zotero displays a one-time confirmation inside the desktop.</p></div>{status.localApi === "authorized" ? <span className="ss-badge ss-badge-success">Authorized</span> : <button className="ss-button" disabled={busy || !status.storageMode} onClick={() => void run(() => request<Status>("authorize", { method: "POST" }), "ScholarServer is authorized to use the Zotero local API.")}>{busy ? <span className="ss-spinner" /> : null}Authorize ScholarServer</button>}</div></section>
+        </SetupPanel> : null}
+
+        {setupStage === "authorization" ? <SetupPanel stage={3} total={4} title="Authorize ScholarServer" description="Zotero asks once before ScholarServer can use its supported local API." back={() => setSetupStage("storage")} next={status.localApi === "authorized" ? () => setSetupStage("ready") : () => void run(() => request<Status>("authorize", { method: "POST" }), "ScholarServer is authorized to use the Zotero local API.", () => setSetupStage("ready"))} nextLabel={status.localApi === "authorized" ? "Finish setup" : "Authorize ScholarServer"} nextDisabled={!status.storageMode} busy={busy}>
+          <div className="ss-callout"><strong>One confirmation remains.</strong> Open the private Zotero desktop from the ScholarServer dashboard. Zotero displays the authorization request inside the desktop.</div>
+          {status.localApi === "authorized" ? <div className="ss-alert ss-alert-success">ScholarServer is authorized.</div> : null}
+        </SetupPanel> : null}
+
+        {setupStage === "ready" ? <SetupPanel stage={4} total={4} title="Zotero is connected" description="Your library, attachment choice, and ScholarServer authorization are ready." back={() => setSetupStage("authorization")}>
+          <div className="ss-alert ss-alert-success">Setup is complete. You can synchronize Zotero and use approved AI tools from this server.</div>
+          <dl className="ss-details"><dt>Account</dt><dd>{status.username ?? status.userId ?? "Connected"}</dd><dt>Attachment storage</dt><dd>{storageName(status.storageMode)}</dd><dt>Local API</dt><dd>{status.localApi}</dd></dl>
+        </SetupPanel> : null}
       </div> : null}
     </main>
   </div>;
