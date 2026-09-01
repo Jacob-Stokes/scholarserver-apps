@@ -87,6 +87,18 @@ button, input, select, textarea { font: inherit; }
 .ss-muted { color: var(--muted-foreground); }
 .ss-code { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
 .ss-spinner { width: 1rem; height: 1rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: ss-spin .8s linear infinite; }
+.ss-setup-progress { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(7.5rem, 1fr); gap: .35rem; margin: 0 0 1rem; padding: .45rem; overflow-x: auto; list-style: none; border: 1px solid var(--border); border-radius: .75rem; background: color-mix(in srgb, var(--muted) 45%, transparent); }
+.ss-setup-stage { display: flex; min-width: 0; align-items: center; gap: .5rem; border-radius: .55rem; padding: .55rem .65rem; color: var(--muted-foreground); font-size: .75rem; white-space: nowrap; }
+.ss-setup-stage-active { background: var(--background); color: var(--primary); font-weight: 650; box-shadow: 0 1px 3px rgb(20 42 34 / 8%); }
+.ss-setup-stage-complete { color: #16613f; }
+.ss-setup-stage-number { display: grid; width: 1.55rem; height: 1.55rem; flex: 0 0 auto; place-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--background); font-size: .7rem; }
+.ss-setup-stage-complete .ss-setup-stage-number { border-color: #bce5cc; background: #effaf3; }
+.ss-setup-panel { width: min(42rem, 100%); margin: 0 auto; padding: 0; overflow: hidden; }
+.ss-setup-panel-header { padding: 1.5rem 1.5rem 1rem; }
+.ss-setup-panel-header h2 { margin-top: .75rem; font-size: 1.4rem; }
+.ss-setup-panel-body { display: grid; gap: 1rem; padding: .5rem 1.5rem 1.5rem; }
+.ss-setup-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--border); padding: 1rem 1.5rem; }
+.ss-setup-panel-actions { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; }
 .ss-spin-icon { animation: ss-spin .8s linear infinite; }
 .ss-dialog-overlay { position: fixed; inset: 0; z-index: 80; background: rgb(15 23 20 / 55%); backdrop-filter: blur(3px); animation: ss-fade-in .15s ease-out; }
 .ss-dialog-content { position: fixed; z-index: 81; top: 50%; left: 50%; width: min(42rem, calc(100vw - 2rem)); max-height: min(44rem, calc(100vh - 2rem)); transform: translate(-50%, -50%); overflow: hidden; border: 1px solid var(--border); border-radius: .9rem; background: var(--background); box-shadow: 0 24px 70px rgb(15 23 20 / 24%); animation: ss-dialog-in .18s ease-out; }
@@ -157,4 +169,7 @@ button, input, select, textarea { font: inherit; }
   .ss-section-heading { align-items: start; flex-direction: column; }
   .ss-dialog-footer { flex-direction: column-reverse; }
   .ss-dialog-footer .ss-button { width: 100%; }
+  .ss-setup-panel-footer { align-items: stretch; flex-direction: column-reverse; }
+  .ss-setup-panel-actions { align-items: stretch; flex-direction: column-reverse; }
+  .ss-setup-panel-footer .ss-button { width: 100%; }
 }
