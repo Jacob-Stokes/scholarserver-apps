@@ -66,7 +66,7 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:1864fceb90afb71735519b15fdc011d63b647593aea8ffcf2511c34e814069e1
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:10983b31dcba06364b42823151776a7b8eb9325af67d5a3c4219b4d71aaa4351
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:783532d5bf27cdba9e6ed7c5487420d7d9910068c6fed9ec9d9624e367610f2f
   - service: mcp
