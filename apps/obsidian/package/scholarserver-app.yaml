@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.4.5
+packageVersion: 0.4.6
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -150,7 +150,9 @@ presentation:
 lifecycle:
   supportsDisable: true
   removeDataDefault: false
-  rollback: backup-required
+  # This release changes package metadata only; its containers and data format
+  # are identical to 0.4.5, so the executor can restore that revision safely.
+  rollback: reversible
 onboarding:
   readyWhen: compose-health
   checklist:
