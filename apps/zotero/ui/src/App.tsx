@@ -37,6 +37,15 @@ function appBase(): string {
   return `${window.location.pathname.slice(0, start)}${marker}${instance}`;
 }
 const base = appBase();
+const desktopUrl = (() => {
+  const parameters = new URLSearchParams({
+    autoconnect: "1",
+    reconnect: "1",
+    resize: "remote",
+    path: `${base}/endpoints/desktop/websockify`.replace(/^\/+/, "")
+  });
+  return `${base}/endpoints/desktop/?${parameters}`;
+})();
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${base}/api/${url}`, {
@@ -149,7 +158,7 @@ export function App() {
     : request<Status>("storage", { method: "POST", body: JSON.stringify({ storageMode, downloadMode, groupFileSync }) }),
   "Attachment storage settings were saved.", () => { setWebdavPassword(""); setSetupStage("authorization"); });
   const openDesktopAndAuthorize = () => {
-    window.open(`${base}/endpoints/desktop/`, "_blank", "noopener,noreferrer");
+    window.open(desktopUrl, "_blank", "noopener,noreferrer");
     void run(
       () => request<Status>("authorize", { method: "POST" }),
       "ScholarServer is authorized to use the Zotero local API.",
@@ -198,7 +207,7 @@ export function App() {
         </SetupPanel> : null}
 
         {setupStage === "authorization" ? <SetupPanel stage={3} total={4} title="Authorize ScholarServer" description="Zotero asks once before ScholarServer can use its supported local API." back={() => setSetupStage("storage")} next={status.localApi === "authorized" ? () => setSetupStage("ready") : openDesktopAndAuthorize} nextLabel={status.localApi === "authorized" ? "Finish setup" : "Open Zotero and authorize"} nextDisabled={!status.storageMode} busy={busy}>
-          <div className="ss-callout ss-stack"><div><strong>One confirmation remains.</strong> ScholarServer opens the private Zotero desktop in a new tab. Approve the request shown inside Zotero.</div><div className="ss-form-actions"><a className="ss-button ss-button-secondary" href={`${base}/endpoints/desktop/`} target="_blank" rel="noreferrer">Open Zotero desktop</a></div></div>
+          <div className="ss-callout ss-stack"><div><strong>One confirmation remains.</strong> ScholarServer opens the private Zotero desktop in a new tab. Approve the request shown inside Zotero.</div><div className="ss-form-actions"><a className="ss-button ss-button-secondary" href={desktopUrl} target="_blank" rel="noreferrer">Open Zotero desktop</a></div></div>
           {status.localApi === "authorized" ? <div className="ss-alert ss-alert-success">ScholarServer is authorized.</div> : null}
         </SetupPanel> : null}
 
