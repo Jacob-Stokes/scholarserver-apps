@@ -32,6 +32,7 @@ build obsidian-livesync-couchdb apps/obsidian/livesync-couchdb/Dockerfile . scho
 build obsidian-livesync-worker apps/obsidian/livesync-worker/Dockerfile . scholarserver-obsidian-sync livesync-worker
 build zotero-desktop apps/zotero/desktop/Dockerfile apps/zotero/desktop
 build zotero-controller apps/zotero/controller/Dockerfile .
+build zotero-local-api-bridge apps/zotero/local-api-bridge/Dockerfile .
 build zotero-automations apps/zotero/automations/Dockerfile .
 build zotero-mcp apps/zotero/mcp/Dockerfile .
 build docling-app apps/docling/controller/Dockerfile .

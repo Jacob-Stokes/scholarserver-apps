@@ -1,6 +1,6 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, request as nodeHttpRequest } from "node:http";
 import { lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -14,6 +14,7 @@ const statusPath = path.join(runtimePath, "status.json");
 const serviceTokenPath = path.join(runtimePath, "service-token");
 const configurationPath = path.join(runtimePath, "configuration.json");
 const localApiKeyPath = path.join(runtimePath, "local-api-key");
+const localApiBridgeTokenPath = path.join(runtimePath, "local-api-bridge-token");
 const webApiKeyPath = path.join(runtimePath, "web-api-key");
 const accountSessionPath = path.join(runtimePath, "account-session.json");
 const bridgePath = path.join(runtimePath, "zotero-bridge");
@@ -21,8 +22,8 @@ const bridgeRequestsPath = path.join(bridgePath, "requests");
 const bridgeResponsesPath = path.join(bridgePath, "responses");
 const variant = process.env.SCHOLARSERVER_VARIANT ?? "complete-workspace";
 const onlineLibrary = variant === "online-library";
-const zoteroBaseUrl = process.env.ZOTERO_LOCAL_BASE_URL ?? "http://desktop:23119/api";
-const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://desktop:23119/connector/ping";
+const zoteroBaseUrl = process.env.ZOTERO_LOCAL_BASE_URL ?? "http://desktop:8082/api";
+const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://desktop:8082/connector/ping";
 const automationsBaseUrl = process.env.ZOTERO_AUTOMATIONS_URL ?? "http://automations:8081/v1";
 const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
@@ -65,6 +66,11 @@ async function configuration() {
 
 async function localApiKey() {
   try { return (await readFile(localApiKeyPath, "utf8")).trim(); }
+  catch { return ""; }
+}
+
+async function localApiBridgeToken() {
+  try { return (await readFile(localApiBridgeTokenPath, "utf8")).trim(); }
   catch { return ""; }
 }
 
@@ -155,6 +161,7 @@ async function updateConfiguration(values) {
 
 async function api(pathname, init = {}) {
   const key = await localApiKey();
+  const bridgeToken = await localApiBridgeToken();
   const method = (init.method ?? "GET").toUpperCase();
   const serverId = method === "GET" || method === "HEAD" ? null : await discoverServerId();
   const response = await fetch(`${zoteroBaseUrl}${pathname}`, {
@@ -163,6 +170,7 @@ async function api(pathname, init = {}) {
       Accept: "application/json",
       "Zotero-API-Version": "3",
       ...(key ? { "Zotero-API-Key": key } : {}),
+      ...(bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : {}),
       ...(serverId ? { "Zotero-Server-ID": serverId } : {}),
       ...(init.headers ?? {}),
     },
@@ -178,10 +186,12 @@ async function api(pathname, init = {}) {
 }
 
 async function discoverServerId() {
+  const bridgeToken = await localApiBridgeToken();
   const response = await fetch(`${zoteroBaseUrl}/`, {
     headers: {
       Accept: "application/json",
       "Zotero-API-Version": "3",
+      ...(bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : {}),
     },
     signal: AbortSignal.timeout(5_000),
   });
@@ -231,7 +241,11 @@ async function currentStatus(lastError = null) {
   let version = null;
   let engine = null;
   try {
-    const ping = await fetch(connectorPingUrl, { signal: AbortSignal.timeout(2_000) });
+    const bridgeToken = await localApiBridgeToken();
+    const ping = await fetch(connectorPingUrl, {
+      headers: bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : {},
+      signal: AbortSignal.timeout(2_000),
+    });
     if (ping.ok) {
       desktop = "available";
       version = ping.headers.get("x-zotero-version");
@@ -400,6 +414,7 @@ async function authorize() {
   const config = await configuration();
   if (!config?.userId) throw new Error("Configure the Zotero user ID before authorizing writes");
   const serverId = await discoverServerId();
+  const bridgeToken = await localApiBridgeToken();
   const response = await fetch(`${zoteroBaseUrl}/local/authorize`, {
     method: "POST",
     headers: {
@@ -407,6 +422,7 @@ async function authorize() {
       "Content-Type": "application/json",
       "Zotero-API-Version": "3",
       "Zotero-Server-ID": serverId,
+      ...(bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : {}),
     },
     body: JSON.stringify({ appName: "ScholarServer" }),
     signal: AbortSignal.timeout(240_000),
@@ -710,14 +726,79 @@ async function handleHttp(request, response) {
   }
 }
 
-await mkdir(requestsPath, { recursive: true });
-await mkdir(responsesPath, { recursive: true });
-await ensureRandomFile(serviceTokenPath);
-await currentStatus();
-createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
+const hopByHopHeaders = new Set([
+  "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+  "te", "trailer", "transfer-encoding", "upgrade",
+]);
 
-for (;;) {
-  const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
-  for (const file of files) await processRequest(file);
-  await new Promise((resolve) => setTimeout(resolve, 250));
+function bridgeTokenMatches(candidate, expected) {
+  const candidateBuffer = Buffer.from(candidate);
+  const expectedBuffer = Buffer.from(expected);
+  return candidateBuffer.length === expectedBuffer.length && timingSafeEqual(candidateBuffer, expectedBuffer);
+}
+
+async function handleLocalApiBridge(request, response) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  if (request.method === "GET" && url.pathname === "/health") {
+    return json(response, 200, { status: "ok" });
+  }
+  if (!(url.pathname === "/api" || url.pathname.startsWith("/api/") || url.pathname === "/connector/ping")) {
+    return json(response, 404, { error: "Not found" });
+  }
+  const expected = await localApiBridgeToken();
+  const suppliedHeader = request.headers["x-scholarserver-bridge"];
+  const supplied = Array.isArray(suppliedHeader) ? suppliedHeader[0] : suppliedHeader ?? "";
+  if (!expected || !bridgeTokenMatches(supplied, expected)) {
+    return json(response, 401, { error: "Unauthorized" });
+  }
+
+  const upstreamHeaders = {};
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (!hopByHopHeaders.has(name) && name !== "host" && name !== "x-scholarserver-bridge" && value !== undefined) {
+      upstreamHeaders[name] = value;
+    }
+  }
+  const upstreamRequest = nodeHttpRequest({
+    hostname: "127.0.0.1",
+    port: 23119,
+    path: `${url.pathname}${url.search}`,
+    method: request.method,
+    headers: upstreamHeaders,
+  }, (upstreamResponse) => {
+    response.statusCode = upstreamResponse.statusCode ?? 502;
+    for (const [name, value] of Object.entries(upstreamResponse.headers)) {
+      if (!hopByHopHeaders.has(name) && value !== undefined) response.setHeader(name, value);
+    }
+    response.setHeader("Cache-Control", "no-store");
+    upstreamResponse.pipe(response);
+  });
+  upstreamRequest.on("error", () => {
+    if (!response.headersSent) json(response, 502, { error: "Zotero local API is unavailable" });
+    else response.destroy();
+  });
+  request.on("aborted", () => upstreamRequest.destroy());
+  request.pipe(upstreamRequest);
+}
+
+if (process.argv.includes("--local-api-bridge")) {
+  await mkdir(runtimePath, { recursive: true });
+  await ensureRandomFile(localApiBridgeTokenPath);
+  createServer((request, response) => {
+    void handleLocalApiBridge(request, response).catch(() => {
+      if (!response.headersSent) json(response, 500, { error: "Local API bridge failed" });
+      else response.destroy();
+    });
+  }).listen(8082, "0.0.0.0");
+} else {
+  await mkdir(requestsPath, { recursive: true });
+  await mkdir(responsesPath, { recursive: true });
+  await ensureRandomFile(serviceTokenPath);
+  await currentStatus();
+  createServer((request, response) => { void handleHttp(request, response); }).listen(8080, "0.0.0.0");
+
+  for (;;) {
+    const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
+    for (const file of files) await processRequest(file);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
 }

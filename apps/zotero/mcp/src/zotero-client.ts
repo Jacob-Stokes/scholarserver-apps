@@ -24,11 +24,12 @@ export class ZoteroClient {
     return `/users/__scholarserver_user__${suffix.startsWith("/") ? suffix : "/" + suffix}`;
   }
 
-  private async serverId(baseUrl: string): Promise<string> {
+  private async serverId(baseUrl: string, headers: Record<string, string>): Promise<string> {
     const res = await fetch(`${baseUrl}/`, {
       headers: {
         Accept: "application/json",
         "Zotero-API-Version": "3",
+        ...headers,
       },
     });
     if (!res.ok) throw new ZoteroError("GET", "/", res.status, "Could not identify the running Zotero desktop");
@@ -43,11 +44,12 @@ export class ZoteroClient {
     const connection = typeof this.connection === "function" ? await this.connection() : this.connection;
     const baseUrl = connection.baseUrl.replace(/\/$/, "");
     const resolvedPath = path.replace("__scholarserver_user__", encodeURIComponent(String(connection.userId)));
-    const serverId = !connection.local || method === "GET" || method === "HEAD" ? null : await this.serverId(baseUrl);
+    const serverId = !connection.local || method === "GET" || method === "HEAD" ? null : await this.serverId(baseUrl, connection.headers ?? {});
     const res = await fetch(`${baseUrl}${resolvedPath}`, {
       method,
       headers: {
         ...(connection.token ? { Authorization: `Bearer ${connection.token}` } : {}),
+        ...(connection.headers ?? {}),
         "Zotero-API-Version": "3",
         ...(serverId ? { "Zotero-Server-ID": serverId } : {}),
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
@@ -80,6 +82,7 @@ export interface ZoteroConnection {
   userId: string | number;
   token?: string;
   local?: boolean;
+  headers?: Record<string, string>;
 }
 
 export async function runBounded<T, R>(

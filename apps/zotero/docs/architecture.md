@@ -4,18 +4,24 @@ ScholarServer offers two Zotero setup architectures.
 
 ## Complete Zotero workspace
 
-Zotero Desktop is the local library authority. The controller and MCP reach the
-Desktop service over the instance-private Docker network. Zotero's local API is never
-published to the host or the public edge.
+Zotero Desktop is the local library authority. Zotero deliberately binds its local API
+to loopback, so a minimal bridge shares the Desktop network namespace and relays only
+the supported `/api` and Connector ping routes. The controller and MCP authenticate to
+that bridge with a generated token held in the private runtime volume. Zotero's local
+API is never published to the host or exposed unauthenticated to another container.
 
 ```text
 authenticated noVNC UI ── Zotero Desktop ── Zotero/Zotero-WebDAV sync
                               │
-                         private:23119
+                       loopback:23119
+                              │
+                    token-protected bridge
                               │
                     ┌─────────┴─────────┐
                     │                   │
-               Zotero MCP     Zotero automation worker
+               Zotero MCP     Zotero controller
+                                        │
+                              Zotero automation worker
                                         │
                                   Docling service
 ```

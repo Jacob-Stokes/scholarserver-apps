@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.0
+packageVersion: 0.5.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -26,7 +26,7 @@ variants:
     name: Complete Zotero workspace
     description: Run Zotero privately on this server, with its browser desktop, plugins, attachment choices, AI tools, and optional automations.
     recommended: true
-    services: [desktop, controller, automations, mcp]
+    services: [desktop, local-api-bridge, controller, automations, mcp]
     data: [desktop-config, library, runtime, linked-files, automation-state, cloud-cache]
     resources:
       minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
@@ -68,6 +68,8 @@ images:
   - service: desktop
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:5541788986bc4bd429daa3232d0a603e7d086d306770188c69ab727b59d9c5c0
   - service: controller
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:cf001f388e81486e8f8a9d87637f99195290d3467569ff5d5f85c574d281f9c2
+  - service: local-api-bridge
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:cf001f388e81486e8f8a9d87637f99195290d3467569ff5d5f85c574d281f9c2
   - service: automations
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:b337562871b94b3d5193e5467d8d6c7fc5110410a5c0e46c1dc3d78415ac7492

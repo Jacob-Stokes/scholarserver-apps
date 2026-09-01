@@ -11,7 +11,7 @@ const PORT = parseInt(process.env.PORT || "7012", 10);
 const runtimePath = process.env.ZOTERO_RUNTIME_PATH || "/runtime";
 const variant = process.env.SCHOLARSERVER_VARIANT || "complete-workspace";
 const onlineLibrary = variant === "online-library";
-const ZOTERO_LOCAL_BASE_URL = process.env.ZOTERO_LOCAL_BASE_URL || "http://desktop:23119/api";
+const ZOTERO_LOCAL_BASE_URL = process.env.ZOTERO_LOCAL_BASE_URL || "http://desktop:8082/api";
 
 async function requiredFile(name: string): Promise<string> {
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -37,11 +37,13 @@ const client = new ZoteroClient(async () => {
   let token = "";
   try { token = (await readFile(`${runtimePath}/${onlineLibrary ? "web-api-key" : "local-api-key"}`, "utf8")).trim(); } catch {}
   if (onlineLibrary && !token) throw new Error("Zotero online-library setup is incomplete; connect the account in ScholarServer first");
+  const bridgeToken = onlineLibrary ? "" : await requiredFile("local-api-bridge-token");
   return {
     baseUrl: onlineLibrary ? "https://api.zotero.org" : ZOTERO_LOCAL_BASE_URL,
     userId: configuration.userId,
     token,
     local: !onlineLibrary,
+    headers: bridgeToken ? { "X-ScholarServer-Bridge": bridgeToken } : undefined,
   };
 });
 

@@ -8,8 +8,9 @@ This package provides two beginner-facing setup options:
 - **Online library only** runs just the first-party controller and MCP against Zotero
   Web API v3. It does not install Zotero Desktop or desktop plugins on the server.
 
-The complete workspace reaches Zotero's local API over its instance-private Docker
-network. Port 23119 is never published to the host or public edge.
+The complete workspace reaches Zotero's loopback-only API through a generated-token
+bridge on its instance-private Docker network. Port 23119 is never published to the
+host or public edge.
 
 For the complete workspace, Zotero's application page guides the user through:
 
