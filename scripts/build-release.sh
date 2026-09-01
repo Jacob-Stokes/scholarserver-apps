@@ -15,6 +15,12 @@ for manifest in apps/*/package/scholarserver-app.yaml; do
     echo "Refusing a release with placeholder image digests in $app_name" >&2
     exit 1
   fi
+  compose_images=$(sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$compose" | sort)
+  manifest_images=$(sed -n 's/^[[:space:]]*reference:[[:space:]]*//p' "$manifest" | sort)
+  if [ "$compose_images" != "$manifest_images" ]; then
+    echo "Refusing a release whose Compose and manifest image references differ in $app_name" >&2
+    exit 1
+  fi
 
   package_id=$(sed -n 's/^id: //p' "$manifest")
   package_version=$(sed -n 's/^packageVersion: //p' "$manifest")
