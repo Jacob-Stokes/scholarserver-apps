@@ -14,8 +14,8 @@ WORKDIR /app
 RUN apk add --no-cache tini
 COPY --chown=10001:10001 apps/zotero/controller/controller.mjs ./controller.mjs
 COPY --from=ui-build --chown=10001:10001 /source/apps/zotero/ui/dist /app/ui
-RUN mkdir -p /runtime /data /linked \
-    && chown -R 10001:10001 /runtime /data /linked
+RUN mkdir -p /runtime /data /linked /cache \
+    && chown -R 10001:10001 /runtime /data /linked /cache
 USER 10001:10001
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "controller.mjs"]

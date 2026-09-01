@@ -43,7 +43,7 @@ export class ZoteroClient {
     const connection = typeof this.connection === "function" ? await this.connection() : this.connection;
     const baseUrl = connection.baseUrl.replace(/\/$/, "");
     const resolvedPath = path.replace("__scholarserver_user__", encodeURIComponent(String(connection.userId)));
-    const serverId = method === "GET" || method === "HEAD" ? null : await this.serverId(baseUrl);
+    const serverId = !connection.local || method === "GET" || method === "HEAD" ? null : await this.serverId(baseUrl);
     const res = await fetch(`${baseUrl}${resolvedPath}`, {
       method,
       headers: {
@@ -79,6 +79,7 @@ export interface ZoteroConnection {
   baseUrl: string;
   userId: string | number;
   token?: string;
+  local?: boolean;
 }
 
 export async function runBounded<T, R>(

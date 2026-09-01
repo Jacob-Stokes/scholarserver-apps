@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "npm run build -w apps/docling/ui && npm run build -w apps/obsidian/ui && npm run build -w apps/zotero/ui && npm run build -w apps/obsidian/api && npm run build -w packages/mcp-common && npm run build -w apps/obsidian/mcp && npm run build -w apps/zotero/mcp",
-    "test": "npm run check:controller && node --test apps/obsidian/sync/livesync-lifecycle.test.mjs apps/obsidian/sync/livesync-setup.test.mjs apps/obsidian/livesync-worker/worker-state.test.mjs apps/zotero/automations/test_worker.mjs && npm run build -w packages/mcp-common && npm run test -w apps/obsidian/api && npm run test -w apps/obsidian/mcp && npm run test -w apps/zotero/mcp && python3 -m unittest discover -s apps/docling/controller -p 'test_*.py'",
+    "test": "npm run check:controller && node --test apps/obsidian/sync/livesync-lifecycle.test.mjs apps/obsidian/sync/livesync-setup.test.mjs apps/obsidian/livesync-worker/worker-state.test.mjs apps/zotero/automations/test_worker.mjs apps/zotero/package/variants.test.mjs && npm run build -w packages/mcp-common && npm run test -w apps/obsidian/api && npm run test -w apps/obsidian/mcp && npm run test -w apps/zotero/mcp && python3 -m unittest discover -s apps/docling/controller -p 'test_*.py'",
     "check:controller": "node --check apps/obsidian/sync/controller.mjs && node --check apps/obsidian/sync/livesync-setup.mjs && node --check apps/obsidian/sync/livesync-settings.mjs && node --check apps/obsidian/sync/livesync-lifecycle.mjs && node --check apps/obsidian/livesync-worker/worker.mjs && node --check apps/obsidian/livesync-worker/worker-state.mjs && node --check apps/zotero/controller/controller.mjs"
   },
   "engines": {

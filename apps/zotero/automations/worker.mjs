@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 const stateRoot = process.env.SCHOLARSERVER_AUTOMATION_STATE ?? "/state";
 const linkedRoot = process.env.SCHOLARSERVER_LINKED_ROOT ?? "/linked";
 const managerUrl = process.env.SCHOLARSERVER_MANAGER_URL ?? "http://manager:8080";
-const zoteroUrl = process.env.SCHOLARSERVER_ZOTERO_URL ?? "http://desktop:8080";
+const zoteroUrl = process.env.SCHOLARSERVER_ZOTERO_URL ?? "http://controller:8080";
 const workspaceId = process.env.SCHOLARSERVER_WORKSPACE_ID ?? "personal";
 const port = Number(process.env.SCHOLARSERVER_AUTOMATION_PORT ?? 8081);
 const statePath = path.join(stateRoot, "automations.json");

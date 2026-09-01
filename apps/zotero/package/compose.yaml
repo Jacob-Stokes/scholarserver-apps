@@ -13,7 +13,7 @@ services:
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
       - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked
-    expose: ["3000", "7012", "8080"]
+    expose: ["3000"]
     networks: [instance, egress, edge]
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:23119/connector/ping]
@@ -27,11 +27,15 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    network_mode: service:desktop
+    environment:
+      SCHOLARSERVER_VARIANT: ${SCHOLARSERVER_VARIANT}
     volumes:
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data:ro
       - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
+      - ${SCHOLARSERVER_DATA_CLOUD_CACHE}:/cache
+    expose: ["8080"]
+    networks: [instance, egress, edge]
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -67,11 +71,14 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    network_mode: service:desktop
+    environment:
+      SCHOLARSERVER_VARIANT: ${SCHOLARSERVER_VARIANT}
     volumes:
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
       - ${SCHOLARSERVER_DATA_LIBRARY}:/data:ro
       - ${SCHOLARSERVER_DATA_LINKED_FILES}:/linked:ro
+    expose: ["7012"]
+    networks: [instance, egress]
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:7012/health]
       interval: 10s

@@ -1,13 +1,17 @@
-# Zotero compatibility spike
+# Zotero architecture
 
-The first ScholarServer Zotero package uses Zotero Desktop as the local library
-authority. Its MCP and processor share the Desktop container's network namespace,
-so Zotero's localhost-only API on port 23119 remains localhost-only.
+ScholarServer offers two Zotero setup architectures.
+
+## Complete Zotero workspace
+
+Zotero Desktop is the local library authority. The controller and MCP reach the
+Desktop service over the instance-private Docker network. Zotero's local API is never
+published to the host or the public edge.
 
 ```text
 authenticated noVNC UI ── Zotero Desktop ── Zotero/Zotero-WebDAV sync
                               │
-                         localhost:23119
+                         private:23119
                               │
                     ┌─────────┴─────────┐
                     │                   │
@@ -41,6 +45,29 @@ Catalogue cards are searchable and filterable, expose activation and dependency
 state, and drill into package-owned detail routes. “Activated” means available for
 manual use; “scheduled” is a separate opt-in state.
 
+## Online library only
+
+The lightweight setup does not install the Desktop or automation-worker services.
+The first-party controller and MCP use Zotero Web API v3 over HTTPS.
+
+```text
+ScholarServer UI ── controller ── api.zotero.org
+                         │
+                    private runtime
+                         │
+                    Zotero MCP
+```
+
+The user creates a dedicated Zotero API key with explicit library, note, write, and
+group permissions. The controller validates the key against Zotero, stores it in the
+private runtime data slot, and never places it in Compose or an environment variable.
+
+This setup can work with citations, collections, tags and notes. It can also fetch
+stored attachments from Zotero Storage on demand into a private server cache. WebDAV
+and linked-file bytes are not exposed by the Zotero Web API, so those workflows require
+the complete workspace. The interface does not present desktop authorization, sync,
+WebDAV, linked-folder, or desktop-only automation controls in this mode.
+
 ## Storage adapters
 
 The processor presents two resolver families:
@@ -52,7 +79,7 @@ The processor presents two resolver families:
 Storage providers such as Google Drive, SMB, Syncthing, or rclone are not Zotero
 resolvers. They are ways to make the linked-folder capability available.
 
-## Spike acceptance criteria
+## Complete-workspace acceptance criteria
 
 1. Open Zotero Desktop through authenticated ScholarServer ingress.
 2. Sign in and synchronize a test item with a PDF.

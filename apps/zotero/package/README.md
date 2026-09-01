@@ -1,12 +1,17 @@
 # Zotero package
 
-This package provides a native browser-hosted Zotero 10 Desktop, a first-party MCP,
-and an attachment resolver. Zotero's localhost API is never published or placed on an
-ordinary Docker network. The controller and MCP join only the Desktop service's network
-namespace and reach it at `127.0.0.1:23119`.
+This package provides two beginner-facing setup options:
 
-After installation, Zotero's standalone ScholarServer application page guides
-the user through:
+- **Complete Zotero workspace** runs native browser-hosted Zotero 10 Desktop, its
+  setup bridge and ZotMoov, the first-party MCP, attachment resolver, and automation
+  worker.
+- **Online library only** runs just the first-party controller and MCP against Zotero
+  Web API v3. It does not install Zotero Desktop or desktop plugins on the server.
+
+The complete workspace reaches Zotero's local API over its instance-private Docker
+network. Port 23119 is never published to the host or public edge.
+
+For the complete workspace, Zotero's application page guides the user through:
 
 1. Connecting a Zotero account through Zotero's own browser authorization page.
 2. Selecting one storage mode:
@@ -23,20 +28,30 @@ password stay in Zotero's encrypted credential store inside its persistent profi
 Setup commands pass through a private, single-use filesystem bridge shared only by the
 Zotero engine and its controller; their request files are removed before processing.
 ScholarServer retains a Zotero-local API authorization key, which is unrelated to the
-user's zotero.org API key and is only usable against this local Desktop instance.
+user’s zotero.org API key and is only usable against this local Desktop instance.
+
+For Online library only, the page instead guides the user through:
+
+1. Creating a dedicated key in their Zotero account with clearly explained access.
+2. Connecting and validating that key without placing it in Compose.
+3. Choosing citation data only or Zotero Storage files on demand.
+
+WebDAV and linked-file contents require the complete workspace. Zotero Storage files
+can be fetched into the online setup's private cache when a tool requests them.
 
 The `resolve-attachment` diagnostic action asks Zotero for a supported local file URL,
 then verifies that the canonical file remains below `/data` or `/linked`. It never reads
 `zotero.sqlite` and never accepts an arbitrary filesystem path.
 
 The controller serves package-owned Overview, Attachments, Automations and
-Configuration tabs on port 8080 inside the Desktop network namespace. The
+Configuration tabs on port 8080. The
 Automations tab is a searchable catalogue of cards rather than one expanded
 workflow form. Each card can be activated independently and opens a stable
 detail route for configuration, scheduling, manual runs and history. Activation
 does not silently enable scheduling. Only the generic Manager proxy can reach
 that interface through the restricted `scholarserver-edge` network; neither it
-nor Zotero's localhost API has a published host port.
+nor Zotero's local API has a published host port. Online library only omits the
+desktop-specific Automations tab and presents Web API permissions instead.
 
 The Zotero stack also owns a small, unprivileged automation worker. Its first
 curated action discovers Zotero PDFs in the selected shared-storage folder,

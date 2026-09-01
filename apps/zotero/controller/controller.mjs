@@ -1,9 +1,11 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import { createServer } from "node:http";
 import { lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 const runtimePath = "/runtime";
 const requestsPath = path.join(runtimePath, "requests");
@@ -12,16 +14,22 @@ const statusPath = path.join(runtimePath, "status.json");
 const serviceTokenPath = path.join(runtimePath, "service-token");
 const configurationPath = path.join(runtimePath, "configuration.json");
 const localApiKeyPath = path.join(runtimePath, "local-api-key");
+const webApiKeyPath = path.join(runtimePath, "web-api-key");
 const accountSessionPath = path.join(runtimePath, "account-session.json");
 const bridgePath = path.join(runtimePath, "zotero-bridge");
 const bridgeRequestsPath = path.join(bridgePath, "requests");
 const bridgeResponsesPath = path.join(bridgePath, "responses");
-const zoteroBaseUrl = "http://127.0.0.1:23119/api";
-const connectorPingUrl = "http://127.0.0.1:23119/connector/ping";
-const automationsBaseUrl = "http://automations:8081/v1";
+const variant = process.env.SCHOLARSERVER_VARIANT ?? "complete-workspace";
+const onlineLibrary = variant === "online-library";
+const zoteroBaseUrl = process.env.ZOTERO_LOCAL_BASE_URL ?? "http://desktop:23119/api";
+const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://desktop:23119/connector/ping";
+const automationsBaseUrl = process.env.ZOTERO_AUTOMATIONS_URL ?? "http://automations:8081/v1";
+const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
+const onlineStorageModes = new Set(["metadata-only", "zotero-storage"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
+let onlineAccountCache = { expiresAt: 0, value: null };
 
 async function atomicWrite(filePath, content, mode = 0o600) {
   const temporary = `${filePath}.${process.pid}.tmp`;
@@ -58,6 +66,57 @@ async function configuration() {
 async function localApiKey() {
   try { return (await readFile(localApiKeyPath, "utf8")).trim(); }
   catch { return ""; }
+}
+
+async function webApiKey() {
+  try { return (await readFile(webApiKeyPath, "utf8")).trim(); }
+  catch { return ""; }
+}
+
+async function onlineApi(pathname, init = {}) {
+  const key = await webApiKey();
+  if (!key) throw new Error("Connect a Zotero online library first");
+  const response = await fetch(`${zoteroWebApiUrl}${pathname}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      "Zotero-API-Version": "3",
+      "Zotero-API-Key": key,
+      ...(init.headers ?? {}),
+    },
+    signal: init.signal ?? AbortSignal.timeout(30_000),
+  });
+  const text = response.status === 204 ? "" : await response.text();
+  if (!response.ok) {
+    const detail = text && text.length < 500 ? `: ${text}` : "";
+    throw new Error(`Zotero Web API returned HTTP ${response.status}${detail}`);
+  }
+  if (!text) return null;
+  const type = response.headers.get("content-type") ?? "";
+  return type.includes("application/json") ? JSON.parse(text) : text;
+}
+
+async function inspectOnlineAccount(force = false) {
+  if (!force && onlineAccountCache.expiresAt > Date.now()) return onlineAccountCache.value;
+  const key = await webApiKey();
+  if (!key) return null;
+  const result = await onlineApi(`/keys/${encodeURIComponent(key)}`);
+  const userId = String(result?.userID ?? result?.userId ?? "");
+  if (!/^\d+$/.test(userId)) throw new Error("Zotero did not return a valid user ID for this key");
+  const access = result?.access ?? {};
+  const userAccess = access?.user ?? {};
+  const value = {
+    userId,
+    username: typeof result?.username === "string" ? result.username : null,
+    permissions: {
+      library: userAccess.library === true,
+      notes: userAccess.notes === true,
+      write: userAccess.write === true,
+      groups: access?.groups ? "configured" : "none",
+    },
+  };
+  onlineAccountCache = { expiresAt: Date.now() + 60_000, value };
+  return value;
 }
 
 async function callBridge(action, input = {}, timeoutMs = 30_000) {
@@ -136,6 +195,37 @@ async function discoverServerId() {
 
 async function currentStatus(lastError = null) {
   const config = await configuration();
+  if (onlineLibrary) {
+    let account = null;
+    let accountError = null;
+    try { account = await inspectOnlineAccount(); }
+    catch (error) { accountError = error instanceof Error ? error.message : "Could not reach Zotero"; }
+    const storageMode = onlineStorageModes.has(config?.storageMode) ? config.storageMode : null;
+    const state = !account ? "account-required" : !storageMode ? "storage-required" : "ready";
+    const value = {
+      state,
+      variant,
+      connectionMode: "online-library",
+      desktop: "not-installed",
+      version: null,
+      localApi: "not-applicable",
+      storageMode,
+      accountConnected: Boolean(account),
+      userId: account?.userId ?? config?.userId ?? null,
+      username: account?.username ?? config?.username ?? null,
+      permissions: account?.permissions ?? null,
+      downloadMode: storageMode === "zotero-storage" ? "on-demand" : null,
+      groupFileSync: false,
+      linkedFolder: null,
+      linkedFolderAutomation: false,
+      storageVerified: Boolean(storageMode),
+      syncInProgress: false,
+      features: { desktop: false, automations: false, localAttachments: false },
+      lastError: lastError ?? accountError,
+    };
+    await atomicJson(statusPath, value, 0o644);
+    return value;
+  }
   let desktop = "unavailable";
   let localApi = "not-configured";
   let version = null;
@@ -166,6 +256,8 @@ async function currentStatus(lastError = null) {
   else if (config?.storageMode) state = "authorization-required";
   const value = {
     state,
+    variant,
+    connectionMode: "complete-workspace",
     desktop,
     version,
     localApi,
@@ -179,6 +271,8 @@ async function currentStatus(lastError = null) {
     linkedFolderAutomation: engine?.linkedFolderAutomation ?? false,
     storageVerified: engine?.storageVerified ?? false,
     syncInProgress: engine?.syncInProgress ?? false,
+    permissions: null,
+    features: { desktop: true, automations: true, localAttachments: true },
     lastError,
   };
   await atomicJson(statusPath, value, 0o644);
@@ -186,6 +280,7 @@ async function currentStatus(lastError = null) {
 }
 
 async function healthStatus() {
+  if (onlineLibrary) return { status: "ok", mode: "online-library" };
   const engine = await callBridge("status", {}, 2_000);
   if (!engine || typeof engine.accountConnected !== "boolean") {
     throw new Error("The Zotero setup bridge is unavailable");
@@ -193,7 +288,40 @@ async function healthStatus() {
   return { status: "ok" };
 }
 
+async function connectOnlineLibrary(input) {
+  if (!onlineLibrary) throw new Error("This Zotero setup uses the private desktop connection");
+  const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
+  if (!/^[A-Za-z0-9]{16,128}$/.test(apiKey)) throw new Error("Enter the API key created in your Zotero account settings");
+  await atomicWrite(webApiKeyPath, `${apiKey}\n`, 0o600);
+  onlineAccountCache = { expiresAt: 0, value: null };
+  try {
+    const account = await inspectOnlineAccount(true);
+    if (!account?.permissions.library) throw new Error("This Zotero key does not allow library access");
+    await updateConfiguration({
+      mode: "online-library",
+      userId: account.userId,
+      username: account.username,
+    });
+    return currentStatus();
+  } catch (error) {
+    await rm(webApiKeyPath, { force: true });
+    onlineAccountCache = { expiresAt: 0, value: null };
+    throw error;
+  }
+}
+
+async function configureOnlineStorage(input) {
+  if (!onlineLibrary) throw new Error("This Zotero setup uses Zotero Desktop for attachment storage");
+  const storageMode = typeof input.storageMode === "string" ? input.storageMode.trim() : "";
+  if (!onlineStorageModes.has(storageMode)) throw new Error("Choose citation data only or Zotero Storage files on demand");
+  const account = await inspectOnlineAccount();
+  if (!account) throw new Error("Connect a Zotero online library first");
+  await updateConfiguration({ storageMode });
+  return currentStatus();
+}
+
 async function startAccountLink() {
+  if (onlineLibrary) throw new Error("Use the Zotero online-library connection for this setup");
   const result = await callBridge("account-start");
   await atomicJson(accountSessionPath, { sessionToken: result.sessionToken });
   return { state: "account-authorization-required", loginUrl: result.loginUrl };
@@ -218,6 +346,7 @@ async function completeAccountLink() {
 }
 
 async function configureStorage(input) {
+  if (onlineLibrary) return configureOnlineStorage(input);
   const storageMode = input.storageMode?.trim();
   const downloadMode = input.downloadMode?.trim() || "on-demand";
   if (!storageModes.has(storageMode)) throw new Error("Storage mode must be zotero-storage, webdav, linked-folder, or server-only");
@@ -233,6 +362,7 @@ async function configureStorage(input) {
 }
 
 async function configureWebDAV(input) {
+  if (onlineLibrary) throw new Error("WebDAV requires the Complete Zotero workspace");
   const url = typeof input.url === "string" ? input.url.trim() : "";
   const username = typeof input.username === "string" ? input.username.trim() : "";
   const password = typeof input.password === "string" ? input.password : "";
@@ -249,11 +379,13 @@ async function configureWebDAV(input) {
 }
 
 async function syncNow() {
+  if (onlineLibrary) throw new Error("The online library is already read directly from zotero.org and does not need a server sync");
   await callBridge("sync-now", {}, 15 * 60_000);
   return currentStatus();
 }
 
 async function attachDoclingResult(input) {
+  if (onlineLibrary) throw new Error("Attaching Docling results in Online library only is not available yet");
   const sourceAttachmentKey = typeof input.sourceAttachmentKey === "string" ? input.sourceAttachmentKey.trim().toUpperCase() : "";
   const relativePath = typeof input.relativePath === "string" ? input.relativePath.trim() : "";
   if (!/^[A-Z0-9]{8}$/.test(sourceAttachmentKey)) throw new Error("A valid Zotero source attachment key is required");
@@ -264,6 +396,7 @@ async function attachDoclingResult(input) {
 }
 
 async function authorize() {
+  if (onlineLibrary) throw new Error("Online library only does not use Zotero Desktop authorization");
   const config = await configuration();
   if (!config?.userId) throw new Error("Configure the Zotero user ID before authorizing writes");
   const serverId = await discoverServerId();
@@ -324,6 +457,46 @@ async function resolveAttachment(input) {
   if (!/^[A-Z0-9]{8}$/.test(attachmentKey ?? "")) throw new Error("Attachment key must be eight uppercase letters or digits");
   const config = await configuration();
   if (!config?.userId) throw new Error("Zotero is not configured");
+  if (onlineLibrary) {
+    const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${attachmentKey}`;
+    const attachment = await onlineApi(prefix);
+    if (attachment?.data?.itemType !== "attachment") throw new Error("The requested Zotero item is not an attachment");
+    const common = {
+      attachmentKey,
+      filename: attachment.data.filename ?? attachment.data.title ?? null,
+      contentType: attachment.data.contentType ?? null,
+      linkMode: attachment.data.linkMode ?? null,
+    };
+    if (config.storageMode !== "zotero-storage") return { state: "metadata-only", ...common };
+    if (attachment.data.linkMode === "linked_file") {
+      return { state: "unavailable", reason: "linked-file", ...common };
+    }
+    const key = await webApiKey();
+    const response = await fetch(`${zoteroWebApiUrl}${prefix}/file`, {
+      headers: { "Zotero-API-Key": key, "Zotero-API-Version": "3" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!response.ok || !response.body) {
+      const reason = response.status === 404 ? "The file is not available from Zotero Storage; it may use WebDAV" : `HTTP ${response.status}`;
+      throw new Error(`Zotero could not provide this attachment: ${reason}`);
+    }
+    const declared = Number(response.headers.get("content-length") ?? 0);
+    if (Number.isFinite(declared) && declared > 1024 * 1024 * 1024) throw new Error("This attachment exceeds the 1 GiB safety limit");
+    const safeName = String(common.filename ?? `${attachmentKey}.bin`).replace(/[^A-Za-z0-9._ -]/g, "_").slice(0, 180) || `${attachmentKey}.bin`;
+    const directory = path.join("/cache", "attachments", attachmentKey);
+    const destination = path.join(directory, safeName);
+    await mkdir(directory, { recursive: true });
+    const temporary = `${destination}.${process.pid}.tmp`;
+    try {
+      await pipeline(Readable.fromWeb(response.body), createWriteStream(temporary, { mode: 0o600 }));
+      await rename(temporary, destination);
+    } finally {
+      await rm(temporary, { force: true });
+    }
+    const metadata = await stat(destination);
+    return { state: "available", ...common, bytes: metadata.size, sha256: await sha256(destination), cached: true };
+  }
   const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${attachmentKey}`;
   const attachment = await api(prefix);
   if (attachment?.data?.itemType !== "attachment") throw new Error("The requested Zotero item is not an attachment");
@@ -356,6 +529,7 @@ async function personalAttachments(userId) {
 }
 
 async function matchAttachment(input) {
+  if (onlineLibrary) throw new Error("Shared linked-file matching requires the Complete Zotero workspace");
   const sourcePath = typeof input.sourcePath === "string" ? input.sourcePath.trim().replaceAll("\\", "/") : "";
   const relative = sourcePath ? sourcePath.split("/") : [];
   if (!sourcePath || sourcePath.startsWith("/") || relative.some((part) => !part || part === "." || part === "..")) {
@@ -402,6 +576,7 @@ async function action(request) {
     case "status": return currentStatus();
     case "account-start": return startAccountLink();
     case "account-complete": return completeAccountLink();
+    case "connect-online-library": return connectOnlineLibrary(request.input ?? {});
     case "configure-storage": return configureStorage(request.input ?? {});
     case "configure-webdav": return configureWebDAV(request.input ?? {});
     case "sync-now": return syncNow();
@@ -464,6 +639,7 @@ async function body(request) {
 }
 
 async function proxyAutomations(request, response, url) {
+  if (onlineLibrary) return json(response, 404, { error: "Automations that require the Zotero desktop are not installed with Online library only" });
   const suffix = url.pathname.replace(/^\/api\/automations/, "");
   const target = suffix === "/folders"
     ? `${automationsBaseUrl}/folders${url.search}`
@@ -516,6 +692,7 @@ async function handleHttp(request, response) {
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
     if (request.method === "POST" && url.pathname === "/api/account/start") return json(response, 200, await startAccountLink());
     if (request.method === "POST" && url.pathname === "/api/account/complete") return json(response, 200, await completeAccountLink());
+    if (request.method === "POST" && url.pathname === "/api/account/online") return json(response, 200, await connectOnlineLibrary(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/storage") return json(response, 200, await configureStorage(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/storage/webdav") return json(response, 200, await configureWebDAV(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/authorize") { await body(request); return json(response, 200, await authorize()); }

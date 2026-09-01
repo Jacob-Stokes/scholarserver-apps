@@ -9,7 +9,9 @@ import { TAGS_TOOL, TagsInput, handleTags } from "./tools/tags.js";
 
 const PORT = parseInt(process.env.PORT || "7012", 10);
 const runtimePath = process.env.ZOTERO_RUNTIME_PATH || "/runtime";
-const ZOTERO_BASE_URL = process.env.ZOTERO_BASE_URL || "http://127.0.0.1:23119/api";
+const variant = process.env.SCHOLARSERVER_VARIANT || "complete-workspace";
+const onlineLibrary = variant === "online-library";
+const ZOTERO_LOCAL_BASE_URL = process.env.ZOTERO_LOCAL_BASE_URL || "http://desktop:23119/api";
 
 async function requiredFile(name: string): Promise<string> {
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -33,8 +35,14 @@ const client = new ZoteroClient(async () => {
   }
   if (!configuration.userId) throw new Error("Zotero user ID is not configured");
   let token = "";
-  try { token = (await readFile(`${runtimePath}/local-api-key`, "utf8")).trim(); } catch {}
-  return { baseUrl: ZOTERO_BASE_URL, userId: configuration.userId, token };
+  try { token = (await readFile(`${runtimePath}/${onlineLibrary ? "web-api-key" : "local-api-key"}`, "utf8")).trim(); } catch {}
+  if (onlineLibrary && !token) throw new Error("Zotero online-library setup is incomplete; connect the account in ScholarServer first");
+  return {
+    baseUrl: onlineLibrary ? "https://api.zotero.org" : ZOTERO_LOCAL_BASE_URL,
+    userId: configuration.userId,
+    token,
+    local: !onlineLibrary,
+  };
 });
 
 const MIXED_WRITE = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false } as const;
@@ -56,7 +64,7 @@ await startMcp({
   bearerToken: MCP_BEARER_TOKEN,
   oauth,
   instructions:
-    "This is the remote ScholarServer Zotero integration backed by the user's private server-side Zotero Desktop. " +
+    `This is the remote ScholarServer Zotero integration backed by the user's ${onlineLibrary ? "zotero.org online library" : "private server-side Zotero Desktop"}. ` +
     "Prefer focused reads before mutation, use item versions for optimistic concurrency when available, and keep generated derivatives attached to their source item.",
   tools: [
     { def: { ...ITEMS_TOOL, inputSchema: ItemsInput, annotations: MIXED_WRITE }, handler: (i) => handleItems(client, i) },

@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.4.7
+packageVersion: 0.5.0
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -22,35 +22,37 @@ capabilities:
   requires: [gateway.mcp]
   conflicts: []
 variants:
-  - id: research-workflow
-    name: Research workflow
-    description: The complete Zotero setup, including the worker that runs ScholarServer automations.
+  - id: complete-workspace
+    name: Complete Zotero workspace
+    description: Run Zotero privately on this server, with its browser desktop, plugins, attachment choices, AI tools, and optional automations.
     recommended: true
     services: [desktop, controller, automations, mcp]
-    data: [desktop-config, library, runtime, linked-files, automation-state]
+    data: [desktop-config, library, runtime, linked-files, automation-state, cloud-cache]
     resources:
       minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
       recommended: { cpu: 2, memory: 4GiB, disk: 25GiB }
     highlights:
-      - Includes citation and attachment access for approved AI tools
-      - Includes Zotero automations such as PDF processing workflows
-      - Includes the private browser-based Zotero desktop
+      - Full Zotero desktop available privately in your browser
+      - Supports Zotero Storage, WebDAV, and shared linked folders
+      - Includes AI access and optional PDF-processing automations
     limitations: []
-  - id: core-library
-    name: Core library
-    description: Zotero library, attachment access, browser desktop and AI tools without the automation worker.
+  - id: online-library
+    name: Online library only
+    description: Connect ScholarServer directly to your zotero.org library without running Zotero Desktop on this server.
     recommended: false
-    services: [desktop, controller, mcp]
-    data: [desktop-config, library, runtime, linked-files]
+    services: [controller, mcp]
+    data: [library, runtime, linked-files, cloud-cache]
     resources:
-      minimum: { cpu: 0.75, memory: 1536MiB, disk: 5GiB }
-      recommended: { cpu: 1.5, memory: 3GiB, disk: 25GiB }
+      minimum: { cpu: 0.25, memory: 256MiB, disk: 1GiB }
+      recommended: { cpu: 0.5, memory: 512MiB, disk: 5GiB }
     highlights:
-      - Keeps Zotero and its AI tools available
-      - Uses fewer background resources
-      - Retains the private browser-based Zotero desktop
+      - Uses substantially fewer server resources
+      - Gives approved AI tools access to citations, collections, tags, and notes
+      - Can fetch Zotero Storage attachments when needed
     limitations:
-      - Does not run Zotero automation jobs
+      - Does not include a browser-based Zotero desktop or desktop plugins
+      - WebDAV and linked-file contents are not available through the Zotero Web API
+      - Server-side attachment automations require files stored in Zotero Storage
 resources:
   minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
   recommended: { cpu: 2, memory: 4GiB, disk: 25GiB }
@@ -108,6 +110,12 @@ data:
     filesystem: { uid: 10001, gid: 10001, mode: "0700" }
     backup: filesystem-consistent
     retention: preserve
+  - id: cloud-cache
+    mountPath: /cache
+    owner: zotero-controller
+    filesystem: { uid: 10001, gid: 10001, mode: "0700" }
+    backup: reproducible
+    retention: preserve
 endpoints:
   - id: desktop
     service: desktop
@@ -116,13 +124,13 @@ endpoints:
     exposure: human-optional
     auth: authentik-forward-single
   - id: app-ui
-    service: desktop
+    service: controller
     port: 8080
     protocol: http
     exposure: human-optional
     auth: platform-session
   - id: mcp
-    service: desktop
+    service: mcp
     port: 7012
     protocol: http
     exposure: gateway
@@ -130,7 +138,7 @@ endpoints:
     gateway:
       displayName: Zotero
       namespace: zotero
-      hostname: desktop
+      hostname: mcp
       credentialData: runtime
       credentialFile: service-token
 ui:
@@ -144,11 +152,10 @@ lifecycle:
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Connect a Zotero account in ScholarServer
-    - Choose how attachments are stored and downloaded
-    - Authorize ScholarServer for local library access
-    - Run the first synchronization
-    - Configure optional Zotero automations
+    - Connect a Zotero account
+    - Choose how ScholarServer may access attachments
+    - Complete desktop authorization when using the complete workspace
+    - Configure optional automations after setup
   actions:
     - id: status
       data: runtime
@@ -162,6 +169,12 @@ onboarding:
       data: runtime
       timeoutSeconds: 30
       fields: []
+    - id: connect-online-library
+      data: runtime
+      timeoutSeconds: 30
+      activateGateway: true
+      fields:
+        - { id: apiKey, type: string, secret: true, required: true }
     - id: configure-storage
       data: runtime
       timeoutSeconds: 30
