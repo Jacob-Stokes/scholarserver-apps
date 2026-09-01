@@ -20,11 +20,13 @@ const liveSyncWorkerPath = path.join(liveSyncRuntimePath, "livesync-worker.json"
 const liveSyncWorkerStatusPath = path.join(liveSyncRuntimePath, "livesync-worker-status.json");
 const liveSyncOnboardingPath = path.join(liveSyncRuntimePath, "livesync-onboarding.json");
 const uiPath = "/app/ui";
+const installedVariant = process.env.SCHOLARSERVER_VARIANT || "";
+const installedProfile = installedVariant === "obsidian-sync" ? "official" : installedVariant === "self-hosted-livesync" ? "livesync" : "none";
 
 let syncProcess = null;
 let state = {
   state: "setup-required",
-  profile: "none",
+  profile: installedProfile,
   remoteVault: null,
   scopePath: "/",
   lastSyncAt: null,

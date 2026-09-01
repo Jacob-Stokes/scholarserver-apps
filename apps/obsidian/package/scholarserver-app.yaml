@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.4.3
+packageVersion: 0.4.4
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -21,6 +21,38 @@ capabilities:
   provides: [notes.vault, notes.sync, mcp.obsidian]
   requires: [gateway.mcp]
   conflicts: []
+variants:
+  - id: self-hosted-livesync
+    name: Self-hosted LiveSync
+    description: Sync your vault through ScholarServer using the free Self-hosted LiveSync plugin.
+    recommended: true
+    services: [sync, api, mcp, livesync-couchdb, livesync-worker]
+    data: [vault, headless-config, runtime, livesync-db, livesync-runtime, livesync-couchdb]
+    resources:
+      minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
+      recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
+    highlights:
+      - No Obsidian Sync subscription required
+      - Keeps an always-available server copy of the vault
+      - Works privately through Tailscale or through public HTTPS
+    limitations:
+      - Requires the Self-hosted LiveSync plugin on each Obsidian device
+      - Other vault sync methods must remain turned off
+  - id: obsidian-sync
+    name: Obsidian Sync
+    description: Use your existing paid Obsidian Sync account to keep the ScholarServer copy up to date.
+    recommended: false
+    services: [sync, api, mcp]
+    data: [vault, headless-config, runtime, livesync-runtime]
+    resources:
+      minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
+      recommended: { cpu: 0.75, memory: 1GiB, disk: 10GiB }
+    highlights:
+      - Uses Obsidian's official sync service
+      - No community plugin or separate sync database
+      - Keeps the same server-side notes and AI tools
+    limitations:
+      - Requires a paid Obsidian Sync account
 resources:
   minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
   recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
@@ -113,7 +145,6 @@ lifecycle:
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Choose paid Obsidian Sync or free Self-hosted LiveSync
     - Connect the selected sync method
     - Choose private Tailscale or public HTTPS for Self-hosted LiveSync
     - Keep other vault sync methods turned off when using LiveSync

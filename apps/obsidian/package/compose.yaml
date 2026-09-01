@@ -7,6 +7,8 @@ services:
     security_opt: [no-new-privileges:true]
     tmpfs:
       - "/tmp:rw,noexec,nosuid,nodev,size=32m"
+    environment:
+      SCHOLARSERVER_VARIANT: ${SCHOLARSERVER_VARIANT}
     volumes:
       - ${SCHOLARSERVER_DATA_VAULT}:/vault
       - ${SCHOLARSERVER_DATA_HEADLESS_CONFIG}:/home/obsidian/.config

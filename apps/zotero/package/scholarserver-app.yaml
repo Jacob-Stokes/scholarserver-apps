@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.4.3
+packageVersion: 0.4.4
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -21,6 +21,36 @@ capabilities:
   provides: [references.zotero-library, attachments.resolve, mcp.zotero, automations.zotero]
   requires: [gateway.mcp]
   conflicts: []
+variants:
+  - id: research-workflow
+    name: Research workflow
+    description: The complete Zotero setup, including the worker that runs ScholarServer automations.
+    recommended: true
+    services: [desktop, controller, automations, mcp]
+    data: [desktop-config, library, runtime, linked-files, automation-state]
+    resources:
+      minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
+      recommended: { cpu: 2, memory: 4GiB, disk: 25GiB }
+    highlights:
+      - Includes citation and attachment access for approved AI tools
+      - Includes Zotero automations such as PDF processing workflows
+      - Includes the private browser-based Zotero desktop
+    limitations: []
+  - id: core-library
+    name: Core library
+    description: Zotero library, attachment access, browser desktop and AI tools without the automation worker.
+    recommended: false
+    services: [desktop, controller, mcp]
+    data: [desktop-config, library, runtime, linked-files]
+    resources:
+      minimum: { cpu: 0.75, memory: 1536MiB, disk: 5GiB }
+      recommended: { cpu: 1.5, memory: 3GiB, disk: 25GiB }
+    highlights:
+      - Keeps Zotero and its AI tools available
+      - Uses fewer background resources
+      - Retains the private browser-based Zotero desktop
+    limitations:
+      - Does not run Zotero automation jobs
 resources:
   minimum: { cpu: 1, memory: 2GiB, disk: 5GiB }
   recommended: { cpu: 2, memory: 4GiB, disk: 25GiB }
