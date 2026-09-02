@@ -8,6 +8,13 @@
 .ss-check input { margin-top: .15rem; accent-color: var(--primary); }
 .ss-check strong, .ss-check small { display: block; }
 .ss-check small { margin-top: .2rem; color: var(--muted-foreground); }
+.ss-choice { display: flex; align-items: flex-start; gap: .75rem; border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; cursor: pointer; }
+.ss-choice:has(input:checked) { border-color: var(--primary); background: var(--accent); }
+.ss-choice input { margin-top: .25rem; accent-color: var(--primary); }
+.ss-choice span, .ss-choice strong, .ss-choice small, .ss-choice code { display: block; min-width: 0; }
+.ss-choice small { margin-top: .3rem; color: var(--muted-foreground); }
+.ss-choice code { margin-top: .5rem; overflow-wrap: anywhere; font-size: .75rem; }
+.ss-choice em { border-radius: 999px; background: var(--muted); padding: .15rem .45rem; font-size: .68rem; font-style: normal; font-weight: 600; }
 .ss-callout { border-left: 3px solid var(--primary); background: var(--accent); padding: .85rem 1rem; color: var(--secondary-foreground); font-size: .875rem; }
 .ss-callout-warning { border-left-color: #b7791f; background: #fff8e7; color: #68420a; }
 .ss-result { margin-top: 1rem; border-radius: .65rem; background: var(--muted); padding: 1rem; font-size: .875rem; overflow-wrap: anywhere; }

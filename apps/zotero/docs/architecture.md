@@ -42,6 +42,14 @@ tarballs for amd64 and arm64. It does not use architecture emulation. The web de
 has no independent VNC password because it is reachable only through ScholarServer's
 authenticated ingress; VNC itself listens on container-localhost.
 
+The application does not configure network providers itself. During onboarding it
+asks Manager for the currently available addresses for its declared `desktop`
+endpoint. Tailscale reuses the private Manager origin and is recommended. A
+Cloudflare, managed Caddy, or existing-proxy address is shown only when the matching
+protected Manager route has already been enabled in global Access. The selected
+address is stored in the application's runtime configuration and used for later
+desktop and local-API authorization links.
+
 The automation worker belongs to the Zotero application stack. It owns the curated
 Zotero-to-Docling action, its settings, schedule and run history; Docling remains a
 reusable conversion service and does not contain Zotero workflow logic.

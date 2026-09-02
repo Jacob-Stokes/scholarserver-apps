@@ -21,8 +21,12 @@ For the complete workspace, Zotero's application page guides the user through:
    Zotero to verify the server before reporting success.
    WebDAV covers the personal library only; group-library files can optionally use
    Zotero Storage and ScholarServer explains the quota implication in the setup UI.
-4. Starting local authorization and choosing **Always Allow** in Zotero's prompt.
-5. Starting the first synchronization from ScholarServer.
+4. Choosing a protected Zotero Desktop address. Private Tailscale is recommended
+   and created from ScholarServer's existing private connection. Cloudflare and
+   advanced HTTPS choices appear only after the corresponding Manager connection
+   has been enabled in the global Access page.
+5. Starting local authorization and choosing **Always Allow** in Zotero's prompt.
+6. Starting the first synchronization from ScholarServer.
 
 ScholarServer never asks for the Zotero password. The account token and any WebDAV
 password stay in Zotero's encrypted credential store inside its persistent profile.
