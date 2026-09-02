@@ -40,6 +40,8 @@ test("controller and MCP do not share the desktop network namespace", async () =
 });
 
 test("the bare desktop address launches noVNC with its proxied WebSocket path", async () => {
+  const dockerfile = await readFile(new URL("../desktop/Dockerfile", packageRoot), "utf8");
+  assert.match(dockerfile, /COPY .*novnc-index\.html \/usr\/share\/novnc\/index\.html/);
   const { desktopLaunchUrl } = await import("../desktop/scholarserver-launch.mjs");
   assert.equal(
     desktopLaunchUrl("https://research.example.test/apps/zotero/endpoints/desktop/"),

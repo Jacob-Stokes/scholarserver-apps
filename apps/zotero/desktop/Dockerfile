@@ -63,7 +63,8 @@ RUN useradd --create-home --home-dir /home/zotero --uid 10001 --shell /usr/sbin/
     && chown -R zotero:zotero /config /data /home/zotero
 
 COPY --chown=root:root start-zotero.sh /usr/local/bin/start-zotero
-COPY --chown=root:root novnc-index.html scholarserver-launch.mjs /usr/share/novnc/
+COPY --chown=root:root novnc-index.html /usr/share/novnc/index.html
+COPY --chown=root:root scholarserver-launch.mjs /usr/share/novnc/scholarserver-launch.mjs
 COPY --from=plugin-builder --chown=root:root /setup-bridge.xpi /opt/zotero/distribution/extensions/setup-bridge@scholarserver.com.xpi
 RUN chmod 0755 /usr/local/bin/start-zotero
 
