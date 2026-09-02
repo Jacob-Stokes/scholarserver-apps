@@ -29,7 +29,6 @@ const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
 const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
 const onlineStorageModes = new Set(["metadata-only", "zotero-storage"]);
-const desktopAccessModes = new Set(["tailscale", "cloudflare", "caddy", "external-proxy"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
 let onlineAccountCache = { expiresAt: 0, value: null };
 
@@ -237,7 +236,6 @@ async function currentStatus(lastError = null) {
       version: null,
       localApi: "not-applicable",
       storageMode,
-      desktopAccess: null,
       accountConnected: Boolean(account),
       userId: account?.userId ?? (config?.mode === "online-library" ? config?.userId : null) ?? null,
       username: account?.username ?? (config?.mode === "online-library" ? config?.username : null) ?? null,
@@ -283,17 +281,9 @@ async function currentStatus(lastError = null) {
     }
   }
   const storageMode = storageModes.has(config?.storageMode) ? config.storageMode : null;
-  const desktopAccess =
-    config?.desktopAccess &&
-    desktopAccessModes.has(config.desktopAccess.transport) &&
-    typeof config.desktopAccess.optionId === "string" &&
-    typeof config.desktopAccess.url === "string"
-      ? config.desktopAccess
-      : null;
   let state = "setup-required";
   if (desktop === "available" && engine && !engine.accountConnected) state = "account-required";
   else if (desktop === "available" && engine?.accountConnected && !storageMode) state = "storage-required";
-  else if (storageMode && !desktopAccess) state = "desktop-access-required";
   else if (storageMode && localApi === "authorized") state = "ready";
   else if (storageMode) state = "authorization-required";
   const value = {
@@ -304,7 +294,6 @@ async function currentStatus(lastError = null) {
     version,
     localApi,
     storageMode,
-    desktopAccess,
     accountConnected: engine?.accountConnected ?? false,
     userId: config?.userId ?? engine?.userId ?? null,
     username: engine?.username ?? null,
@@ -320,36 +309,6 @@ async function currentStatus(lastError = null) {
   };
   await atomicJson(statusPath, value, 0o644);
   return value;
-}
-
-async function configureDesktopAccess(input) {
-  if (onlineLibrary) throw new Error("Online library only does not include Zotero Desktop");
-  const optionId = typeof input.optionId === "string" ? input.optionId.trim() : "";
-  const transport = typeof input.transport === "string" ? input.transport.trim() : "";
-  const rawUrl = typeof input.url === "string" ? input.url.trim() : "";
-  if (!/^[a-z][a-z0-9-]{0,62}$/.test(optionId) || !desktopAccessModes.has(transport)) {
-    throw new Error("Choose one of the desktop connections offered by ScholarServer");
-  }
-  let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    throw new Error("ScholarServer returned an invalid desktop address");
-  }
-  if (
-    parsed.protocol !== "https:" ||
-    parsed.username ||
-    parsed.password ||
-    parsed.search ||
-    parsed.hash ||
-    !/^\/apps\/[a-z][a-z0-9-]{0,62}\/endpoints\/desktop\/$/.test(parsed.pathname)
-  ) {
-    throw new Error("ScholarServer returned an unsafe desktop address");
-  }
-  await updateConfiguration({
-    desktopAccess: { optionId, transport, url: parsed.toString() }
-  });
-  return currentStatus();
 }
 
 async function healthStatus() {
@@ -689,8 +648,6 @@ async function action(request) {
       return configureStorage(request.input ?? {});
     case "configure-webdav":
       return configureWebDAV(request.input ?? {});
-    case "configure-desktop-access":
-      return configureDesktopAccess(request.input ?? {});
     case "sync-now":
       return syncNow();
     case "authorize-local":
@@ -837,8 +794,6 @@ async function handleHttp(request, response) {
       return json(response, 200, await configureStorage(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/storage/webdav")
       return json(response, 200, await configureWebDAV(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/desktop-access")
-      return json(response, 200, await configureDesktopAccess(await body(request)));
     if (request.method === "POST" && url.pathname === "/api/authorize") {
       await body(request);
       return json(response, 200, await authorize());

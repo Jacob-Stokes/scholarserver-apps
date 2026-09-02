@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.8
+packageVersion: 0.5.9
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -125,6 +125,11 @@ endpoints:
     protocol: http
     exposure: human-optional
     auth: authentik-forward-single
+    remoteAccess:
+      private: true
+      public: true
+      authentik: optional
+      defaultAuthentik: true
     public:
       defaultSubdomain: zotero
       audience: authenticated
@@ -205,13 +210,6 @@ onboarding:
         - { id: password, type: string, secret: true, required: true }
         - { id: downloadMode, type: string, secret: false, required: true }
         - { id: groupFileSync, type: boolean, secret: false, required: true }
-    - id: configure-desktop-access
-      data: runtime
-      timeoutSeconds: 30
-      fields:
-        - { id: optionId, type: string, secret: false, required: true }
-        - { id: transport, type: string, secret: false, required: true }
-        - { id: url, type: string, secret: false, required: true }
     - id: authorize-local
       data: runtime
       timeoutSeconds: 300

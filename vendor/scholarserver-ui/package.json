@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./endpoint-access": "./endpoint-access.tsx",
     "./styles.css": "./styles.css",
     "./folder-picker": "./folder-picker.tsx",
     "./setup-pipeline": "./setup-pipeline.tsx"

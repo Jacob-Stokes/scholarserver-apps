@@ -1,3 +1,4 @@
+import { type EndpointAccessOption, EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AutomationsTab } from "./AutomationsTab";
@@ -10,7 +11,6 @@ type Status = {
   variant: string;
   connectionMode: "complete-workspace" | "online-library";
   storageMode: string | null;
-  desktopAccess: DesktopAccessSelection | null;
   accountConnected: boolean;
   userId: string | null;
   username: string | null;
@@ -26,16 +26,16 @@ type Status = {
 };
 type DesktopAccessSelection = {
   optionId: string;
-  transport: "tailscale" | "cloudflare" | "caddy" | "external-proxy";
+  transport: EndpointAccessOption["transport"];
   url: string;
+  authentication: "none" | "authentik";
+  updatedAt: string;
 };
-type DesktopAccessOption = {
-  id: string;
-  transport: DesktopAccessSelection["transport"];
-  label: string;
-  url: string;
-  recommended: boolean;
-  advanced: boolean;
+type DesktopAccessResponse = {
+  instanceId: string;
+  endpointId: string;
+  options: EndpointAccessOption[];
+  selection: DesktopAccessSelection | null;
 };
 type Tab = "overview" | "attachments" | "automations" | "configuration";
 type StorageMode = "zotero-storage" | "webdav" | "linked-folder" | "server-only" | "metadata-only";
@@ -111,8 +111,11 @@ function desktopUrl(endpointUrl: string): string {
   return target.toString();
 }
 
-async function platformRequest<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function platformRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
+  });
   const result = (await response.json().catch(() => null)) as T | { detail?: string } | null;
   if (!response.ok) throw new Error((result as { detail?: string } | null)?.detail ?? "ScholarServer request failed");
   return result as T;
@@ -155,8 +158,10 @@ export function App() {
   const [webdavPassword, setWebdavPassword] = useState("");
   const [onlineApiKey, setOnlineApiKey] = useState("");
   const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
-  const [desktopAccessOptions, setDesktopAccessOptions] = useState<DesktopAccessOption[]>([]);
+  const [desktopAccessOptions, setDesktopAccessOptions] = useState<EndpointAccessOption[]>([]);
   const [desktopAccessOption, setDesktopAccessOption] = useState("");
+  const [desktopAuthentication, setDesktopAuthentication] = useState<"none" | "authentik">("none");
+  const [desktopAccessSelection, setDesktopAccessSelection] = useState<DesktopAccessSelection | null>(null);
   const [desktopAccessLoading, setDesktopAccessLoading] = useState(false);
   const [checkingAccount, setCheckingAccount] = useState(false);
   const [attachmentKey, setAttachmentKey] = useState("");
@@ -178,7 +183,6 @@ export function App() {
       else if (next.connectionMode === "online-library") setStorageMode("metadata-only");
       if (next.downloadMode === "on-sync" || next.downloadMode === "on-demand") setDownloadMode(next.downloadMode);
       setGroupFileSync(next.groupFileSync);
-      if (next.desktopAccess?.optionId) setDesktopAccessOption(next.desktopAccess.optionId);
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not inspect Zotero");
@@ -209,17 +213,38 @@ export function App() {
     if (online || !instanceId) return;
     let cancelled = false;
     setDesktopAccessLoading(true);
-    void platformRequest<{ options: DesktopAccessOption[] }>(
+    void platformRequest<DesktopAccessResponse>(
       `/api/v1/instances/${encodeURIComponent(instanceId)}/endpoints/desktop/access-options`
     )
-      .then(({ options }) => {
+      .then(({ options, selection }) => {
         if (cancelled) return;
         setDesktopAccessOptions(options);
+        setDesktopAccessSelection(selection);
+        const preferred =
+          options.find((option) => option.id === selection?.optionId) ??
+          options.find((option) => option.recommended) ??
+          options[0];
+        if (selection) setDesktopAuthentication(selection.authentication);
+        else if (preferred)
+          setDesktopAuthentication(
+            preferred.authentication.authentik !== "unsupported" &&
+              preferred.authentication.available &&
+              preferred.authentication.defaultEnabled
+              ? "authentik"
+              : "none"
+          );
         setDesktopAccessOption((current) =>
-          options.some((option) => option.id === current)
-            ? current
-            : (options.find((option) => option.recommended)?.id ?? options[0]?.id ?? "")
+          options.some((option) => option.id === selection?.optionId)
+            ? selection!.optionId
+            : options.some((option) => option.id === current)
+              ? current
+              : (options.find((option) => option.recommended)?.id ?? options[0]?.id ?? "")
         );
+        setSetupStage((current) => {
+          if (!selection && (current === "authorization" || current === "ready")) return "access";
+          if (selection && current === "access") return "authorization";
+          return current;
+        });
       })
       .catch((caught) => {
         if (!cancelled) setError(caught instanceof Error ? caught.message : "Could not inspect desktop access");
@@ -333,11 +358,17 @@ export function App() {
     const selected = desktopAccessOptions.find((option) => option.id === desktopAccessOption);
     if (!selected) return;
     void run(
-      () =>
-        request<Status>("desktop-access", {
-          method: "POST",
-          body: JSON.stringify({ optionId: selected.id, transport: selected.transport, url: selected.url })
-        }),
+      async () => {
+        const response = await platformRequest<DesktopAccessResponse>(
+          `/api/v1/instances/${encodeURIComponent(instanceId)}/endpoints/desktop/access-options`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ optionId: selected.id, authentication: desktopAuthentication })
+          }
+        );
+        setDesktopAccessSelection(response.selection);
+        return refresh();
+      },
       "Zotero Desktop access is ready.",
       () => setSetupStage("authorization")
     );
@@ -352,8 +383,8 @@ export function App() {
       }
     );
   const openDesktopAndAuthorize = () => {
-    if (!status?.desktopAccess?.url) return;
-    window.open(desktopUrl(status.desktopAccess.url), "_blank", "noopener,noreferrer");
+    if (!desktopAccessSelection?.url) return;
+    window.open(desktopUrl(desktopAccessSelection.url), "_blank", "noopener,noreferrer");
     void run(
       () => request<Status>("authorize", { method: "POST" }),
       "ScholarServer is authorized to use the Zotero local API.",
@@ -834,30 +865,22 @@ export function App() {
                   </div>
                 ) : desktopAccessOptions.length > 0 ? (
                   <div className="ss-stack">
-                    {desktopAccessOptions.map((option) => (
-                      <label className="ss-choice" key={option.id}>
-                        <input
-                          type="radio"
-                          name="desktop-access"
-                          checked={desktopAccessOption === option.id}
-                          onChange={() => setDesktopAccessOption(option.id)}
-                        />
-                        <span>
-                          <strong>
-                            {option.label} {option.recommended ? <em>Recommended</em> : null}{" "}
-                            {option.advanced ? <em>Advanced</em> : null}
-                          </strong>
-                          <small>
-                            {option.transport === "tailscale"
-                              ? "Private to devices signed in to your Tailscale network."
-                              : option.transport === "cloudflare"
-                                ? "Available through the Cloudflare connection configured for ScholarServer."
-                                : "Uses the HTTPS connection you configured and maintain in ScholarServer Access."}
-                          </small>
-                          <code>{option.url}</code>
-                        </span>
-                      </label>
-                    ))}
+                    <EndpointAccessSelector
+                      options={desktopAccessOptions}
+                      optionId={desktopAccessOption}
+                      authentication={desktopAuthentication}
+                      onOptionChange={(option) => {
+                        setDesktopAccessOption(option.id);
+                        setDesktopAuthentication(
+                          option.authentication.authentik !== "unsupported" &&
+                            option.authentication.available &&
+                            option.authentication.defaultEnabled
+                            ? "authentik"
+                            : "none"
+                        );
+                      }}
+                      onAuthenticationChange={setDesktopAuthentication}
+                    />
                     <p className="ss-muted">
                       Need another connection? Return to ScholarServer, open <strong>Access</strong>, prepare it there,
                       then come back to this step.
@@ -889,7 +912,7 @@ export function App() {
                 back={() => setSetupStage("access")}
                 next={status.localApi === "authorized" ? () => setSetupStage("ready") : openDesktopAndAuthorize}
                 nextLabel={status.localApi === "authorized" ? "Finish setup" : "Open Zotero and authorize"}
-                nextDisabled={!status.storageMode || !status.desktopAccess}
+                nextDisabled={!status.storageMode || !desktopAccessSelection}
                 busy={busy}
               >
                 <div className="ss-callout ss-stack">
@@ -898,10 +921,10 @@ export function App() {
                     tab. Approve the request shown inside Zotero.
                   </div>
                   <div className="ss-form-actions">
-                    {status.desktopAccess?.url ? (
+                    {desktopAccessSelection?.url ? (
                       <a
                         className="ss-button ss-button-secondary"
-                        href={desktopUrl(status.desktopAccess.url)}
+                        href={desktopUrl(desktopAccessSelection.url)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -949,7 +972,7 @@ export function App() {
                   ) : (
                     <>
                       <dt>Desktop address</dt>
-                      <dd>{status.desktopAccess?.url ?? "Not configured"}</dd>
+                      <dd>{desktopAccessSelection?.url ?? "Not configured"}</dd>
                       <dt>Local API</dt>
                       <dd>{status.localApi}</dd>
                     </>
