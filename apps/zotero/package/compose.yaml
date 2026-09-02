@@ -1,6 +1,6 @@
 services:
   desktop:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:824eb629624b7526e9171ed5249e77e4894464392ba347ee3aa4d5c178983d15
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:f0232533289dbfa7d529bef04c60fc80a362386d75d57ad4c287d937e0ace09f
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
