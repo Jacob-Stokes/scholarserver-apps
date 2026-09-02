@@ -38,3 +38,15 @@ test("controller and MCP do not share the desktop network namespace", async () =
   assert.deepEqual(compose.services.mcp.networks.instance.aliases, ["zotero-mcp"]);
   assert.deepEqual(compose.services.desktop.expose, ["3000"]);
 });
+
+test("the bare desktop address launches noVNC with its proxied WebSocket path", async () => {
+  const { desktopLaunchUrl } = await import("../desktop/scholarserver-launch.mjs");
+  assert.equal(
+    desktopLaunchUrl("https://research.example.test/apps/zotero/endpoints/desktop/"),
+    "https://research.example.test/apps/zotero/endpoints/desktop/vnc.html?autoconnect=1&reconnect=1&resize=remote&path=apps%2Fzotero%2Fendpoints%2Fdesktop%2Fwebsockify"
+  );
+  assert.equal(
+    desktopLaunchUrl("http://127.0.0.1:3000/"),
+    "http://127.0.0.1:3000/vnc.html?autoconnect=1&reconnect=1&resize=remote&path=websockify"
+  );
+});

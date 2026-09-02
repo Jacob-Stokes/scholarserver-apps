@@ -50,7 +50,7 @@ RUN set -eu; \
     mkdir -p /opt/zotero; \
     tar -xJf "${archive}" --strip-components=1 -C /opt/zotero; \
     rm -f "${archive}"; \
-    ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html
+    rm -f /usr/share/novnc/index.html
 
 RUN set -eu; \
     zotmoov=/opt/zotero/distribution/extensions/zotmoov@wileyy.com.xpi; \
@@ -63,6 +63,7 @@ RUN useradd --create-home --home-dir /home/zotero --uid 10001 --shell /usr/sbin/
     && chown -R zotero:zotero /config /data /home/zotero
 
 COPY --chown=root:root start-zotero.sh /usr/local/bin/start-zotero
+COPY --chown=root:root novnc-index.html scholarserver-launch.mjs /usr/share/novnc/
 COPY --from=plugin-builder --chown=root:root /setup-bridge.xpi /opt/zotero/distribution/extensions/setup-bridge@scholarserver.com.xpi
 RUN chmod 0755 /usr/local/bin/start-zotero
 
