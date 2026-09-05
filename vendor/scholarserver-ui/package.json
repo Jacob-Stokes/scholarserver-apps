@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./appearance": "./appearance.ts",
+    "./themes": "./themes.ts",
     "./endpoint-access": "./endpoint-access.tsx",
     "./styles.css": "./styles.css",
     "./folder-picker": "./folder-picker.tsx",
