@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 18
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:7397bf0061ed0bb4b3048501cbd99995e259111b6b0e75defddea048d3e4b20a
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:8ced86982150c54a77411b2006335fdb1449e0cc27654e5001d7c117d99f2f80
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
