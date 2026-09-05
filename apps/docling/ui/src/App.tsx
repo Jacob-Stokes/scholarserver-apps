@@ -86,15 +86,16 @@ export function App() {
   const [limit, setLimit] = useState(10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const next = await request<Status>("status");
       setStatus(next);
-      setError(null);
+      setStatusError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load the queue");
+      setStatusError(caught instanceof Error ? caught.message : "Could not load the queue");
     }
   }, []);
 
@@ -218,9 +219,9 @@ export function App() {
           ))}
         </nav>
         {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
-        {error ? (
+        {error || statusError ? (
           <div className="ss-alert ss-alert-error" role="alert">
-            {error}
+            {error || statusError}
           </div>
         ) : null}
         {!status ? (

@@ -82,10 +82,15 @@ jobs:
             return 1
           }
           publish_manifest "$IMAGE:sha-$REVISION"
-          publish_manifest "$IMAGE:edge"
+          # Manual candidate builds must not move the shared development tag.
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            publish_manifest "$IMAGE:edge"
+          fi
           if [ "$IMAGE" = "ghcr.io/jacob-stokes/scholarserver-obsidian-sync" ]; then
             publish_manifest "$IMAGE:sha-$REVISION-livesync-couchdb" "-livesync-couchdb"
-            publish_manifest "$IMAGE:edge-livesync-couchdb" "-livesync-couchdb"
             publish_manifest "$IMAGE:sha-$REVISION-livesync-worker" "-livesync-worker"
-            publish_manifest "$IMAGE:edge-livesync-worker" "-livesync-worker"
+            if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+              publish_manifest "$IMAGE:edge-livesync-couchdb" "-livesync-couchdb"
+              publish_manifest "$IMAGE:edge-livesync-worker" "-livesync-worker"
+            fi
           fi

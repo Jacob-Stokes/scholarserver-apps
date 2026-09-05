@@ -110,6 +110,7 @@ export function App() {
   const [officialPage, setOfficialPage] = useState<OfficialSetupPage>("vault");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -122,9 +123,9 @@ export function App() {
         setVaults(nextVaults);
         setVault((current) => current || nextVaults[0].id);
       }
-      setError(null);
+      setStatusError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not inspect Obsidian");
+      setStatusError(caught instanceof Error ? caught.message : "Could not inspect Obsidian");
     }
   }, []);
 
@@ -269,9 +270,9 @@ export function App() {
           ))}
         </nav>
         {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
-        {error ? (
+        {error || statusError ? (
           <div className="ss-alert ss-alert-error" role="alert">
-            {error}
+            {error || statusError}
           </div>
         ) : null}
         {!status ? (

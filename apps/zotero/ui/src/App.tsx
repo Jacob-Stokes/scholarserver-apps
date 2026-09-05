@@ -169,23 +169,30 @@ export function App() {
   const [attachmentResult, setAttachmentResult] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [setupStage, setSetupStage] = useState<SetupStage>("account");
   const setupInitialized = useRef(false);
-  const online = status?.connectionMode === "online-library";
+  const settingsInitialized = useRef(false);
+  const connectionMode = status?.connectionMode;
+  const online = connectionMode === "online-library";
 
   const refresh = useCallback(async () => {
     try {
       const next = await request<Status>("status");
       setStatus(next);
-      if ([...storageOptions, ...onlineStorageOptions].some((item) => item.value === next.storageMode))
-        setStorageMode(next.storageMode as StorageMode);
-      else if (next.connectionMode === "online-library") setStorageMode("metadata-only");
-      if (next.downloadMode === "on-sync" || next.downloadMode === "on-demand") setDownloadMode(next.downloadMode);
-      setGroupFileSync(next.groupFileSync);
-      setError(null);
+      // Polling updates health, not the choices the researcher is editing.
+      if (!settingsInitialized.current) {
+        if ([...storageOptions, ...onlineStorageOptions].some((item) => item.value === next.storageMode))
+          setStorageMode(next.storageMode as StorageMode);
+        else if (next.connectionMode === "online-library") setStorageMode("metadata-only");
+        if (next.downloadMode === "on-sync" || next.downloadMode === "on-demand") setDownloadMode(next.downloadMode);
+        setGroupFileSync(next.groupFileSync);
+        settingsInitialized.current = true;
+      }
+      setStatusError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not inspect Zotero");
+      setStatusError(caught instanceof Error ? caught.message : "Could not inspect Zotero");
     }
   }, []);
 
@@ -210,7 +217,7 @@ export function App() {
     );
   }, [status]);
   useEffect(() => {
-    if (online || !instanceId) return;
+    if (connectionMode !== "complete-workspace" || !instanceId) return;
     let cancelled = false;
     setDesktopAccessLoading(true);
     void platformRequest<DesktopAccessResponse>(
@@ -255,7 +262,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [online]);
+  }, [connectionMode]);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
@@ -438,9 +445,9 @@ export function App() {
           ))}
         </nav>
         {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
-        {error ? (
+        {error || statusError ? (
           <div className="ss-alert ss-alert-error" role="alert">
-            {error}
+            {error || statusError}
           </div>
         ) : null}
         {!status ? (
@@ -669,7 +676,7 @@ export function App() {
                     <div className="ss-form-actions">
                       <a
                         className="ss-button ss-button-secondary"
-                        href="https://www.zotero.org/settings/keys/new?name=ScholarServer&library_access=1&notes_access=1&write_access=1&all_groups=write"
+                        href="https://www.zotero.org/settings/keys/new?name=ScholarServer&library_access=1&notes_access=1"
                         target="_blank"
                         rel="noreferrer"
                       >
