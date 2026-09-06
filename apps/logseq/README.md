@@ -46,6 +46,8 @@ The helper/API/MCP slice supports graph status, page search, page reading,
 creating research pages, appending blocks and creating research tasks. Test only
 with disposable graphs. See `VERIFICATION.md` for actual evidence and remaining
 acceptance work; the presence of a recipe is not evidence of a working installer.
+See [development notes](DEVELOPMENT_NOTES.md) for difficulties, decisions and
+unresolved integration questions to carry into the next pass.
 
 ## Development
 

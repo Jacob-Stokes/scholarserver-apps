@@ -6,6 +6,16 @@ This repository contains first-party ScholarServer application packages. Keep ea
 application independently buildable and avoid application-specific behavior in the
 ScholarServer core.
 
+## Durable integration lessons
+
+Before adding an app or changing its packaging, read
+`docs/application-integration-lessons.md` and the app's `DEVELOPMENT_NOTES.md`,
+when present. Record consequential difficulties, decisions and unresolved questions
+as work proceeds. Keep reusable lessons in the shared document and version-specific
+findings beside the app. Include evidence or a regression test where possible;
+do not turn assumptions into verified claims. Update superseded guidance rather
+than accumulating contradictory instructions. Never record secrets or user data.
+
 ## Readability over brevity
 
 Apply this to controllers, interfaces, MCP tools, tests, scripts and manifests.
