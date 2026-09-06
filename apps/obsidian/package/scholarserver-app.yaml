@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.4.7-beta.1
+packageVersion: 0.5.0-beta.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -27,7 +27,7 @@ variants:
     description: Sync your vault through ScholarServer using the free Self-hosted LiveSync plugin.
     recommended: true
     services: [sync, api, mcp, livesync-couchdb, livesync-worker]
-    data: [vault, headless-config, runtime, livesync-db, livesync-runtime, livesync-couchdb]
+    data: [vault, headless-config, runtime, official-client, livesync-db, livesync-runtime, livesync-couchdb]
     resources:
       minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
       recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
@@ -43,7 +43,7 @@ variants:
     description: Use your existing paid Obsidian Sync account to keep the ScholarServer copy up to date.
     recommended: false
     services: [sync, api, mcp]
-    data: [vault, headless-config, runtime, livesync-runtime]
+    data: [vault, headless-config, runtime, official-client, livesync-runtime]
     resources:
       minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
       recommended: { cpu: 0.75, memory: 1GiB, disk: 10GiB }
@@ -53,6 +53,7 @@ variants:
       - Keeps the same server-side notes and AI tools
     limitations:
       - Requires a paid Obsidian Sync account
+      - Downloads the official client only after your confirmation; Obsidian terms apply
 resources:
   minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
   recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
@@ -76,6 +77,12 @@ images:
   - service: livesync-worker
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:1103d26d52fcf839c5378df21b70ee4dcee7d3b0728185979609891be68dd9bd
 data:
+  - id: official-client
+    mountPath: /official-client
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: excluded
+    retention: preserve
   - id: vault
     mountPath: /vault
     owner: obsidian
@@ -150,8 +157,8 @@ presentation:
 lifecycle:
   supportsDisable: true
   removeDataDefault: false
-  # This release changes package metadata only; its containers and data format
-  # are identical to 0.4.5, so the executor can restore that revision safely.
+  # Vault/enrollment formats remain unchanged. A restored official installation
+  # asks before downloading its client again.
   rollback: reversible
 onboarding:
   readyWhen: compose-health
@@ -161,6 +168,11 @@ onboarding:
     - Keep other vault sync methods turned off when using LiveSync
     - Choose the folder exposed through MCP
   actions:
+    - id: install-client
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: confirmed, type: boolean, secret: false, required: true }
     - id: status
       data: runtime
       timeoutSeconds: 10

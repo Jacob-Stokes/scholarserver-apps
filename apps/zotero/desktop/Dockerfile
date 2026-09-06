@@ -1,10 +1,10 @@
-FROM alpine:3.22 AS plugin-builder
+FROM alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce AS plugin-builder
 
 RUN apk add --no-cache zip
 COPY plugin /source
 RUN cd /source && zip -q -r /setup-bridge.xpi .
 
-FROM ubuntu:24.04
+FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
 
 ARG TARGETARCH
 ARG ZOTERO_VERSION=10.0.1

@@ -12,6 +12,7 @@ import {
   normalizeCouchDbUrl,
   provisionCouchDb
 } from "./livesync-setup.mjs";
+import { approvedClient, createOfficialClient } from "./official-client.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -32,6 +33,10 @@ const installedProfile =
   installedVariant === "obsidian-sync" ? "official" : installedVariant === "self-hosted-livesync" ? "livesync" : "none";
 
 let syncProcess = null;
+let stoppingSync = false;
+let mutationRunning = false;
+let installingClient = false;
+const officialClient = createOfficialClient();
 let state = {
   state: "setup-required",
   profile: installedProfile,
@@ -97,26 +102,30 @@ async function ensureServiceToken() {
   }
 }
 
-function runOb(args, { credentialKind = null } = {}) {
+async function runOb(args, { credentialKind = null } = {}) {
+  if (state.profile !== "official") throw new Error("Official Sync is not selected");
+  const entrypoint = await officialClient.entrypoint();
   return new Promise((resolve, reject) => {
-    const child = spawn("ob", args, {
+    const child = spawn(process.execPath, ["/app/official-command.mjs"], {
       cwd: vaultPath,
       env: { HOME: "/home/obsidian", PATH: process.env.PATH },
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"]
     });
+    child.stdin.on("error", () => {});
+    child.stdin.end(JSON.stringify({ entrypoint, args }));
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
-      stdout += chunk;
+      if (stdout.length < 1024 * 1024) stdout += chunk;
     });
     child.stderr.on("data", (chunk) => {
-      stderr += chunk;
+      if (stderr.length < 1024 * 1024) stderr += chunk;
     });
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) return resolve(stdout.trim());
       const commandOutput = `${stderr}\n${stdout}`;
-      let detail = stderr.trim() || stdout.trim() || `ob exited ${code}`;
+      let detail = "Obsidian could not complete this operation. Check your connection and retry.";
       if (credentialKind === "account") detail = "Obsidian account sign-in was not accepted";
       if (credentialKind === "vault") {
         detail = /wrong vault key|validate password/i.test(commandOutput)
@@ -167,7 +176,7 @@ async function connectVault(input) {
     mode: "bidirectional",
     scopePath: mcpScope
   });
-  startContinuousSync();
+  await startContinuousSync();
   await updateStatus({
     state: "ready",
     profile: "official",
@@ -179,20 +188,28 @@ async function connectVault(input) {
   return { ...state, workerRunning: true };
 }
 
-function startContinuousSync() {
-  if (syncProcess || state.profile !== "official") return;
-  syncProcess = spawn("ob", ["sync", "--path", vaultPath, "--continuous"], {
+async function startContinuousSync() {
+  if (syncProcess || stoppingSync || installingClient || state.profile !== "official") return;
+  const entrypoint = await officialClient.entrypoint();
+  if (syncProcess || stoppingSync || installingClient) return;
+  const child = spawn(process.execPath, ["/app/official-command.mjs"], {
     cwd: vaultPath,
     env: { HOME: "/home/obsidian", PATH: process.env.PATH },
-    stdio: ["ignore", "inherit", "inherit"]
+    stdio: ["pipe", "ignore", "ignore"]
   });
-  syncProcess.once("exit", (code) => {
+  syncProcess = child;
+  child.stdin.on("error", () => {});
+  child.stdin.end(JSON.stringify({ entrypoint, args: ["sync", "--path", vaultPath, "--continuous"] }));
+  child.once("error", () => {
+    void updateStatus({ lastError: "Could not start Obsidian Sync" });
+  });
+  child.once("exit", (code) => {
     syncProcess = null;
+    if (stoppingSync) return;
     void updateStatus({ lastError: code === 0 ? null : "Continuous sync stopped" });
     setTimeout(() => {
       if (state.state !== "ready" || state.profile !== "official") return;
-      startContinuousSync();
-      void updateStatus({ lastError: null });
+      void startContinuousSync().catch(() => updateStatus({ lastError: "Could not restart Obsidian Sync" }));
     }, 5_000);
   });
 }
@@ -200,15 +217,56 @@ function startContinuousSync() {
 async function stopOfficialSync() {
   if (!syncProcess) return;
   const current = syncProcess;
-  syncProcess = null;
+  stoppingSync = true;
+  const exited = new Promise((resolve) => current.once("exit", resolve));
+  const deadline = setTimeout(() => current.kill("SIGKILL"), 10_000);
   current.kill("SIGTERM");
-  await new Promise((resolve) => current.once("exit", resolve));
+  await exited;
+  clearTimeout(deadline);
+  syncProcess = null;
+  stoppingSync = false;
+}
+
+async function installOfficialClient(input) {
+  if (state.profile !== "official" || input.confirmed !== true)
+    throw new Error("Confirm the official Obsidian download and terms before proceeding");
+  if (installingClient) return statusWithPrivateOnboarding();
+  installingClient = true;
+  try {
+    await stopOfficialSync();
+    await updateStatus({ state: "client-install-required", lastError: null });
+  } catch (error) {
+    installingClient = false;
+    throw error;
+  }
+  void officialClient
+    .begin({ confirmed: true, profile: state.profile })
+    .then(async () => {
+      await atomicJson(path.join(runtimePath, "official-client.json"), {
+        version: approvedClient.version,
+        integrity: approvedClient.integrity,
+        confirmedAt: new Date().toISOString()
+      });
+      installingClient = false;
+      // Migration keeps the existing account and vault enrollment. It does not
+      // recreate the vault or run sync-setup over the user's data.
+      await restore();
+      if (state.state === "client-install-required") await updateStatus({ state: "setup-required", lastError: null });
+    })
+    .catch(async (error) => {
+      installingClient = false;
+      await updateStatus({ state: "client-install-required", lastError: error.message });
+    });
+  return statusWithPrivateOnboarding();
 }
 
 async function selectProfile(input) {
   const profile = input.profile;
   if (profile !== "official" && profile !== "livesync") throw new Error("Choose Obsidian Sync or Self-hosted LiveSync");
-  if (state.profile !== "none" && state.profile !== profile && state.state === "ready") {
+  if (
+    (installedProfile !== "none" && profile !== installedProfile) ||
+    (state.profile !== "none" && state.profile !== profile)
+  ) {
     throw new Error("Disconnect the current sync method before changing it");
   }
   await updateStatus({ profile, state: "setup-required", lastError: null });
@@ -223,6 +281,7 @@ function normalizeScope(value) {
 }
 
 async function configureLiveSync(input) {
+  if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync is not selected");
   if (input.confirmedNoOtherSync !== true) {
     throw new Error("Confirm that Obsidian Sync, iCloud, Git sync, and other vault sync tools are turned off");
   }
@@ -339,12 +398,22 @@ async function statusWithPrivateOnboarding() {
     state.profile === "livesync" && state.state === "livesync-device-setup"
       ? await readJson(liveSyncOnboardingPath, null)
       : null;
-  return { ...publicState(state), liveSyncWorker: worker, liveSyncOnboarding: onboarding };
+  return {
+    ...publicState(state),
+    liveSyncWorker: worker,
+    liveSyncOnboarding: onboarding,
+    officialClient: state.profile === "official" ? await officialClient.status() : null
+  };
 }
 
 async function action(request) {
   switch (request.action) {
     case "status": {
+      if (installingClient || mutationRunning) return statusWithPrivateOnboarding();
+      if (state.profile === "official" && (await officialClient.status()).phase !== "installed") {
+        await updateStatus({ state: "client-install-required" });
+        return statusWithPrivateOnboarding();
+      }
       await refreshLiveSyncCompletion();
       if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync")
         return statusWithPrivateOnboarding();
@@ -364,6 +433,8 @@ async function action(request) {
     }
     case "select-profile":
       return selectProfile(request.input ?? {});
+    case "install-client":
+      return installOfficialClient(request.input ?? {});
     case "login":
       return login(request.input ?? {});
     case "connect-vault":
@@ -377,13 +448,24 @@ async function action(request) {
   }
 }
 
+async function dispatch(request) {
+  if (request.action === "status") return action(request);
+  if (mutationRunning || installingClient) throw new Error("An operation is already running. Please wait.");
+  mutationRunning = true;
+  try {
+    return await action(request);
+  } finally {
+    mutationRunning = false;
+  }
+}
+
 async function processRequest(fileName) {
   const requestFile = path.join(requestsPath, fileName);
   const responseFile = path.join(responsesPath, fileName);
   let response;
   try {
     const request = JSON.parse(await readFile(requestFile, "utf8"));
-    response = { ok: true, result: await action(request) };
+    response = { ok: true, result: await dispatch(request) };
   } catch (error) {
     await updateStatus({ lastError: error instanceof Error ? error.message : "Onboarding failed" });
     response = { ok: false, error: error instanceof Error ? error.message : "Onboarding failed" };
@@ -395,6 +477,15 @@ async function processRequest(fileName) {
 
 async function restore() {
   const enrollment = await readJson(enrollmentPath, null);
+  const enrolledProfile = enrollment?.profile || (enrollment ? "official" : null);
+  if (enrolledProfile && installedProfile !== "none" && enrolledProfile !== installedProfile) {
+    await updateStatus({
+      state: "setup-required",
+      lastError:
+        "The saved vault uses a different sync method. Restore its original installation choice before continuing."
+    });
+    return;
+  }
   if (enrollment?.profile === "livesync") {
     const onboarding = await readJson(liveSyncOnboardingPath, null);
     const worker = await readJson(liveSyncWorkerPath, null);
@@ -413,7 +504,8 @@ async function restore() {
       remoteVault: enrollment.remoteVault,
       scopePath: enrollment.scopePath || "/"
     };
-    startContinuousSync();
+    if ((await officialClient.status()).phase === "installed") await startContinuousSync();
+    else state.state = "client-install-required";
   }
   await updateStatus();
 }
@@ -491,16 +583,16 @@ async function handleHttp(request, response) {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
     if (request.method === "GET" && url.pathname === "/api/status")
       return json(response, 200, await action({ action: "status" }));
-    if (request.method === "POST" && url.pathname === "/api/profile/select")
-      return json(response, 200, await selectProfile(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/account/login")
-      return json(response, 200, await login(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/vault/connect")
-      return json(response, 200, await connectVault(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/livesync/configure")
-      return json(response, 200, await configureLiveSync(await body(request)));
-    if (request.method === "POST" && url.pathname === "/api/livesync/complete")
-      return json(response, 200, await completeLiveSync(await body(request)));
+    const actions = {
+      "/api/profile/select": "select-profile",
+      "/api/client/install": "install-client",
+      "/api/account/login": "login",
+      "/api/vault/connect": "connect-vault",
+      "/api/livesync/configure": "configure-livesync",
+      "/api/livesync/complete": "complete-livesync"
+    };
+    if (request.method === "POST" && actions[url.pathname])
+      return json(response, 200, await dispatch({ action: actions[url.pathname], input: await body(request) }));
     if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
     return json(response, 404, { error: "Not found" });
   } catch (error) {
@@ -515,15 +607,14 @@ await mkdir(liveSyncRuntimePath, { recursive: true });
 await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureServiceToken();
-const liveSyncCredentials = await ensureLiveSyncSecrets();
-// Keep the optional local service fully initialized even when paid Obsidian Sync
-// is selected. This makes switching profiles immediate and avoids CouchDB
-// repeatedly reporting missing internal databases while it waits unused.
-await initializeCouchDb({
-  internalUrl: "http://livesync-couchdb:5984",
-  username: liveSyncCredentials.username,
-  password: liveSyncCredentials.password
-});
+if (installedProfile === "livesync") {
+  const liveSyncCredentials = await ensureLiveSyncSecrets();
+  await initializeCouchDb({
+    internalUrl: "http://livesync-couchdb:5984",
+    username: liveSyncCredentials.username,
+    password: liveSyncCredentials.password
+  });
+}
 await restore();
 createServer((request, response) => {
   void handleHttp(request, response);

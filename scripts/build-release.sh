@@ -8,6 +8,10 @@ printf '{\n  "schemaVersion": 1,\n  "applications": [\n' > "$index"
 first=true
 
 for manifest in apps/*/package/scholarserver-app.yaml; do
+  if [ -f "$(dirname "$(dirname "$manifest")")/RELEASE_BLOCKED.md" ]; then
+    echo "Refusing an application candidate with outstanding packaging verification: $manifest" >&2
+    exit 1
+  fi
   package_dir=$(dirname "$manifest")
   app_name=$(basename "$(dirname "$package_dir")")
   compose="$package_dir/compose.yaml"

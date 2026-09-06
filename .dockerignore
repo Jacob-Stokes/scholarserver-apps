@@ -3,3 +3,6 @@
 .env.local
 vault/
 node_modules/
+**/node_modules/
+**/.env
+**/official-client/

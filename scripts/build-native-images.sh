@@ -22,6 +22,7 @@ build() {
   [ -z "$variant" ] || tag_suffix="-$variant"
   target="$REGISTRY/$repository:sha-$REVISION$tag_suffix-$ARCH"
   docker build --pull --build-arg TARGETARCH="$ARCH" --file "$dockerfile" --tag "$target" "$context"
+  python3 scripts/check-image-contents.py "$target"
   docker push "$target"
 }
 

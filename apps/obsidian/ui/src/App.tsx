@@ -8,6 +8,7 @@ type LiveSyncAccessMethod = "tailscale" | "public";
 type Status = {
   state:
     | "setup-required"
+    | "client-install-required"
     | "vault-selection-required"
     | "initial-sync"
     | "livesync-preparing"
@@ -20,6 +21,13 @@ type Status = {
   lastSyncAt: string | null;
   lastError: string | null;
   workerRunning: boolean;
+  officialClient?: {
+    phase: string;
+    version: string | null;
+    approvedVersion: string;
+    error: string | null;
+    receivedBytes?: number;
+  } | null;
   vaults?: unknown;
   liveSyncWorker?: { state: string; running: boolean; activeRevision?: number | null; lastError: string | null } | null;
   liveSyncOnboarding?: {
@@ -134,7 +142,7 @@ export function App() {
     void refresh();
   }, [refresh]);
   useEffect(() => {
-    if (status?.state !== "livesync-server-joining") return;
+    if (status?.state !== "livesync-server-joining" && status?.state !== "client-install-required") return;
     const timer = window.setInterval(() => void refresh(), 2_000);
     return () => window.clearInterval(timer);
   }, [refresh, status?.state]);
@@ -316,6 +324,18 @@ export function App() {
       {status && tab === "configuration" ? (
         <div className="ss-stack">
           {status.profile === "none" ? <ProfileChoice busy={busy} choose={chooseProfile} /> : null}
+          {status.profile === "official" && status.state === "client-install-required" ? (
+            <OfficialInstall
+              status={status}
+              busy={busy}
+              install={() =>
+                run(async () => {
+                  await request("client/install", { method: "POST", body: JSON.stringify({ confirmed: true }) });
+                  await refresh();
+                })
+              }
+            />
+          ) : null}
           {status.profile === "official" && status.state === "setup-required" ? (
             <OfficialLogin
               busy={busy}
@@ -430,6 +450,48 @@ export function App() {
         </div>
       ) : null}
     </ApplicationScreen>
+  );
+}
+
+function OfficialInstall({ status, busy, install }: { status: Status; busy: boolean; install: () => Promise<void> }) {
+  const phase = status.officialClient?.phase;
+  const installing = phase === "downloading" || phase === "verifying";
+  return (
+    <>
+      <SetupProgress stages={setupStages} current="connection" />
+      <SetupPanel
+        stage={2}
+        total={6}
+        title="Install the official sync client"
+        description="Downloads the official Obsidian client. Requires your own Obsidian Sync subscription. Obsidian’s terms apply."
+        next={() => void install()}
+        nextLabel={phase === "failed" ? "Retry installation" : "Install and connect"}
+        busy={busy || installing}
+      >
+        <p>
+          Your server downloads version {status.officialClient?.approvedVersion} directly from npm. It is not included
+          in ScholarServer’s image.
+        </p>
+        <a href="https://obsidian.md/terms" target="_blank" rel="noreferrer">
+          Read Obsidian’s terms
+        </a>
+        {status.remoteVault ? (
+          <p>Your existing vault and sign-in will be preserved. Sync resumes after installation.</p>
+        ) : null}
+        {installing ? (
+          <div role="status" aria-live="polite">
+            <progress aria-label="Installing Obsidian client" />
+            <p>
+              {phase === "verifying" ? "Verifying the download…" : "Downloading the client…"} You can safely reopen this
+              page.
+            </p>
+          </div>
+        ) : null}
+        {status.lastError || status.officialClient?.error ? (
+          <div className="ss-alert ss-alert-error">{status.lastError || status.officialClient?.error}</div>
+        ) : null}
+      </SetupPanel>
+    </>
   );
 }
 

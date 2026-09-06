@@ -68,6 +68,7 @@ try {
   let failSave = false;
   let reads = 0;
   let status = zoteroStatus();
+  let obsidianStatus = null;
   let selection = null;
   const calls = [];
   const option = {
@@ -88,6 +89,11 @@ try {
     if (url.origin !== origin) return route.abort();
     if (!url.pathname.includes("/api/")) return route.continue();
     calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
+    if (url.pathname.endsWith("/client/install")) {
+      assert.equal(request.postDataJSON().confirmed, true);
+      obsidianStatus.officialClient.phase = "downloading";
+      return route.fulfill({ json: obsidianStatus });
+    }
     if (url.pathname.endsWith("/access-options")) {
       if (request.method() === "PUT") selection = { ...option, optionId: option.id, authentication: "none" };
       return route.fulfill({ json: { options: [option], selection } });
@@ -98,7 +104,7 @@ try {
       if (url.pathname.includes("/zotero/")) return route.fulfill({ json: status });
       if (url.pathname.includes("/obsidian/"))
         return route.fulfill({
-          json: {
+          json: obsidianStatus || {
             state: "ready",
             profile: "livesync",
             scopePath: "/",
@@ -170,6 +176,35 @@ try {
     await page.locator(".ss-loading").waitFor({ state: "hidden" });
     console.log(`${name}: shared navigation, responsive configuration and failed-status recovery passed`);
   }
+
+  obsidianStatus = {
+    state: "client-install-required",
+    profile: "official",
+    scopePath: "/",
+    remoteVault: "Synthetic migrated vault",
+    workerRunning: false,
+    lastError: null,
+    officialClient: { phase: "not-installed", approvedVersion: "0.0.14", version: null, error: null }
+  };
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${origin}/apps/obsidian/configuration`);
+  await page.getByRole("heading", { name: "Install the official sync client" }).waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/client/install")).length, 0);
+  await page.getByRole("button", { name: "Install and connect", exact: true }).click();
+  await page.getByRole("progressbar", { name: "Installing Obsidian client" }).waitFor();
+  await page.reload();
+  await page.getByRole("progressbar", { name: "Installing Obsidian client" }).waitFor();
+  obsidianStatus.officialClient.phase = "failed";
+  obsidianStatus.officialClient.error = "Synthetic interrupted download";
+  await page.getByRole("button", { name: "Retry installation", exact: true }).waitFor();
+  await page.screenshot({ path: join(output, "obsidian-client-install-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "Retry installation", exact: true }).click();
+  obsidianStatus.state = "setup-required";
+  obsidianStatus.officialClient.phase = "installed";
+  await page.getByRole("heading", { name: "Connect your Obsidian account" }).waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/client/install")).length, 2);
+  console.log("Obsidian: explicit download, reload during progress, failed-download retry and sign-in handover passed");
+  obsidianStatus = null;
 
   // Online library: account -> attachment choice -> failed save -> ready -> reload.
   status = zoteroStatus(true);

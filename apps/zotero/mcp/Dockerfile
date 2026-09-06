@@ -1,16 +1,16 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS build
 WORKDIR /build
-COPY packages/mcp-common/package.json packages/mcp-common/tsconfig.json ./packages/mcp-common/
+COPY packages/mcp-common/package.json packages/mcp-common/package-lock.json packages/mcp-common/tsconfig.json ./packages/mcp-common/
 COPY packages/mcp-common/src ./packages/mcp-common/src
-RUN cd packages/mcp-common && npm install --no-audit --no-fund && npm run build
+RUN cd packages/mcp-common && npm ci --ignore-scripts --no-audit --no-fund && npm run build
 
 WORKDIR /build/apps/zotero/mcp
-COPY apps/zotero/mcp/package.json apps/zotero/mcp/tsconfig.json ./
-RUN npm install --no-audit --no-fund --install-links
+COPY apps/zotero/mcp/package.json apps/zotero/mcp/package-lock.json apps/zotero/mcp/tsconfig.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund --install-links
 COPY apps/zotero/mcp/src ./src
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 WORKDIR /app
 RUN apk add --no-cache curl tini
 COPY --from=build /build/apps/zotero/mcp/node_modules ./node_modules

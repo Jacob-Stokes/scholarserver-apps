@@ -1,17 +1,17 @@
-FROM node:22.22.0-alpine3.23 AS build
+FROM node:22.22.0-alpine3.23@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS build
 WORKDIR /build/packages/mcp-common
 
-COPY packages/mcp-common/package.json packages/mcp-common/tsconfig.json ./
+COPY packages/mcp-common/package.json packages/mcp-common/package-lock.json packages/mcp-common/tsconfig.json ./
 COPY packages/mcp-common/src ./src
-RUN npm install --no-audit --no-fund && npm run build
+RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build
 
 WORKDIR /build/apps/obsidian/mcp
-COPY apps/obsidian/mcp/package.json apps/obsidian/mcp/tsconfig.json ./
-RUN npm install --no-audit --no-fund --install-links
+COPY apps/obsidian/mcp/package.json apps/obsidian/mcp/package-lock.json apps/obsidian/mcp/tsconfig.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund --install-links
 COPY apps/obsidian/mcp/src ./src
 RUN npm run build
 
-FROM node:22.22.0-alpine3.23
+FROM node:22.22.0-alpine3.23@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34
 WORKDIR /app
 RUN apk add --no-cache tini curl
 COPY --from=build /build/apps/obsidian/mcp/node_modules ./node_modules

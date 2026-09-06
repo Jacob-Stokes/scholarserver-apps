@@ -8,6 +8,8 @@ on:
       - "apps/obsidian/api/**"
       - "apps/obsidian/mcp/**"
       - "apps/obsidian/sync/**"
+      - "apps/obsidian/livesync-worker/**"
+      - "apps/obsidian/livesync-couchdb/**"
       - "apps/obsidian/ui/**"
       - "apps/zotero/controller/**"
       - "apps/zotero/local-api-bridge/**"
@@ -18,8 +20,10 @@ on:
       - "apps/docling/controller/**"
       - "apps/docling/ui/**"
       - "packages/mcp-common/**"
+      - "packages/controller-runtime/**"
       - "vendor/scholarserver-ui/**"
       - "scripts/build-native-images.sh"
+      - "scripts/check-image-contents.py"
       - ".github/workflows/images.yml"
 
 permissions:

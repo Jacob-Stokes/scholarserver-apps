@@ -13,6 +13,7 @@ services:
       - ${SCHOLARSERVER_DATA_VAULT}:/vault
       - ${SCHOLARSERVER_DATA_HEADLESS_CONFIG}:/home/obsidian/.config
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_OFFICIAL_CLIENT}:/official-client
       - ${SCHOLARSERVER_DATA_LIVESYNC_RUNTIME}:/livesync-runtime
     expose: ["8080"]
     networks: [instance, egress, edge]

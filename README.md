@@ -10,7 +10,7 @@ checksummed release bundles; it does not execute files directly from a Git branc
 
 | Package | Status | Containers |
 | --- | --- | --- |
-| Obsidian | Preview | Headless Sync, vault API, remote MCP |
+| Obsidian | Preview | Setup controller, vault API, MCP; optional LiveSync database/worker or user-downloaded official Sync client |
 | Zotero | Preview | Browser-accessible desktop, onboarding controller, app-owned automations, remote MCP |
 | Docling | Preview | CPU-only conversion engine, durable single-worker queue |
 
@@ -25,6 +25,11 @@ checksummed release bundles; it does not execute files directly from a Git branc
 Images are built separately on native amd64 and arm64 GitHub runners. The release
 workflow then creates a multi-platform manifest; QEMU and architecture emulation are
 not used.
+
+Prefer upstream application images and keep our controllers/MCP separate.
+Custom application images are exceptions, not the default. The reviewed
+[image inventory and packaging policy](docs/image-packaging.md) explains each
+exception, version pinning and the proprietary-client download boundary.
 
 Application icons are bundled into each checksummed package rather than loaded
 from a public CDN at runtime. `npm run icons:sync` reproducibly downloads the
