@@ -20,7 +20,8 @@ unconnected browser notebook does not count as integration.
 The upstream self-hosted sync adapter still uses **Logseq account sign-in** by
 default. Self-hosted storage is not the same as independent authentication. The
 setup must disclose this. A new unpaid account has been verified with encrypted
-browser-to-browser self-hosted sync; headless enrollment remains an acceptance gate.
+browser/headless self-hosted sync and the six MCP tools on the same encrypted
+graph. Enrollment was manual engineering work, not a finished installer.
 
 The official release currently includes its new CLI in the desktop archive. The
 helper runs that archive's runtime in Node mode: no display server, remote desktop
@@ -39,7 +40,7 @@ packaging with a supported upstream headless artifact when one is available.
 - The upstream daemon is the single graph writer. Restarting the helper reopens
   the same persistent graph; it does not recreate or overwrite it.
 - Sync is not enabled implicitly. Do not remove E2EE to make server-side MCP work.
-  The proposed headless replica decrypts locally as an authorized device would.
+  The verified headless replica decrypts locally as an authorized device would.
 
 ## Current scope
 

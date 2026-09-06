@@ -24,8 +24,9 @@ references are linked in [README](README.md#sources-and-notices).
 The helper/MCP works on native AMD64 and ARM64. The upstream browser and sync
 images initially opened separate Demo graphs. The later account test proved
 bidirectional sync between two browser origins through our server, using one
-disposable encrypted graph. **The helper/MCP graph remains separate.** Do not
-mistake this browser proof for headless or physical-device acceptance.
+disposable encrypted graph. The subsequent manual enrollment pass connected the
+helper/MCP to that same encrypted graph and verified both directions. Do not
+mistake this proof for physical-device or installer acceptance.
 
 Keep the candidate unpublished until all participants join the same graph and
 edits are verified both ways. Browser availability must remain an optional,
@@ -37,12 +38,50 @@ The selected community Node sync adapter uses Logseq account authentication by
 default. The alternative sync-worker's semantic MCP supports only non-E2EE
 graphs, so it is not an acceptable shortcut that silently removes encryption.
 
-The proposed route is a locally authorized headless replica, with Logseq owning
+The verified route is a locally authorized headless replica, with Logseq owning
 decryption and database access. A newly created unpaid account now works for
-encrypted browser sync through our server. Headless enrollment is unverified.
-The CLI's localhost OAuth callback also needs a supported remote-server
-onboarding flow; do not claim that problem is solved or introduce an unreviewed
-credential broker. A disposable headless/device test is still needed.
+encrypted browser/headless sync through our server. The CLI completed its normal
+OAuth authorization-code/PKCE login. For this engineering proof, a temporary
+browser opener captured its authorization URL and the browser's callback was
+delivered privately to the CLI's own loopback listener. The CLI owned the state
+check, code exchange and credential persistence; no tokens were copied from the
+browser or sent through a central ScholarServer service. This manual handoff is
+not a finished remote-server onboarding flow.
+
+### The packaged CLI has different authentication assumptions from the worker
+
+Read the actual shipped CLI and its `cli/lib/*.ml` sources, not only the older
+`src/main/logseq/cli/*.cljs` implementation still present in the same release.
+The packaged CLI uses a custom `http-base` for OAuth as well as sync by default.
+Explicit `oauth-authorize-endpoint` and `oauth-token-endpoint` keep Logseq account
+login separate from our sync service. Without them, login went to our sync URL.
+
+The worker's encrypted-password persistence reads `~/logseq/auth.json`, ignoring
+the CLI's custom `auth-path`. Login and graph listing succeeded, but downloading
+reported a misleading missing-encryption-password error caused by a missing
+refresh token at that fixed path. Mapping the same persistent directory at
+`/graph` and `/home/node/logseq`, with the auth file in that directory, fixed it.
+Do not maintain two credential copies or patch the upstream encryption code.
+
+The upstream callback bound to IPv6 loopback in this container. A probe of `/`
+terminated the login attempt with `login-callback-not-found`; do not use a
+generic health probe on a one-shot authentication listener. Retry with a new
+authorization request, not an old authorization code.
+
+### Restart persistence is not automatic sync resumption
+
+After restarting helper, MCP and sync containers, the graph and encrypted
+credentials survived. An explicit `sync start` succeeded without entering the
+password again; a fresh browser edit then reached MCP. However, the current helper
+does not automatically start sync. Production lifecycle ownership must implement
+explicit, resumable enrollment and opt-in sync startup, and health must distinguish
+an available local notebook from current remote sync. Do not mark that gate passed.
+
+`development/check-synced-mcp.mjs` checks the exact remote identity, encrypted flag,
+browser-originated data and return edits. `compose.encrypted-proof.yaml` and
+`sync-cli.example.edn` record the manual test configuration, not a user installer.
+The first failed download's empty local graph was preserved outside the graph
+directory before retrying; no remote notebook or existing Research graph was reset.
 
 ### Healthy sync did not mean account verification was configured
 
@@ -120,8 +159,8 @@ Linux repository packages still prevent a claim of bit-for-bit reproducibility.
 
 ## Next evidence to obtain
 
-1. Supported headless enrollment in the disposable encrypted graph.
-2. Same graph across browser, headless replica and physical device; verify edits both ways.
+1. Turn the manual headless enrollment proof into safe remote-server setup and automatic sync resume.
+2. Extend same-graph browser/headless proof to a physical device and native ARM64 sync.
 3. Attachments, network interruption/reconnect and consistent backup/restore.
 4. Shared ScholarServer setup/access UI, including the no-browser choice.
 5. Compatible version matrix, complete upstream notices and final release images.

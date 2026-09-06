@@ -1,0 +1,5 @@
+{:auth-path "/graph/auth.json"
+ :oauth-authorize-endpoint "https://logseq-prod.auth.us-east-1.amazoncognito.com/oauth2/authorize"
+ :oauth-token-endpoint "https://logseq-prod.auth.us-east-1.amazoncognito.com/oauth2/token"
+ :http-base "http://sync:8787"
+ :ws-url "ws://sync:8787/sync/%s"}

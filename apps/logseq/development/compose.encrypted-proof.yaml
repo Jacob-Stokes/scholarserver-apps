@@ -1,0 +1,10 @@
+# Manual acceptance only. Enroll/download the disposable graph before selecting it.
+services:
+  helper:
+    environment:
+      LOGSEQ_GRAPH: ScholarServerTest
+    volumes:
+      # The upstream worker reads ~/logseq/auth.json even with a custom CLI auth path.
+      # These are aliases for ONE directory, not separately copied credentials.
+      - ./data/graph:/home/node/logseq
+    networks: [graph, egress]

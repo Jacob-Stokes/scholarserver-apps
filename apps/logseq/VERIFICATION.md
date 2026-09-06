@@ -60,11 +60,45 @@ password-request timeout. The pinned browser successfully prompted for the
 password and created the graph; the public site could then join and edit it.
 That UI failure was not evidence of a subscription requirement.
 
+## Manual encrypted headless/MCP proof — 6 September 2026
+
+Native AMD64 on Resolution, using the same disposable encrypted browser graph
+and existing unpaid test account. The official CLI and worker were not modified.
+
+- Completed CLI OAuth/PKCE sign-in using a private engineering handoff of its
+  localhost callback. The CLI exchanged the code and stored credentials itself.
+- Separated OAuth endpoints from the custom sync URL and mapped the worker's
+  fixed credential path to the same persistent storage used by the CLI.
+- Downloaded the existing remote graph with the supplied encryption password
+  through stdin. Exact graph UUID and `graph-e2ee?` matched the browser.
+- Ran all six tools through the real MCP protocol against this graph, including
+  concurrent clients and unauthenticated API rejection.
+- Observed the MCP-created page, Unicode/citation block and task in the pinned
+  browser. Edited the block there and read that edit through MCP. Appended an MCP
+  reply and observed it in both independent browser origins.
+- Restarted helper, MCP and sync containers. Graph identity, notes and credentials
+  persisted. Manually ran `sync start` without resupplying the encryption password;
+  the websocket opened with matching checksums and zero pending operations.
+- Made a fresh edit in the second browser after restart and verified it through MCP.
+
+The current helper still needs automatic opt-in sync resumption. Manual `sync
+start` is **not** an automatic restart-recovery proof. Authentication enrollment
+also needs a user-facing flow; this test did not require user interaction but
+did require engineering work. No physical client, attachment or restore proof yet.
+
+Manual acceptance artifacts: `development/sync-cli.example.edn` separates account
+and data endpoints; `compose.encrypted-proof.yaml` adds persistent credential-path
+alignment and account-service egress. Join the test graph before selecting it in
+the helper. The MCP acceptance script requires `LOGSEQ_PROOF_GRAPH_ID` and a
+browser-edited fixture; set `LOGSEQ_PROOF_PHASE=restart` for the fresh-edit check.
+Run it in the MCP container, then inspect the independent browser: reading a
+successful local write alone is not evidence of delivery.
+
 ## Not yet verified / not yet implemented
 
-- Headless account authorization and encrypted replica enrollment.
-- Browser, headless replica and a physical device using the same graph bidirectionally.
-- Compatibility of the official CLI with the proven browser/sync pair.
+- User-facing headless authorization/enrollment and automatic sync resumption.
+- A physical device using the same graph bidirectionally; native ARM64 encrypted sync.
+- Broader compatibility beyond this exact pinned CLI/browser/sync combination.
 - Attachments, reconnect after network loss and consistent backup/restore.
 - ScholarServer setup screens, access-route integration and the two install choices.
 - Final package manifest, release image digests and full redistribution/source notices.
