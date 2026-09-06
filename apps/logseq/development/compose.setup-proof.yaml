@@ -1,0 +1,24 @@
+# Isolated browser acceptance candidate, not a released catalog package.
+# All host bindings are loopback-only. Use a separate project and fresh data.
+services:
+  helper:
+    image: scholarserver-logseq-setup:helper
+    environment:
+      LOGSEQ_MANAGED_SETUP: "1"
+    volumes:
+      - ./data/graph:/home/node/logseq
+    networks: [graph, egress]
+    ports: ["127.0.0.1:18145:8081"]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  # Internal-only networks do not provide host publishing. Test MCP inside its
+  # container; route the editor privately through its resolved container address.
+  sync:
+    environment:
+      DB_SYNC_BASE_URL: ${LOGSEQ_TEST_SYNC_URL:?Provide the sync address reachable by browsers and containers}
+    ports: ["127.0.0.1:18148:8787"]
+networks:
+  egress:
+    ipam:
+      config:
+        - subnet: ${LOGSEQ_TEST_EGRESS_SUBNET:?Choose an unused subnet for this isolated test}

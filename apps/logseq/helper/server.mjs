@@ -156,4 +156,9 @@ async function main() {
     });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.env.LOGSEQ_MANAGED_SETUP === "1") {
+    const { startManaged } = await import("./setup.mjs");
+    await startManaged({ graphServer, serviceToken });
+  } else await main();
+}

@@ -41,6 +41,9 @@ release checklist or proof that a particular application is ready.
 - Minimize credentials and note contents in process arguments, environment and
   logs. Forward useful classified errors, not raw upstream output that may contain
   private information. Use bounded requests and responses.
+- Test generated download/asset URLs from every participant, including containers.
+  A service's loopback address is not reachable from its peer. Verify the downloaded
+  dataset's identity and encryption, not only the upstream command's exit status.
 
 ## Design failure paths, not just successful installation
 

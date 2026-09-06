@@ -24,16 +24,17 @@ export class GraphRunner {
     this.spawnProcess = spawnProcess;
   }
 
-  run(command) {
+  run(command, { signal } = {}) {
     if (this.#pending >= 16) return Promise.reject(new GraphError("busy", "Logseq is busy. Try again shortly.", 503));
     this.#pending += 1;
     const admittedAt = Date.now();
     const result = this.#tail.then(() => {
+      if (signal?.aborted) throw new GraphError("cancelled", "The operation was cancelled.", 409);
       const remaining = this.timeoutMs - (Date.now() - admittedAt);
       if (remaining <= 0) {
         throw new GraphError("busy", "Logseq was busy. This operation was not started; try again.", 503);
       }
-      return this.#execute(command, remaining);
+      return this.#execute(command, remaining, signal);
     });
     this.#tail = result.catch(() => {});
     return result.finally(() => {
@@ -41,7 +42,7 @@ export class GraphRunner {
     });
   }
 
-  #execute(command, remainingMs) {
+  #execute(command, remainingMs, signal) {
     return new Promise((resolve, reject) => {
       const args = [
         "--root-dir",
@@ -65,6 +66,9 @@ export class GraphRunner {
         failure ??= error;
         child.kill("SIGKILL");
       };
+      const cancel = () => stop(new GraphError("cancelled", "The operation was cancelled.", 409));
+      signal?.addEventListener("abort", cancel, { once: true });
+      if (signal?.aborted) cancel();
       const timer = setTimeout(
         () =>
           stop(
@@ -93,10 +97,12 @@ export class GraphRunner {
       child.stdin.on("error", () => {});
       child.on("error", () => {
         clearTimeout(timer);
+        signal?.removeEventListener("abort", cancel);
         reject(new GraphError("unavailable", "The Logseq client could not start.", 503));
       });
       child.on("close", (code) => {
         clearTimeout(timer);
+        signal?.removeEventListener("abort", cancel);
         if (failure) return reject(failure);
         let result;
         try {

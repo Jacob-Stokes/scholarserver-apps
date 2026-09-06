@@ -95,3 +95,16 @@ test("UTF-8 characters spanning process output chunks remain intact", async () =
   });
   assert.deepEqual(await runner.run(["show"]), value);
 });
+
+test("cancelling enrollment terminates its child and releases the command queue", async () => {
+  const { runner, calls } = fixture((child, payload) => {
+    if (payload.at(-1) === "ok") finish(child);
+  });
+  const abort = new AbortController();
+  const pending = runner.run(["login"], { signal: abort.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  abort.abort();
+  await assert.rejects(pending, (error) => error.code === "cancelled");
+  await runner.run(["ok"]);
+  assert.equal(calls.length, 2);
+});

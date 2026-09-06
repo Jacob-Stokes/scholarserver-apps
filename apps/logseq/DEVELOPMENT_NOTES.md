@@ -15,9 +15,9 @@ desktop `/api`, which dispatches to Electron's renderer. The headless worker has
 already uses that HTTP route and reuses the worker; it does not start a GUI.
 
 Measured warmed page listing was about 314 ms through CLI versus 12 ms through
-raw worker HTTP on the disposable AMD64 graph. We accept the extra latency rather
-than copy upstream lifecycle, selection, mutation and task rules. Fourteen tools
-now use fixed upstream commands. The exact decision, sources, limitations and
+raw worker HTTP on the disposable AMD64 graph. The later verified adapter uses
+direct worker HTTP for fourteen research tools and keeps lifecycle in the CLI.
+The exact decision, sources, limitations and
 revisit triggers are in [API_DECISION.md](API_DECISION.md). Do not build a desktop
 API compatibility shim just to claim reuse of an existing MCP.
 
@@ -86,10 +86,11 @@ authorization request, not an old authorization code.
 
 After restarting helper, MCP and sync containers, the graph and encrypted
 credentials survived. An explicit `sync start` succeeded without entering the
-password again; a fresh browser edit then reached MCP. However, the current helper
-does not automatically start sync. Production lifecycle ownership must implement
-explicit, resumable enrollment and opt-in sync startup, and health must distinguish
-an available local notebook from current remote sync. Do not mark that gate passed.
+password again; a fresh browser edit then reached MCP. The new managed-setup
+candidate now starts sync automatically for a previously selected notebook. Its
+isolated AMD64 browser test restarted helper, sync and MCP together, observed
+matching checksums, then verified a fresh browser edit through MCP without
+re-entering credentials. This is not yet a final catalog installation proof.
 
 `development/check-synced-mcp.mjs` checks the exact remote identity, encrypted flag,
 browser-originated data and return edits. `compose.encrypted-proof.yaml` and
@@ -192,7 +193,7 @@ these evidence layers separate and repeat them for runtime upgrades.
 
 ## Next evidence to obtain
 
-1. Turn the manual headless enrollment proof into safe remote-server setup and automatic sync resume.
+1. Integrate the verified development enrollment/resume flow into the actual package and fresh-host installer.
 2. Extend same-graph browser/headless proof to a physical device and native ARM64 sync.
 3. Attachments, network interruption/reconnect and consistent backup/restore.
 4. Shared ScholarServer setup/access UI, including the no-browser choice.
@@ -200,3 +201,34 @@ these evidence layers separate and repeat them for runtime upgrades.
 
 Update these notes as findings change. Keep current runtime addresses and secret
 login links out of this document; they are not durable architectural knowledge.
+
+## Browser enrollment and recovery follow-up
+
+The managed candidate uses the upstream CLI's supported OAuth/PKCE configuration;
+it does not exchange tokens itself or call a central ScholarServer service. The
+upstream redirect is fixed to localhost. The user completes Logseq sign-in and
+copies the failed tab's return address into a masked field. We validate the exact
+destination, state and single code, then forward only to the CLI's fixed loopback
+listener. Invalid, expired and replayed links are rejected. A cancelled attempt
+stops its child and removes its private temporary verifier. Browser automation
+completed this real flow using the existing authorized test account.
+
+Account discovery needs a separate temporary graph root. Using the real default
+notebook name created an empty graph before selection. Discovery now uses a
+runtime-only Account graph and stops its worker after listing.
+
+`DB_SYNC_BASE_URL` must be reachable from the browser **and** the helper. A
+loopback address made the CLI report a successful download with empty graph
+metadata. Check the persisted remote UUID and encryption flag before readiness,
+not just command exit status. The failed first download was retained; retry moves
+only our own uncompleted replica into a recovery folder after stopping its worker.
+It never resets a remote notebook or replaces a connected local graph.
+
+The shared application screen now has Overview and Configuration, a three-stage
+setup flow, persistent download progress and retry. Mobile layout and navigation
+are exercised with the other apps. The real isolated proof used a new encrypted
+graph, exercised all fourteen MCP tools, saw those edits in the independent
+browser, returned a browser edit to MCP, and repeated after a service restart.
+The new setup image has not yet been tested on native ARM64 or installed through
+the real catalog. Endpoint provisioning and the optional editor choice remain
+package integration work, not verified features of this development compose file.

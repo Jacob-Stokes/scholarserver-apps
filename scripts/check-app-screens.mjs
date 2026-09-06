@@ -10,7 +10,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
 const modules = process.env.SCHOLARSERVER_BROWSER_MODULES;
 const { chromium } = require(modules ? `${modules}/playwright` : "playwright");
-const apps = ["zotero", "obsidian", "docling"];
+const apps = ["zotero", "obsidian", "docling", "logseq"];
 const output = join(root, ".dev", "app-screens");
 await mkdir(output, { recursive: true });
 
@@ -102,6 +102,19 @@ try {
       reads++;
       if (failStatus) return route.fulfill({ status: 503, json: { error: "Synthetic status unavailable" } });
       if (url.pathname.includes("/zotero/")) return route.fulfill({ json: status });
+      if (url.pathname.includes("/logseq/"))
+        return route.fulfill({
+          json: {
+            phase: "setup",
+            ready: false,
+            sync: "unavailable",
+            graph: null,
+            canRetry: false,
+            accountConnected: false,
+            account: { state: "idle" },
+            error: null
+          }
+        });
       if (url.pathname.includes("/obsidian/"))
         return route.fulfill({
           json: obsidianStatus || {

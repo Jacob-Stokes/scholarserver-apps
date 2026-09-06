@@ -1,3 +1,11 @@
+FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS ui-build
+WORKDIR /source/apps/logseq/ui
+COPY vendor/scholarserver-ui /source/vendor/scholarserver-ui
+COPY apps/logseq/ui/package.json apps/logseq/ui/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY apps/logseq/ui/ ./
+RUN npm run build
+
 FROM node:22.22.0-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS download
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip && rm -rf /var/lib/apt/lists/*
@@ -18,10 +26,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 COPY --from=download /opt/logseq /opt/logseq
 WORKDIR /app
+COPY packages/controller-runtime /packages/controller-runtime
 COPY apps/logseq/helper/package.json apps/logseq/helper/package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts --install-links && npm cache clean --force
 COPY apps/logseq/helper/server.mjs apps/logseq/helper/operations.mjs apps/logseq/helper/runner.mjs apps/logseq/helper/cli-bridge.cjs ./
 COPY apps/logseq/helper/worker-http.mjs apps/logseq/helper/http-operations.mjs apps/logseq/helper/references.mjs ./
+COPY apps/logseq/helper/enrollment.mjs apps/logseq/helper/setup.mjs ./
+COPY --from=ui-build /source/apps/logseq/ui/dist /app/ui
 RUN mkdir /graph /runtime && chown 1000:1000 /graph /runtime
 USER 1000:1000
 ENV PORT=8080

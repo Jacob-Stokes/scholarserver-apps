@@ -23,7 +23,8 @@ The upstream self-hosted sync adapter still uses **Logseq account sign-in** by
 default. Self-hosted storage is not the same as independent authentication. The
 setup must disclose this. A new unpaid account has been verified with encrypted
 browser/headless self-hosted sync and MCP tools on the same encrypted
-graph. Enrollment was manual engineering work, not a finished installer.
+graph. The managed development setup now completes browser enrollment and resumes
+sync after restart; it is not yet a finished catalog installer.
 
 The official release currently includes its new CLI in the desktop archive. The
 helper runs that archive's runtime in Node mode: no display server, remote desktop

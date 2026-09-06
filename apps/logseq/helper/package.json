@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@scholarserver/controller-runtime": "file:../../../packages/controller-runtime",
     "transit-js": "0.8.874"
   }
 }
