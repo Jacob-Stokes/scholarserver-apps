@@ -22,6 +22,7 @@ RUN addgroup -g 1000 obsidian \
     && chown -R 1000:1000 /vault /runtime /livesync-runtime /home/obsidian
 
 COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/controller.mjs
+COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-settings.mjs /app/livesync-settings.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-lifecycle.mjs /app/livesync-lifecycle.mjs

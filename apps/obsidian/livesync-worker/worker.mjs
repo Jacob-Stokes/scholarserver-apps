@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { configuredWorkerFile, daemonStateFromOutput } from "./worker-state.mjs";
 
 const runtime = "/livesync-runtime";
@@ -14,18 +15,10 @@ let child = null;
 let activeRevision = null;
 let retryAfter = 0;
 let status = { state: "waiting", running: false, activeRevision: null, lastError: null, lastStartedAt: null };
-let statusWrite = Promise.resolve();
-
-async function atomicJson(file, value) {
-  const temporary = `${file}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-  await rename(temporary, file);
-}
 
 async function update(patch) {
   status = { ...status, ...patch, running: child !== null, activeRevision };
-  statusWrite = statusWrite.then(() => atomicJson(statusPath, status));
-  await statusWrite;
+  await atomicJson(statusPath, status);
 }
 
 function runCli(args, stdin = null) {

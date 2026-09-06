@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
 import {
   generateSecret,
@@ -44,12 +45,6 @@ let state = {
 function publicState(value = state) {
   const { setupURI: _setupURI, setupPassphrase: _setupPassphrase, ...safe } = value;
   return safe;
-}
-
-async function atomicJson(filePath, value, mode = 0o600) {
-  const temporary = `${filePath}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode });
-  await rename(temporary, filePath);
 }
 
 async function updateStatus(patch = {}) {

@@ -6,6 +6,7 @@ RUN apk add --no-cache tini \
     && mkdir -p /state /linked \
     && chown -R 10001:10001 /state /linked
 COPY --chown=10001:10001 apps/zotero/automations/worker.mjs ./worker.mjs
+COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
 USER 10001:10001
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "worker.mjs"]

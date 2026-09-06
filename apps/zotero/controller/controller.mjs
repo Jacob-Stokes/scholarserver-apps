@@ -1,11 +1,12 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat } from "node:fs/promises";
 import { createServer, request as nodeHttpRequest } from "node:http";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 
 const runtimePath = "/runtime";
 const requestsPath = path.join(runtimePath, "requests");
@@ -31,16 +32,6 @@ const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "serv
 const onlineStorageModes = new Set(["metadata-only", "zotero-storage"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
 let onlineAccountCache = { expiresAt: 0, value: null };
-
-async function atomicWrite(filePath, content, mode = 0o600) {
-  const temporary = `${filePath}.${process.pid}.tmp`;
-  await writeFile(temporary, content, { mode });
-  await rename(temporary, filePath);
-}
-
-async function atomicJson(filePath, value, mode = 0o600) {
-  await atomicWrite(filePath, `${JSON.stringify(value, null, 2)}\n`, mode);
-}
 
 async function ensureRandomFile(filePath, bytes = 32) {
   try {

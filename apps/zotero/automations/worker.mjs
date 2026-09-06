@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, readdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { atomicJson as writeAtomicJson } from "@scholarserver/controller-runtime/files";
 
 const stateRoot = process.env.SCHOLARSERVER_AUTOMATION_STATE ?? "/state";
 const linkedRoot = process.env.SCHOLARSERVER_LINKED_ROOT ?? "/linked";
@@ -43,9 +44,7 @@ function initialState() {
 
 async function atomicJson(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true });
-  const temporary = `${filePath}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-  await rename(temporary, filePath);
+  return writeAtomicJson(filePath, value);
 }
 
 async function loadState() {
