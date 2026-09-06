@@ -94,6 +94,40 @@ browser-edited fixture; set `LOGSEQ_PROOF_PHASE=restart` for the fresh-edit chec
 Run it in the MCP container, then inspect the independent browser: reading a
 successful local write alone is not evidence of delivery.
 
+## API review and expanded research proof — 6 September 2026
+
+The [API decision](API_DECISION.md) records primary-source review and measured
+CLI versus worker HTTP latency. The chosen implementation retains the official
+CLI and expands the private helper/MCP from six to fourteen operations.
+
+- Native AMD64 helper/MCP images rebuilt and deployed only to the existing
+  disposable encrypted graph. No official Logseq runtime code was changed.
+- Actual MCP calls exercised all fourteen tools: page pagination; block-content
+  search; reading/editing a block; appending a nested child; listing tasks and
+  graph-defined statuses; completing a task. Existing six-tool coverage remains.
+- Editing the parent preserved its nested child. Unicode and DOI attribution
+  survived. An invalid task status failed without replacing the completed status;
+  malformed IDs were rejected through MCP.
+- The pinned browser displayed the edited source and nested note. A browser edit
+  of the child reached MCP. The second browser origin received the same content.
+- Restarted helper and MCP. The new data and service authentication persisted.
+  Explicitly resumed sync through the official CLI without another login/password.
+  A fresh edit from the second browser after restart reached MCP; sync then had an
+  open socket, matching checksums and zero pending local/server operations.
+- On native ARM64, a separate fresh disposable graph passed both the baseline and
+  expanded MCP proof, then restart/persistence checks. No account credentials were
+  copied to ARM64; this is not ARM64 encrypted-sync acceptance.
+- Complete repository `npm test`, lint and diff checks passed. Queue, timeout,
+  unknown-write-outcome and input-boundary regression tests remain in place.
+
+Repeatable artifacts: `development/check-research-mcp.mjs` runs through MCP,
+requires a fresh synthetic page for its write phase, and has a read-only restart
+phase. The optional exact graph UUID and browser-marker assertions distinguish
+encrypted browser proof from a separate local graph. The native candidate script
+now runs both MCP checks before and after restart. Transport benchmark results
+are not a large-library or load test. Public test-site browser console diagnostics
+were not audited as part of this API pass.
+
 ## Not yet verified / not yet implemented
 
 - User-facing headless authorization/enrollment and automatic sync resumption.

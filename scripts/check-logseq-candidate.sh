@@ -31,7 +31,9 @@ compose() {
 trap 'compose down --remove-orphans' EXIT
 compose up -d --wait --wait-timeout 120
 compose exec -T mcp node --input-type=module < apps/logseq/development/check-mcp.mjs
+compose exec -T mcp node --input-type=module < apps/logseq/development/check-research-mcp.mjs
 compose restart
 compose up -d --wait --wait-timeout 120
 compose exec -T -e LOGSEQ_PROOF_PHASE=restart mcp node --input-type=module < apps/logseq/development/check-mcp.mjs
+compose exec -T -e LOGSEQ_PROOF_PHASE=restart mcp node --input-type=module < apps/logseq/development/check-research-mcp.mjs
 echo "Native $architecture candidate proof passed. No images or catalog entries were published."

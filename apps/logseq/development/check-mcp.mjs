@@ -28,7 +28,7 @@ try {
   assert.equal((await fetch("http://helper:8080/v1/graph", { method: "POST" })).status, 401);
   const client = await connect();
   const tools = await client.listTools();
-  assert.equal(tools.tools.length, 6);
+  assert.equal(tools.tools.length, 14);
   await call(client, "graph_status");
   if (process.env.LOGSEQ_PROOF_PHASE !== "restart") {
     await call(client, "create_page", { page });

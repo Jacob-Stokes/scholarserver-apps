@@ -3,6 +3,13 @@ import { z } from "zod";
 
 type GraphCall = (operation: string, input: Record<string, unknown>) => Promise<unknown>;
 const page = z.string().trim().min(1).max(250);
+const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+const pagination = z
+  .object({
+    limit: z.number().int().min(1).max(100).optional(),
+    offset: z.number().int().min(0).max(1_000_000).optional()
+  })
+  .strict();
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const write = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
 
@@ -25,6 +32,86 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
         annotations: read
       },
       handler: (input) => call("search-pages", input)
+    },
+    {
+      def: {
+        name: "list_pages",
+        description:
+          "Browse research pages, newest updated first. Use limit and offset to page through results (default 50, maximum 100).",
+        inputSchema: pagination,
+        annotations: read
+      },
+      handler: (input) => call("list-pages", input)
+    },
+    {
+      def: {
+        name: "search_blocks",
+        description:
+          "Find text within notes using case-insensitive substring search. Returns graph-local db/id values for reading or editing blocks. Not semantic search; narrow the query if the result is too large.",
+        inputSchema: z.object({ query: z.string().trim().min(1).max(500) }).strict(),
+        annotations: read
+      },
+      handler: (input) => call("search-blocks", input)
+    },
+    {
+      def: {
+        name: "read_block",
+        description:
+          "Read a block and its children, up to eight levels deep. Use a db/id returned by this graph, not an ID from another device or graph.",
+        inputSchema: z.object({ id }).strict(),
+        annotations: read
+      },
+      handler: (input) => call("read-block", input)
+    },
+    {
+      def: {
+        name: "update_block",
+        description:
+          "Replace an existing block's text, preserving its children. Read it first and preserve citations and source attribution. After a timeout, inspect it before retrying. Use this graph's db/id.",
+        inputSchema: z.object({ id, content: z.string().min(1).max(32_000) }).strict(),
+        annotations: { ...write, destructiveHint: true, idempotentHint: true }
+      },
+      handler: (input) => call("update-block", input)
+    },
+    {
+      def: {
+        name: "append_child_block",
+        description:
+          "Append a nested research note under an existing block using this graph's db/id. After a timeout, read the parent before retrying to avoid duplicates.",
+        inputSchema: z.object({ id, content: z.string().min(1).max(32_000) }).strict(),
+        annotations: write
+      },
+      handler: (input) => call("append-child-block", input)
+    },
+    {
+      def: {
+        name: "list_tasks",
+        description:
+          "Browse research tasks and their current status, newest updated first. Returns this graph's db/id. Use limit and offset (default 50, maximum 100).",
+        inputSchema: pagination,
+        annotations: read
+      },
+      handler: (input) => call("list-tasks", input)
+    },
+    {
+      def: {
+        name: "list_task_statuses",
+        description:
+          "List the task statuses defined by this graph before changing a task. Use the returned db/ident value with set_task_status.",
+        inputSchema: z.object({}).strict(),
+        annotations: read
+      },
+      handler: (input) => call("list-task-statuses", input)
+    },
+    {
+      def: {
+        name: "set_task_status",
+        description:
+          "Set a task's status using this graph's db/id and a db/ident returned by list_task_statuses. Read the task first. After a timeout, check its status before retrying.",
+        inputSchema: z.object({ id, status: z.string().trim().min(1).max(100) }).strict(),
+        annotations: { ...write, destructiveHint: true, idempotentHint: true }
+      },
+      handler: (input) => call("set-task-status", input)
     },
     {
       def: {

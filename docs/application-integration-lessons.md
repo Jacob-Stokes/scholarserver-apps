@@ -21,6 +21,10 @@ release checklist or proof that a particular application is ready.
 - Let upstream own database transactions and identities. Use supported APIs or
   clients rather than writing its database ourselves. Keep research operations
   narrow; do not expose an arbitrary shell or command runner through MCP.
+- Review existing MCPs before extending our own, but verify their actual backend.
+  Desktop/plugin APIs and headless-worker HTTP are not interchangeable just because
+  both use HTTP. Measure CLI overhead before copying upstream validation and editing
+  semantics; a compatibility shim can cost more maintenance than the code it replaces.
 
 ## Resolve authentication and encryption early
 

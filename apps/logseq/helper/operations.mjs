@@ -23,6 +23,23 @@ function fields(input, permitted) {
   }
 }
 
+function integer(input, field, fallback, maximum) {
+  const value = input[field] ?? fallback;
+  const minimum = field === "offset" ? 0 : 1;
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new GraphError("invalid-input", `Provide ${field} between ${minimum} and ${maximum}.`);
+  }
+  return value;
+}
+
+function blockId(input) {
+  return integer(input, "id", undefined, Number.MAX_SAFE_INTEGER);
+}
+
+function pagination(input) {
+  return [`--limit=${integer(input, "limit", 50, 100)}`, `--offset=${integer(input, "offset", 0, 1_000_000)}`];
+}
+
 // Deliberately small: neither a general CLI bridge nor direct database access.
 export function graphCommand(operation, input = {}) {
   switch (operation) {
@@ -32,6 +49,37 @@ export function graphCommand(operation, input = {}) {
     case "search-pages":
       fields(input, ["query"]);
       return ["search", "page", `--content=${text(input, "query", 500)}`];
+    case "search-blocks":
+      fields(input, ["query"]);
+      return ["search", "block", `--content=${text(input, "query", 500)}`];
+    case "list-pages":
+      fields(input, ["limit", "offset"]);
+      return ["list", "page", ...pagination(input)];
+    case "list-tasks":
+      fields(input, ["limit", "offset"]);
+      return ["list", "task", ...pagination(input)];
+    case "list-task-statuses":
+      fields(input, []);
+      return ["query", "--name=list-status"];
+    case "read-block":
+      fields(input, ["id"]);
+      return ["show", `--id=${blockId(input)}`, "--level", "8"];
+    case "update-block":
+      fields(input, ["id", "content"]);
+      return ["upsert", "block", `--id=${blockId(input)}`, `--content=${text(input, "content", 32_000)}`];
+    case "append-child-block":
+      fields(input, ["id", "content"]);
+      return [
+        "upsert",
+        "block",
+        `--target-id=${blockId(input)}`,
+        `--content=${text(input, "content", 32_000)}`,
+        "--pos",
+        "last-child"
+      ];
+    case "set-task-status":
+      fields(input, ["id", "status"]);
+      return ["upsert", "task", `--id=${blockId(input)}`, `--status=${text(input, "status", 100)}`];
     case "read-page":
       fields(input, ["page"]);
       return ["show", `--page=${text(input, "page", 250)}`, "--level", "8"];

@@ -7,6 +7,20 @@ for remaining acceptance work. Do not connect a real graph for these tests.
 
 ## Findings and decisions
 
+### HTTP is a transport, not a compatibility guarantee
+
+The API review found two distinct interfaces in 2.0.1. The community MCP expects
+desktop `/api`, which dispatches to Electron's renderer. The headless worker has
+`/v1/invoke`, using Transit and lower-level graph operations. Our official CLI
+already uses that HTTP route and reuses the worker; it does not start a GUI.
+
+Measured warmed page listing was about 314 ms through CLI versus 12 ms through
+raw worker HTTP on the disposable AMD64 graph. We accept the extra latency rather
+than copy upstream lifecycle, selection, mutation and task rules. Fourteen tools
+now use fixed upstream commands. The exact decision, sources, limitations and
+revisit triggers are in [API_DECISION.md](API_DECISION.md). Do not build a desktop
+API compatibility shim just to claim reuse of an existing MCP.
+
 ### The old npm CLI is not the new database-graph CLI
 
 `@logseq/cli@0.4.3` is not the runtime shipped with Logseq 2.0.1. The candidate
@@ -121,7 +135,7 @@ architectures, not just TypeScript tests. See `mcp/Dockerfile` and
 ### Verify actual CLI semantics and contain its output
 
 The pinned CLI searches with `--content`, not the initially assumed `--query`.
-Inspect exact-version help and exercise each operation. The API exposes six
+Inspect exact-version help and exercise each operation. The API exposes fourteen
 allowlisted research operations, not arbitrary CLI access or direct SQLite writes.
 
 Note contents pass through stdin to a launcher, not OS arguments. User values are

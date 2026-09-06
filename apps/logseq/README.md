@@ -20,7 +20,7 @@ unconnected browser notebook does not count as integration.
 The upstream self-hosted sync adapter still uses **Logseq account sign-in** by
 default. Self-hosted storage is not the same as independent authentication. The
 setup must disclose this. A new unpaid account has been verified with encrypted
-browser/headless self-hosted sync and the six MCP tools on the same encrypted
+browser/headless self-hosted sync and MCP tools on the same encrypted
 graph. Enrollment was manual engineering work, not a finished installer.
 
 The official release currently includes its new CLI in the desktop archive. The
@@ -44,8 +44,12 @@ packaging with a supported upstream headless artifact when one is available.
 
 ## Current scope
 
-The helper/API/MCP slice supports graph status, page search, page reading,
-creating research pages, appending blocks and creating research tasks. Test only
+The helper/API/MCP slice has fourteen tools: graph status; listing, searching,
+reading and creating pages; searching, reading and editing blocks; appending notes
+and nested notes; creating and listing tasks; discovering and setting task status.
+Read a block before replacing its text, and use IDs from this server replica only.
+See [API decision](API_DECISION.md) for the measured CLI/HTTP trade-off and why the
+community desktop MCP is not a drop-in replacement. Test only
 with disposable graphs. See `VERIFICATION.md` for actual evidence and remaining
 acceptance work; the presence of a recipe is not evidence of a working installer.
 See [development notes](DEVELOPMENT_NOTES.md) for difficulties, decisions and
