@@ -17,7 +17,7 @@ async function recipes(directory) {
 
 test("every distributed custom image pins its base and cannot install official Headless", async () => {
   const files = await recipes("apps");
-  assert.equal(files.length, 11, "update the packaging inventory when adding an image");
+  assert.equal(files.length, 13, "11 released image recipes and 2 unpublished Logseq candidate recipes");
   for (const file of files) {
     const source = await readFile(file, "utf8");
     for (const line of source.split("\n").filter((line) => line.startsWith("FROM ")))

@@ -1,0 +1,23 @@
+name: Logseq candidate proof (no publication)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-proof:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native helper and MCP; test disposable graph and restart
+        run: sh scripts/check-logseq-candidate.sh
+      - name: Stop only the candidate test stack
+        if: always()
+        run: docker compose -p scholarserver-logseq-proof -f apps/logseq/development/compose.yaml down --remove-orphans

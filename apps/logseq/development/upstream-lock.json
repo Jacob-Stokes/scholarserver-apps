@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-06",
+  "client": {
+    "source": "https://github.com/logseq/logseq",
+    "release": "2.0.1",
+    "amd64Sha256": "981bf1f37403685ef83223193795d29bb0729b50929d543c2c4bce771e307a17",
+    "arm64Sha256": "6208f9ccc6de22f485b1c63dc076251262fbe4eebd7353bf53a21b45627a3af2"
+  },
+  "communityPackaging": "https://github.com/yshalsager/logseq-selfhost",
+  "sync": {
+    "image": "ghcr.io/yshalsager/logseq-selfhost-sync@sha256:354c0913eefbee78a6f6a8b122ef257226b625e9c29708e41518dec61943aef5",
+    "platforms": ["amd64", "arm64"]
+  },
+  "editor": {
+    "image": "ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d",
+    "platforms": ["amd64", "arm64"]
+  },
+  "compatibility": "Not yet proven together. These are investigation pins, not an approved release set."
+}

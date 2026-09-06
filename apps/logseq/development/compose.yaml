@@ -1,0 +1,80 @@
+# Development only: disposable bind directories must be created with UID 1000.
+# This is intentionally outside package/ until sync, UI and native builds pass.
+services:
+  sync:
+    profiles: [upstream-preview]
+    image: ghcr.io/yshalsager/logseq-selfhost-sync@sha256:354c0913eefbee78a6f6a8b122ef257226b625e9c29708e41518dec61943aef5
+    read_only: true
+    user: "65532:65532"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m"]
+    volumes:
+      - ./data/sync:/app/data
+    networks: [graph, egress]
+    healthcheck:
+      test: [CMD, /nodejs/bin/node, -e, "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      start_period: 20s
+      retries: 12
+  editor:
+    profiles: [upstream-preview]
+    image: ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d
+    read_only: true
+    user: "101:101"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m"]
+    networks: [graph]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  helper:
+    image: scholarserver-logseq-proof:helper
+    read_only: true
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 1536m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m"]
+    volumes:
+      - ./data/graph:/graph
+      - ./data/runtime:/runtime
+    networks: [graph]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      start_period: 60s
+      retries: 12
+  mcp:
+    image: scholarserver-logseq-proof:mcp
+    read_only: true
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m"]
+    volumes:
+      - ./data/runtime:/runtime:ro
+    networks: [graph]
+    depends_on:
+      helper: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:7013/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+networks:
+  graph:
+    internal: true
+  egress: {}
