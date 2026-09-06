@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -59,6 +59,7 @@ test("restart reuses an existing graph and never recreates a damaged graph", asy
     ["graph", "info"]
   ]);
   await mkdir(path.join(root, "graphs", "Proof"), { recursive: true });
+  await writeFile(path.join(root, "graphs", "Proof", "db.sqlite"), "fixture database");
   calls.length = 0;
   await initializeGraph(runner);
   assert.deepEqual(calls, [["graph", "info"]]);
@@ -69,4 +70,36 @@ test("restart reuses an existing graph and never recreates a damaged graph", asy
   calls.length = 0;
   await assert.rejects(initializeGraph(runner), /Damaged graph/);
   assert.deepEqual(calls, [["graph", "info"]]);
+});
+
+test("a missing existing database is not silently recreated", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "logseq-missing-db-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, "graphs", "Proof"), { recursive: true });
+  const calls = [];
+  const runner = { root, graph: "Proof", run: async (args) => calls.push(args) };
+  await assert.rejects(initializeGraph(runner), /database is missing/);
+  assert.equal(calls.length, 0);
+});
+
+test("our own interrupted first initialization resumes without issuing create twice", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "logseq-interrupted-init-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const calls = [];
+  const runner = {
+    root,
+    graph: "Proof",
+    run: async (args) => {
+      calls.push(args);
+      if (args[1] === "create") await mkdir(path.join(root, "graphs", "Proof"), { recursive: true });
+      else throw new Error("Interrupted");
+    }
+  };
+  await assert.rejects(initializeGraph(runner), /Interrupted/);
+  assert.ok((await lstat(path.join(root, ".initializing-Proof"))).isDirectory());
+  runner.run = async (args) => calls.push(args);
+  calls.length = 0;
+  await initializeGraph(runner);
+  assert.deepEqual(calls, [["graph", "info"]]);
+  await assert.rejects(lstat(path.join(root, ".initializing-Proof")), { code: "ENOENT" });
 });

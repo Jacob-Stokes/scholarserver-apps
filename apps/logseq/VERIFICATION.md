@@ -2,7 +2,8 @@
 
 ## Verified
 
-Disposable local graph and native AMD64 Docker containers on Resolution. No
+Disposable graphs and native Docker containers: AMD64 on Resolution and ARM64 on
+Freelove. No
 researcher's notes, account, existing Logseq graph or existing service was used.
 No host ports were published. The browser preview used a loopback-only SSH tunnel.
 
@@ -18,6 +19,8 @@ No host ports were published. The browser preview used a loopback-only SSH tunne
 - The graph API rejects unauthenticated requests.
 - Unit tests exercise validation, command serialization, timeout outcomes,
   bounded queues/output, stdin transport and non-destructive graph initialization.
+- Our own interrupted initialization is resumable. A pre-existing graph with a
+  missing or empty database is rejected before the upstream CLI can recreate it.
 - The maintained upstream sync and DB web images start under the development
   recipe's non-root/read-only constraints. Sync health returns 200; graph listing
   without credentials returns 401.
@@ -31,12 +34,15 @@ No host ports were published. The browser preview used a loopback-only SSH tunne
 - Browser, server replica and a device using the same graph bidirectionally.
 - Compatibility of the three pinned upstream builds across the sync protocol.
 - Attachments, reconnect after network loss and consistent backup/restore.
-- Native ARM64 runtime proof (a manual, non-publishing CI workflow is included).
 - ScholarServer setup screens, access-route integration and the two install choices.
 - Final package manifest, release image digests and full redistribution/source notices.
 
 This is not available in the published catalog. `RELEASE_BLOCKED.md` records the
 acceptance gates. Existing Obsidian and Zotero installations are unchanged.
+
+The new non-publishing GitHub workflow cannot be dispatched until its file exists
+on the default branch (GitHub returned 404). Native proofs were run on the two
+hosts above instead; neither host was reinstalled.
 
 ## Reproduce
 

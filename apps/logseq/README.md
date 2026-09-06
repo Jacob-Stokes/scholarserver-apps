@@ -17,6 +17,10 @@ The browser editor is an optional, recommended choice. It must join the **same
 remote graph** as the server replica and the researcher's devices. Serving an
 unconnected browser notebook does not count as integration.
 
+The upstream self-hosted sync adapter still uses **Logseq account sign-in** by
+default. Self-hosted storage is not the same as independent authentication. The
+setup must disclose this, and real account enrollment remains an acceptance gate.
+
 The official release currently includes its new CLI in the desktop archive. The
 helper runs that archive's runtime in Node mode: no display server, remote desktop
 or GUI process. This is an explicit packaging exception, not a new Logseq fork.

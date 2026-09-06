@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { mkdir, open, readFile, stat } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, rmdir } from "node:fs/promises";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { GraphError, graphCommand } from "./operations.mjs";
@@ -73,14 +73,43 @@ async function serviceToken(runtime) {
 
 export async function initializeGraph(runner) {
   const directory = `${runner.root}/graphs/${runner.graph}`;
+  const marker = `${runner.root}/.initializing-${runner.graph}`;
+  let initializing = false;
   try {
-    await stat(directory);
+    const entry = await lstat(marker);
+    if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error("Invalid initialization marker.");
+    initializing = true;
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+  }
+  let existing = false;
+  try {
+    const entry = await lstat(directory);
+    if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error("Invalid graph directory.");
+    existing = true;
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  if (!existing && !initializing) {
+    // An atomic marker distinguishes our interrupted first setup from missing user data.
+    await mkdir(marker, { mode: 0o700 });
+    initializing = true;
+  }
+  if (existing && !initializing) {
+    const database = await lstat(`${directory}/db.sqlite`).catch((error) => {
+      if (error.code === "ENOENT") throw new Error("Existing graph database is missing. Restore it before continuing.");
+      throw error;
+    });
+    if (!database.isFile() || database.isSymbolicLink() || database.size === 0) {
+      throw new Error("Existing graph database is invalid. Restore it before continuing.");
+    }
+  }
+  if (!existing) {
     await runner.run(["graph", "create"]);
   }
   // An existing but damaged graph is an error, never permission to reset it.
   await runner.run(["graph", "info"]);
+  if (initializing) await rmdir(marker);
 }
 
 async function main() {
