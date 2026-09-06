@@ -1,5 +1,14 @@
 # Logseq development notes
 
+Gateway follow-up: direct app MCP tests missed the missing `logseq_` prefix.
+Gateway discovery rejected all tools until definitions and proof clients were
+corrected. Local-only acceptance `.3` now exposes all fourteen tools to Gateway.
+Fresh mutations and persisted-data checks pass. Public OAuth re-navigation failed
+in the test browser; do not claim a new end-to-end public call. Also found a core
+duplicate-instance namespace/credential collision; core guards are source-tested,
+and the test registry was repaired without deleting either graph. Full multiple
+AI-connected instances remain unsupported. See VERIFICATION.md for precise limits.
+
 Recorded 6 September 2026 against the Logseq 2.0.1 candidate, source passes
 `edb8401` and `cbd0c55`. This records reasoning and difficulties, not completion.
 See [verification](VERIFICATION.md) for proof and [release gates](RELEASE_BLOCKED.md)
@@ -194,9 +203,9 @@ these evidence layers separate and repeat them for runtime upgrades.
 ## Next evidence to obtain
 
 1. Repeat the verified AMD64 catalog enrollment/resume flow with final release artifacts.
-2. Extend same-graph browser/headless proof to a physical device and native ARM64 sync.
-3. Attachments, network interruption/reconnect and consistent backup/restore.
-4. Exercise the no-browser choice through the actual installer; the browser choice now passes.
+2. Extend same-graph browser/headless proof to a physical device; native ARM64 encrypted sync now passes.
+3. Broaden the small-attachment, service-outage and same-host restore proofs to larger files, conflicts and cross-host recovery.
+4. Repeat the successful fresh devices-only lifecycle/UI enrollment through the full installer wizard and final artifacts.
 5. Compatible version matrix, complete upstream notices and final release images.
 
 Update these notes as findings change. Keep current runtime addresses and secret
@@ -309,3 +318,26 @@ remove its route as well as its container. The enrolled browser/devices/browser
 transition passed using the normal platform lifecycle API; sync and notebook
 identity survived. This is distinct from fresh devices-only enrollment. Keep that
 remaining proof explicit rather than treating the variants as interchangeable.
+
+## Fresh devices-only and native ARM64 follow-up
+
+Fresh devices-only enrollment now passes on the unpublished catalog package,
+including cancellation/retry of account sign-in and a forced helper termination
+during the first download. Recovery identified the persisted incomplete selection,
+kept the remote graph, and offered a password-protected retry. All fourteen tools,
+independent browser edits and automatic restart recovery passed on the new graph.
+
+The native ARM64 helper/MCP/sync adapter also passed fresh account enrollment,
+encrypted graph download, bidirectional browser sync and post-restart edits. The
+repeatable isolated Compose harness is `development/compose.native-managed.yaml`.
+Keep this evidence separate from a fresh ARM64 core/catalog installation: temporary
+routes and initial public address configuration were supplied by the test harness.
+The standalone UI's Manager route lookup warning is expected in that harness,
+not proof of a working Manager route integration on ARM64.
+
+After encryption-password setup, the upstream browser once left its new-graph
+Submit button disabled. Reloading and reopening the dialog resolved it with
+encryption still enabled. Do not speculate about account limits or silently create
+an unencrypted graph. Record the observation; the precise upstream cause is not
+established. A clean browser context is an independent replica, not a physical
+desktop/mobile client. Remaining packaging work is in `PACKAGING_AUDIT.md`.

@@ -19,7 +19,7 @@ async function connect() {
   return client;
 }
 async function call(client, name, args = {}) {
-  const result = await client.callTool({ name, arguments: args });
+  const result = await client.callTool({ name: `logseq_${name}`, arguments: args });
   assert.notEqual(result.isError, true, `Tool ${name} must succeed`);
   return JSON.stringify(result);
 }

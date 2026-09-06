@@ -24,7 +24,9 @@ default. Self-hosted storage is not the same as independent authentication. The
 setup must disclose this. A new unpaid account has been verified with encrypted
 browser/headless self-hosted sync and MCP tools on the same encrypted
 graph. The managed development setup now completes browser enrollment and resumes
-sync after restart; it is not yet a finished catalog installer.
+sync after restart. Both installation choices passed unpublished AMD64 catalog
+acceptance, and an isolated native ARM64 stack passed encrypted sync. This is
+not yet a released catalog package; the physical-device and release gates remain.
 
 The official release currently includes its new CLI in the desktop archive. The
 helper runs that archive's runtime in Node mode: no display server, remote desktop
@@ -78,3 +80,4 @@ existing Logseq data directory.
 
 Retain upstream notices and satisfy corresponding-source obligations before
 distribution. This candidate does not change the licensing status of any other app.
+See [packaging audit](PACKAGING_AUDIT.md) for the remaining concrete checks.

@@ -91,6 +91,11 @@ release checklist or proof that a particular application is ready.
 
 ## Keeping these notes useful
 
+- Direct MCP tests do not prove Gateway compatibility. Assert the manifest's tool
+  namespace in definitions, then verify actual Gateway discovery and authenticated
+  calls separately. Include duplicate-instance ownership checks: tool names,
+  network aliases and credentials must not collide between copies.
+
 Record a short observation, why it matters, the decision or fix, and its evidence.
 Link to app notes/tests instead of duplicating detailed version matrices here.
 Keep unresolved questions explicit, remove obsolete advice, and never include

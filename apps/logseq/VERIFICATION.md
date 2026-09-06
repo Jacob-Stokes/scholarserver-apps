@@ -196,10 +196,9 @@ were not audited as part of this API pass.
 ## Not yet verified / not yet implemented
 
 - Final release-artifact repetition of the successful managed AMD64 enrollment below.
-- A physical device using the same graph bidirectionally; native ARM64 encrypted sync.
+- A physical device using the same graph bidirectionally; a full ARM64 core/catalog installation.
 - Broader compatibility beyond this exact pinned CLI/browser/sync combination.
 - Large/multiple attachments, conflicting offline edits to the same block, and cross-host disaster recovery.
-- Fresh devices-only enrollment; switching an enrolled installation between variants is verified below.
 - Final package manifest, release image digests and full redistribution/source notices.
 
 This is not available in the published catalog. `RELEASE_BLOCKED.md` records the
@@ -284,10 +283,96 @@ and prints only assertion outcomes, not graph content or credentials. The graph
 ID does not establish that a graph is disposable: the operator must ensure this.
 
 Core `pnpm check`, complete apps `npm test` and apps lint passed. No production-code
-change was required. Physical-device, native ARM64 encrypted sync, fresh devices-only
-enrollment and final release-artifact gates remain open.
+change was required. Subsequent first-enrollment and ARM64 evidence follows.
 
-## Reproduce
+## Fresh devices-only and native ARM64 — 6 September 2026
+
+### Fresh devices-only catalog instance
+
+Installed `0.1.0-acceptance.2`, variant `devices`, as a new instance with empty
+data through the normal Manager lifecycle API on the disposable AMD64 host.
+This was not a replay of the catalog-choice wizard or a variant switch. Only
+helper, sync and MCP containers were created; no editor was installed.
+
+The real setup UI created its private sync route, completed account authorization,
+discovered a new encrypted `FreshDevicesAcceptance` graph and downloaded it.
+Its independent client was a fresh browser context using the separately hosted
+pinned editor—not a physical Logseq installation and not the original graph's
+IndexedDB. The existing acceptance graph was unchanged.
+
+Cancelled the first account attempt through the UI, restarted it and checked the
+authorization URL changed. Completed the second request normally. For download
+recovery, killed only this instance's helper as soon as the persisted selection
+entered `downloading`, then started it again. The UI retained the selected graph,
+reported incomplete download, and offered Retry. Retry reached Connected without
+resetting or duplicating the remote graph. This crash landed before a usable local
+database existed; it is not proof of interruption at every possible download offset.
+
+All fourteen MCP tools passed on remote graph
+`99bea473-a814-4385-b748-5e7df5dd7974`, page `FreshDevicesResearchProof`.
+The independent browser received the synthetic notes and returned an edit through
+MCP. Restarted helper, sync and MCP; a further browser edit reached MCP without
+another login or encryption password. The extra instance was disabled after proof,
+preserving its data. The original browser-mode acceptance instance remains enabled.
+
+### Native ARM64 encrypted sync
+
+Built helper, MCP and sync adapter natively on Freelove (`aarch64`), from `f4049c4`.
+Image inspection reported ARM64 for all three; no emulation was used. Local image
+identifiers (not public registry release digests):
+
+- Helper: `sha256:1ec3b68ddefb8080f9e24a614cb0d8e53c92966d33e0cfeb5aade6e9db953932`.
+- MCP: `sha256:8c323e583c210122e3d61b963eb74e7b048d11afec7884a5599a5046bcfc1105`.
+- Sync adapter: `sha256:3a1700f0167b8c02151e4808ff375bb728b1043dc01303c6dfabc0692d9ef425`.
+
+`development/compose.native-managed.yaml` ran fresh, bounded, non-root containers
+with read-only roots, independent startup and loopback-only host bindings. The
+test harness supplied temporary Tailscale HTTPS routes and configured the public
+sync address through the helper API. This bypassed Manager route provisioning,
+not account authentication or encryption. Consequently the standalone UI's
+Manager-only route lookup displayed an access warning; this is an isolated native
+runtime proof, not a clean full ARM64 installer proof.
+
+Upstream OAuth/PKCE enrollment completed through the browser. A separate clean
+browser context created encrypted `NativeArm64Acceptance`. Its first create dialog
+stayed disabled after setting the encryption password; reloading the browser and
+reopening the dialog resolved it without changing encryption. No failed network
+request was observed during the reload/retry. The precise upstream cause remains
+unconfirmed.
+
+The native helper downloaded remote UUID `722b1d5f-4381-45ec-87be-a2e2e7f6494a`.
+All fourteen MCP tools passed on `NativeArm64ResearchProof`. Browser/server edits
+flowed both ways; after restarting all three containers, a new browser edit reached
+MCP and persisted task/nested-note/backlink assertions passed. Status showed ready,
+matching graph and sync up to date. No account credentials were copied from another
+helper or AMD64 data directory.
+
+The temporary ARM64 containers, their networks and HTTPS routes were removed.
+Freelove's original dashboard/MCP routes were retained; its existing applications
+were not restarted. Private disposable data and build logs remain in the run-owned
+scratch directory for inspection. No images or catalog entries were published.
+
+## Gateway correction after native proof
+
+Earlier checks connected directly to the app and missed its absent `logseq_` tool
+prefix. Corrected all fourteen definitions and test clients, with a regression
+assertion. New native AMD64 MCP image:
+`localhost:5000/logseq-mcp@sha256:84c9ab7c3bedad143dfadf8d0f79fe71740b588e3f2cad4a5ad0785258635fe3`.
+Local-only package `0.1.0-acceptance.3` retains `.2` helper/sync/editor images.
+Manager applied it to the original instance, revision 5, retaining data/addresses.
+Gateway reports available with 14 prefixed tools. Direct persisted-data assertions
+and fresh mutations on `GatewayNamesAcceptance` passed. The renamed MCP image has
+not repeated the ARM64 proof above. A new OAuth browser navigation failed with
+connection refused; no fresh authenticated public tool-call proof is claimed.
+
+The extra devices instance exposed a core duplicate-namespace/credential bug:
+containers stopped but invalid registry validation caused HTTP 500 after disable.
+Backed up the test registry, removed only the extra registration, reconciled the
+original credential, and retried disable successfully (HTTP 200, no last error).
+Core guards are source-tested, not deployed to this older acceptance core. Do not
+enable two AI-connected copies before instance-scoped isolation is implemented.
+
+## Reproduce locally
 
 From a fresh disposable repository checkout on a native Linux Docker host:
 

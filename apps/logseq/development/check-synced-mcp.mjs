@@ -14,7 +14,7 @@ const token = (await readFile("/runtime/service-token", "utf8")).trim();
 const client = new Client({ name: "scholarserver-logseq-sync-proof", version: "1.0.0" });
 
 async function call(name, args = {}) {
-  const result = await client.callTool({ name, arguments: args });
+  const result = await client.callTool({ name: `logseq_${name}`, arguments: args });
   assert.notEqual(result.isError, true, `Tool ${name} must succeed`);
   return JSON.parse(result.content.find((item) => item.type === "text").text);
 }

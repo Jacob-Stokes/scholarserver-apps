@@ -17,7 +17,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
   return [
     {
       def: {
-        name: "graph_status",
+        name: "logseq_graph_status",
         description: "Inspect the server's Logseq database graph. This is not proof that device sync has completed.",
         inputSchema: z.object({}).strict(),
         annotations: read
@@ -26,7 +26,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "search_pages",
+        name: "logseq_search_pages",
         description: "Find research pages by title. Read the selected page before adding notes.",
         inputSchema: z.object({ query: z.string().trim().min(1).max(500) }).strict(),
         annotations: read
@@ -35,7 +35,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "list_pages",
+        name: "logseq_list_pages",
         description:
           "Browse research pages, newest updated first. Use limit and offset to page through results (default 50, maximum 100).",
         inputSchema: pagination,
@@ -45,7 +45,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "search_blocks",
+        name: "logseq_search_blocks",
         description:
           "Find text within notes using case-insensitive substring search. Returns graph-local db/id values for reading or editing blocks. Not semantic search; narrow the query if the result is too large.",
         inputSchema: z.object({ query: z.string().trim().min(1).max(500) }).strict(),
@@ -55,7 +55,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "read_block",
+        name: "logseq_read_block",
         description:
           "Read a block and its children, up to eight levels deep. Use a db/id returned by this graph, not an ID from another device or graph.",
         inputSchema: z.object({ id }).strict(),
@@ -65,7 +65,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "update_block",
+        name: "logseq_update_block",
         description:
           "Replace an existing block's text, preserving its children. Read it first and preserve citations and source attribution. After a timeout, inspect it before retrying. Use this graph's db/id.",
         inputSchema: z.object({ id, content: z.string().min(1).max(32_000) }).strict(),
@@ -75,7 +75,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "append_child_block",
+        name: "logseq_append_child_block",
         description:
           "Append a nested research note under an existing block using this graph's db/id. After a timeout, read the parent before retrying to avoid duplicates.",
         inputSchema: z.object({ id, content: z.string().min(1).max(32_000) }).strict(),
@@ -85,7 +85,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "list_tasks",
+        name: "logseq_list_tasks",
         description:
           "Browse research tasks and their current status, newest updated first. Returns this graph's db/id. Use limit and offset (default 50, maximum 100).",
         inputSchema: pagination,
@@ -95,9 +95,9 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "list_task_statuses",
+        name: "logseq_list_task_statuses",
         description:
-          "List the task statuses defined by this graph before changing a task. Use the returned db/ident value with set_task_status.",
+          "List the task statuses defined by this graph before changing a task. Use the returned db/ident value with logseq_set_task_status.",
         inputSchema: z.object({}).strict(),
         annotations: read
       },
@@ -105,9 +105,9 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "set_task_status",
+        name: "logseq_set_task_status",
         description:
-          "Set a task's status using this graph's db/id and a db/ident returned by list_task_statuses. Read the task first. After a timeout, check its status before retrying.",
+          "Set a task's status using this graph's db/id and a db/ident returned by logseq_list_task_statuses. Read the task first. After a timeout, check its status before retrying.",
         inputSchema: z.object({ id, status: z.string().trim().min(1).max(100) }).strict(),
         annotations: { ...write, destructiveHint: true, idempotentHint: true }
       },
@@ -115,7 +115,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "read_page",
+        name: "logseq_read_page",
         description: "Read a Logseq page and its block tree, up to eight levels deep.",
         inputSchema: z.object({ page }).strict(),
         annotations: read
@@ -124,7 +124,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "create_page",
+        name: "logseq_create_page",
         description: "Create a research page if it does not already exist. Does not replace existing page contents.",
         inputSchema: z.object({ page }).strict(),
         annotations: { ...write, idempotentHint: true }
@@ -133,7 +133,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "append_block",
+        name: "logseq_append_block",
         description:
           "Append a block to an existing research page. Preserve citations, DOI links and source attribution. After a timeout, read the page before retrying to avoid duplicates.",
         inputSchema: z.object({ page, content: z.string().min(1).max(32_000) }).strict(),
@@ -143,7 +143,7 @@ export function graphTools(call: GraphCall): ToolRegistration[] {
     },
     {
       def: {
-        name: "create_task",
+        name: "logseq_create_task",
         description: "Add a research follow-up task to a page. After a timeout, inspect the page before retrying.",
         inputSchema: z.object({ page, content: z.string().min(1).max(4_000) }).strict(),
         annotations: write

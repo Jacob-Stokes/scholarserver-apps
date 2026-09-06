@@ -1,0 +1,63 @@
+# Isolated native acceptance, not a catalog recipe. Use a fresh checkout/data directory.
+# Publish only to loopback; any temporary private HTTPS routes belong to the test harness.
+services:
+  helper:
+    image: ${LOGSEQ_PROOF_HELPER_IMAGE:?Provide the native helper image}
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 1536m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m"]
+    volumes:
+      - ./data/graph:/home/node/logseq
+      - ./data/runtime:/runtime
+      - ./data/sync-config:/sync-config
+    ports: ["127.0.0.1:${LOGSEQ_PROOF_SETUP_PORT:?Choose an unused loopback port}:8081"]
+    networks: [graph, egress]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  sync:
+    image: ${LOGSEQ_PROOF_SYNC_IMAGE:?Provide the native sync adapter image}
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m"]
+    volumes:
+      - ./data/sync:/app/data
+      - ./data/sync-config:/sync-config:ro
+    ports: ["127.0.0.1:${LOGSEQ_PROOF_SYNC_PORT:?Choose an unused loopback port}:8787"]
+    networks: [graph, egress]
+    healthcheck:
+      test: [CMD, /nodejs/bin/node, -e, "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  mcp:
+    image: ${LOGSEQ_PROOF_MCP_IMAGE:?Provide the native MCP image}
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m"]
+    volumes:
+      - ./data/runtime:/runtime:ro
+    networks: [graph]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:7013/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+networks:
+  graph:
+    internal: true
+  egress: {}

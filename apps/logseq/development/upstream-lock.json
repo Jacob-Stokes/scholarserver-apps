@@ -9,11 +9,12 @@
   "communityPackaging": "https://github.com/yshalsager/logseq-selfhost",
   "sync": {
     "image": "ghcr.io/yshalsager/logseq-selfhost-sync@sha256:354c0913eefbee78a6f6a8b122ef257226b625e9c29708e41518dec61943aef5",
+    "packagingRevision": "3c894de08098169466ddba57fc8e7befc236ed39",
     "platforms": ["amd64", "arm64"]
   },
   "editor": {
     "image": "ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d",
     "platforms": ["amd64", "arm64"]
   },
-  "compatibility": "Not yet proven together. These are investigation pins, not an approved release set."
+  "compatibility": "Encrypted browser/helper sync and fourteen MCP tools passed with this combination on AMD64 catalog acceptance and an isolated native ARM64 stack. See ../VERIFICATION.md; physical-device and final release-artifact/source-notice gates remain. Not an approved public release set."
 }

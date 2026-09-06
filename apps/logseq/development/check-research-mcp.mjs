@@ -16,7 +16,7 @@ const transport = new StreamableHTTPClientTransport(new URL("http://127.0.0.1:70
 });
 
 async function call(name, args = {}) {
-  const result = await client.callTool({ name, arguments: args });
+  const result = await client.callTool({ name: `logseq_${name}`, arguments: args });
   assert.notEqual(result.isError, true, `${name} must succeed`);
   const content = result.content.find((item) => item.type === "text");
   return JSON.parse(content.text);
@@ -49,11 +49,11 @@ try {
     const done = statuses.find((item) => item["db/ident"] === "logseq.property/status.done")["db/ident"];
     await call("set_task_status", { id: taskId, status: done });
     const rejected = await client.callTool({
-      name: "set_task_status",
+      name: "logseq_set_task_status",
       arguments: { id: taskId, status: "not-a-real-status" }
     });
     assert.equal(rejected.isError, true, "Upstream must reject an invalid status");
-    const invalidId = await client.callTool({ name: "read_block", arguments: { id: -1 } });
+    const invalidId = await client.callTool({ name: "logseq_read_block", arguments: { id: -1 } });
     assert.equal(invalidId.isError, true);
     const referencePage = `${page} reference`;
     const appended = await call("append_block", { page, content: `Linked synthetic source [[${referencePage}]]` });

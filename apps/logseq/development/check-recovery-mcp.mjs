@@ -13,7 +13,7 @@ const marker = process.env.LOGSEQ_PROOF_MARKER;
 const client = new Client({ name: "logseq-recovery-proof", version: "1.0.0" });
 const token = (await readFile("/runtime/service-token", "utf8")).trim();
 async function call(name, args = {}) {
-  const result = await client.callTool({ name, arguments: args });
+  const result = await client.callTool({ name: `logseq_${name}`, arguments: args });
   assert.notEqual(result.isError, true, `${name} must succeed`);
   return JSON.parse(result.content.find((item) => item.type === "text").text);
 }

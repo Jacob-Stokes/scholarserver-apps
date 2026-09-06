@@ -9,8 +9,9 @@ test("research tools stay narrow and identify non-idempotent writes", async () =
     return { result: [12] };
   });
   assert.equal(tools.length, 14);
+  assert.ok(tools.every((tool) => tool.def.name.startsWith("logseq_")));
   assert.ok(!tools.some((tool) => /exec|shell|query|delete/.test(tool.def.name)));
-  const append = tools.find((tool) => tool.def.name === "append_block");
+  const append = tools.find((tool) => tool.def.name === "logseq_append_block");
   assert.equal(append.def.annotations.idempotentHint, false);
   assert.match(append.def.description, /timeout/);
   const value = append.def.inputSchema.parse({ page: "Reading", content: "DOI: 10.1000/example" });
@@ -33,15 +34,15 @@ test("all new tools validate input and forward only their named operation", asyn
     ["set_task_status", "set-task-status", { id: 124, status: "logseq.property/status.done" }]
   ];
   for (const [name, operation, input] of examples) {
-    const tool = tools.find((tool) => tool.def.name === name);
+    const tool = tools.find((tool) => tool.def.name === `logseq_${name}`);
     await tool.handler(tool.def.inputSchema.parse(input));
     assert.deepEqual(calls.at(-1), { operation, input });
     assert.throws(() => tool.def.inputSchema.parse({ ...input, graph: "Other" }));
   }
-  const edit = tools.find((tool) => tool.def.name === "update_block");
+  const edit = tools.find((tool) => tool.def.name === "logseq_update_block");
   assert.equal(edit.def.annotations.destructiveHint, true);
   assert.equal(edit.def.annotations.idempotentHint, true);
-  const nested = tools.find((tool) => tool.def.name === "append_child_block");
+  const nested = tools.find((tool) => tool.def.name === "logseq_append_child_block");
   assert.equal(nested.def.annotations.idempotentHint, false);
   assert.throws(() => edit.def.inputSchema.parse({ id: -1, content: "Note" }));
 });

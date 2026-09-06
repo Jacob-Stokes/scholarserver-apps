@@ -20,7 +20,7 @@ try {
     const times = [];
     for (let index = 0; index < 21; index++) {
       const start = performance.now();
-      const result = await client.callTool({ name, arguments: args });
+      const result = await client.callTool({ name: `logseq_${name}`, arguments: args });
       assert.notEqual(result.isError, true);
       if (index) times.push(performance.now() - start);
     }
