@@ -193,10 +193,10 @@ these evidence layers separate and repeat them for runtime upgrades.
 
 ## Next evidence to obtain
 
-1. Integrate the verified development enrollment/resume flow into the actual package and fresh-host installer.
+1. Repeat the verified AMD64 catalog enrollment/resume flow with final release artifacts.
 2. Extend same-graph browser/headless proof to a physical device and native ARM64 sync.
 3. Attachments, network interruption/reconnect and consistent backup/restore.
-4. Shared ScholarServer setup/access UI, including the no-browser choice.
+4. Exercise the no-browser choice through the actual installer; the browser choice now passes.
 5. Compatible version matrix, complete upstream notices and final release images.
 
 Update these notes as findings change. Keep current runtime addresses and secret
@@ -271,9 +271,26 @@ paths, streamed bodies and authentication are preserved. Other origins retain
 normal routing and TLS verification. There is no certificate bypass, rewrite of
 upstream program bytes, or new tailnet-wide proxy. Tests verify exact-origin
 matching and unchanged requests to other hosts. Native worker inheritance and
-same-graph downloads still need live proof before this is accepted as complete.
+same-graph download proof subsequently passed on the fresh AMD64 host (see below).
 
 Source tests cover address validation, stop-before-restart and idempotent config
-writes. The new setup is not yet a published package or a verified native
-catalog-install proof. Initial internal-only startup exists solely to make setup
+writes. The new setup is not yet a published package. Initial internal-only startup exists solely to make setup
 available; account/notebook enrollment is blocked until the private address is set.
+
+## Fresh catalog acceptance follow-up
+
+The actual restricted catalog installed the browser variant on a fresh Ubuntu
+AMD64 host. Both isolated origins were created through the app's shared setup UI.
+An immutable acceptance-package update retained the addresses and data. Browser
+account enrollment, encrypted graph download and all fourteen MCP tools passed;
+browser/server edits flowed both ways and continued after all three backend
+services restarted without another login or password. This supersedes earlier
+statements that catalog routing and managed AMD64 enrollment remain unverified.
+It does not remove the physical-device, ARM64 sync or release gates.
+
+Creating a graph in the pinned browser did not immediately publish it to sync.
+Its local sync icon asked for an upload confirmation; only then did server graph
+discovery find it. A healthy browser showing a notebook is not evidence that the
+remote replica exists. Our connection and empty-discovery instructions now point
+to that confirmation, as well as the exact Advanced settings path. Never fix an
+empty list by disabling encryption or creating a second notebook automatically.

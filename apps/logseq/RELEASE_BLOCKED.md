@@ -14,19 +14,16 @@ Do not publish Logseq until all of these have evidence:
 The upstream sync worker's semantic MCP supports only non-E2EE graphs. Do not
 silently choose that route, disable graph encryption or substitute a separate graph.
 
-## Confirmed platform access gap (6 September 2026)
+## Platform gap resolved; release gates remain (6 September 2026)
 
-The core `ApplicationEndpointService` currently accepts only browser-session or
-forward-auth interfaces for optional remote access. Its browser boundary rejects
-cross-origin requests, including WebSocket upgrades. Native Logseq sync carries
-its own account authentication and is used from a separate browser/device origin.
-It cannot safely be relabelled as a browser-session endpoint. The pinned editor
-also expects root-relative assets and its own origin rather than an arbitrary
-Manager path prefix.
+Core `e9fc896` / `fa24d93` now provide generic installer-owned private isolated
+origins, without weakening Manager's browser protection or adding Logseq rules.
+The unpublished AMD64 acceptance package installed through the actual catalog
+wizard. Account enrollment, encrypted download, all fourteen MCP tools, browser
+sync both ways and automatic service-restart recovery passed on the fresh host.
+See `VERIFICATION.md` for the exact artifacts and evidence limits.
 
-The isolated development proof uses separate private origins. Those hand-created
-test routes are not a replacement for generic installer-owned routing. Add a
-shared capability for application-native authenticated endpoints and isolated
-editor origins, with origin/authentication tests, before claiming a normal catalog
-installation. Do not disable Manager's browser protection or add Logseq-specific
-routing in core. Keep the candidate outside `package/` while this remains open.
+Do not publish yet: physical-device and native ARM64 encrypted-sync acceptance,
+the devices-only variant, attachments/network-loss/restore, complete source and
+licence notices, and final immutable release artifacts still need evidence.
+The acceptance assembler is test-only and does not create a public package.

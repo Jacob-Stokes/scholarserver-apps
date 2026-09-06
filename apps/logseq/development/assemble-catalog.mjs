@@ -2,9 +2,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const [output, helper, mcp, sync] = process.argv.slice(2);
+const [output, helper, mcp, sync, version = "0.1.0-acceptance.1"] = process.argv.slice(2);
 if (
   !output ||
+  !/^0\.1\.0-acceptance\.[1-9][0-9]*$/.test(version) ||
   ![helper, mcp, sync].every((value) => /^localhost:5000\/logseq-(helper|mcp|sync)@sha256:[a-f0-9]{64}$/.test(value))
 ) {
   throw new Error("Provide a new output directory and the three digest-pinned test-registry images.");
@@ -31,7 +32,7 @@ const manifest = {
   schemaVersion: 1,
   id: "org.scholarserver.logseq",
   name: "Logseq",
-  packageVersion: "0.1.0-acceptance.1",
+  packageVersion: version,
   compatibility: { platform: ">=0.1.0", schema: 1 },
   upstream: { name: "Logseq database graphs", version: "2.0.1", license: "AGPL-3.0" },
   support: { tier: "official", architectures: ["amd64"] },

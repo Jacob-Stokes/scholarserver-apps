@@ -266,7 +266,12 @@ export function App() {
                 >
                   Find my notebooks
                 </button>
-                {listed && !graphs.length ? <p>No notebooks were found on this server yet.</p> : null}
+                {listed && !graphs.length ? (
+                  <p>
+                    No notebooks found yet. In Logseq, click your notebook’s sync icon and confirm its upload, then try
+                    again.
+                  </p>
+                ) : null}
                 {graphs.length ? (
                   <>
                     <label className="ss-field">

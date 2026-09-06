@@ -195,11 +195,11 @@ were not audited as part of this API pass.
 
 ## Not yet verified / not yet implemented
 
-- User-facing headless authorization/enrollment and automatic sync resumption.
+- Final release-artifact repetition of the successful managed AMD64 enrollment below.
 - A physical device using the same graph bidirectionally; native ARM64 encrypted sync.
 - Broader compatibility beyond this exact pinned CLI/browser/sync combination.
 - Attachments, reconnect after network loss and consistent backup/restore.
-- ScholarServer setup screens, access-route integration and the two install choices.
+- Actual devices-only installation; the recommended browser choice is verified below.
 - Final package manifest, release image digests and full redistribution/source notices.
 
 This is not available in the published catalog. `RELEASE_BLOCKED.md` records the
@@ -208,6 +208,43 @@ acceptance gates. Existing Obsidian and Zotero installations are unchanged.
 The new non-publishing GitHub workflow cannot be dispatched until its file exists
 on the default branch (GitHub returned 404). Native proofs were run on the two
 hosts above instead; neither host was reinstalled.
+
+## Fresh-host catalog acceptance — 6 September 2026
+
+On the disposable Ubuntu 24.04 AMD64 installation, core development-signed
+`0.1.0-logseq-test.2` (`e9fc896`) plus native executor `fa24d93` supplied generic
+private isolated origins. The browser installed acceptance package `.1` through
+the real catalog wizard. A verified application backup preceded the normal
+lifecycle API update to `0.1.0-acceptance.2`; addresses and data were retained.
+This was an unpublished local candidate update, not the public update feed.
+
+Exact `.2` images (test registry `localhost:5000`, never publicly published):
+
+- helper: `sha256:6a6fa8d177c92fb7c1aebe1845031f0cfc160f3709e6023a835e13da263fc466` (`3b490bb`).
+- MCP: `sha256:0ca37c1fc9d80bf1a5e3a3dcc1b8833028452c6ffca2480e628d745017f464ca`.
+- sync adapter: `sha256:29e45c431149fc683bea8d0f81bb283399b1892672b3daf98e3878f6c1943828`.
+- browser: upstream `ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d`.
+
+The browser completed account authorization and created a new disposable,
+encrypted `FreshInstallAcceptance` notebook. Upload confirmation made it visible
+to discovery; the helper enrolled through the UI and downloaded that exact remote
+UUID with encryption enabled. The upstream runtime's internal download transport
+worked despite Tailscale running in a separate userspace container.
+
+`check-research-mcp.mjs` passed all fourteen tools against this graph, using the
+synthetic `FreshCatalogAcceptance` page. The independent browser displayed the
+MCP-created notes, task and nested edits. A browser change reached MCP. After
+restarting helper, sync and MCP together, a fresh browser edit reached MCP again,
+without re-entering account credentials or the encryption password. Persisted
+notes, completed task and backlinks passed the read-only restart assertions.
+The setup screen reported Connected and sync up to date.
+
+Complete apps tests, lint and shared production browser UI checks passed. The
+source instructions were then clarified to name the upstream settings path and
+upload confirmation; that text-only follow-up is not part of the `.2` image.
+No real graph, physical device or account from another user was used. The backup
+preceded graph enrollment: do not call it an encrypted-graph restore proof.
+Remaining gates are listed in `RELEASE_BLOCKED.md`.
 
 ## Reproduce
 

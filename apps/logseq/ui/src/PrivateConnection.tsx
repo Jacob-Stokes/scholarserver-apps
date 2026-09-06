@@ -84,9 +84,10 @@ export function PrivateConnection({
       {error ? <p role="alert">{error}</p> : null}
       {syncAddress ? (
         <>
-          <p>In Logseq, set the custom sync server to:</p>
+          <p>In Logseq’s Settings → Advanced → Logseq Sync, set the server URL to:</p>
           <code>{syncAddress}</code>
-          <p>Then sign in and create or open an encrypted notebook.</p>
+          <p>Save and reload Logseq, then sign in. Create or open an encrypted notebook.</p>
+          <p>For a new notebook, click its sync icon and confirm the upload to your server.</p>
           {editor ? (
             <a className="ss-button" href={editor} target="_blank" rel="noreferrer">
               Open Logseq
