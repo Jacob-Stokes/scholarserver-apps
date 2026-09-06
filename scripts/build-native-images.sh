@@ -24,6 +24,14 @@ build() {
   docker build --pull --build-arg TARGETARCH="$ARCH" --file "$dockerfile" --tag "$target" "$context"
   python3 scripts/check-image-contents.py "$target"
   docker push "$target"
+  case "$image" in
+    obsidian-sync|obsidian-api|obsidian-mcp)
+      docker tag "$target" "scholarserver-packaging-review:$image" ;;
+    obsidian-livesync-couchdb)
+      docker tag "$target" "scholarserver-packaging-review:couchdb" ;;
+    obsidian-livesync-worker)
+      docker tag "$target" "scholarserver-packaging-review:livesync-worker" ;;
+  esac
 }
 
 build obsidian-sync apps/obsidian/sync/Dockerfile .

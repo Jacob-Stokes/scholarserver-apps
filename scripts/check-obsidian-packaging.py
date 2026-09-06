@@ -83,6 +83,7 @@ def main():
             "entrypoint": "/official-client/installed/package/cli.js", "args": ["--version"]
         }))
         assert output == "0.0.14", output
+        assert probe(controller, "import Database from '/app/node_modules/better-sqlite3/lib/index.js'; const db=new Database(':memory:'); console.log(db.prepare('select 1 as ok').get().ok); db.close();") == "1"
         before = (root / "client/installed/receipt.json").read_bytes()
         docker("restart", controller)
         wait_for("Restart preserves downloaded client without another install", lambda: status(controller)["officialClient"]["phase"] == "installed")

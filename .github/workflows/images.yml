@@ -24,6 +24,7 @@ on:
       - "vendor/scholarserver-ui/**"
       - "scripts/build-native-images.sh"
       - "scripts/check-image-contents.py"
+      - "scripts/check-obsidian-packaging.py"
       - ".github/workflows/images.yml"
 
 permissions:
@@ -54,6 +55,8 @@ jobs:
           ARCH: ${{ matrix.architecture }}
           REVISION: ${{ github.sha }}
         run: ./scripts/build-native-images.sh
+      - name: Verify native startup, user download and two-peer LiveSync
+        run: sudo python3 scripts/check-obsidian-packaging.py
 
   manifest:
     needs: build

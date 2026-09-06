@@ -39,7 +39,8 @@ in `THIRD_PARTY_NOTICES.md`.
 ## Local checks
 
 ```sh
-npm install
+npm ci
+npm ci --prefix apps/obsidian/sync --ignore-scripts
 npm test
 ```
 
