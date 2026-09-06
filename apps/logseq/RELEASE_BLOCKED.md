@@ -23,7 +23,12 @@ wizard. Account enrollment, encrypted download, all fourteen MCP tools, browser
 sync both ways and automatic service-restart recovery passed on the fresh host.
 See `VERIFICATION.md` for the exact artifacts and evidence limits.
 
+Follow-up recovery checks passed on that candidate: sync-service outage with
+edits on both sides, one small attachment with exact-byte verification, same-host
+application backup/restore, and browser/devices-only/browser transitions. These
+do not prove every network failure, large attachments or a new-device enrollment.
+
 Do not publish yet: physical-device and native ARM64 encrypted-sync acceptance,
-the devices-only variant, attachments/network-loss/restore, complete source and
-licence notices, and final immutable release artifacts still need evidence.
+fresh devices-only enrollment, complete source and licence notices, and final
+immutable release artifacts still need evidence.
 The acceptance assembler is test-only and does not create a public package.

@@ -294,3 +294,18 @@ discovery find it. A healthy browser showing a notebook is not evidence that the
 remote replica exists. Our connection and empty-discovery instructions now point
 to that confirmation, as well as the exact Advanced settings path. Never fix an
 empty list by disabling encryption or creating a second notebook automatically.
+
+## Recovery proof lessons
+
+Test restores with independent clients disconnected before making post-backup
+changes. Otherwise normal synchronization can reintroduce newer data and make a
+successful restore look broken, or conceal which replica supplied a note. Our
+same-host test checked both presence of old data and absence of a newer marker,
+then reopened the browser. It also verified attachment bytes on the helper, not
+only an image rendered from browser-local storage. See `VERIFICATION.md`.
+
+Test variant transitions at the access boundary: removing an optional editor must
+remove its route as well as its container. The enrolled browser/devices/browser
+transition passed using the normal platform lifecycle API; sync and notebook
+identity survived. This is distinct from fresh devices-only enrollment. Keep that
+remaining proof explicit rather than treating the variants as interchangeable.

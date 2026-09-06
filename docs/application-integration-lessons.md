@@ -79,6 +79,13 @@ release checklist or proof that a particular application is ready.
 - Use disposable data and isolated resources. Clean up only resources positively
   identified as ours; unavailable CI is not permission to modify shared services,
   merge a default branch or substitute emulation for native release proofs.
+- For sync-backed restore tests, disconnect independent clients before creating
+  post-backup writes. Assert both restored content and absence of newer content;
+  verify attachment bytes outside the browser cache. Reconnect afterward and
+  prove a new edit still travels. Same-host restore is not cross-host recovery.
+- Optional-service transitions must close removed service routes, not just stop
+  containers. Test the reverse transition with preserved data and stable addresses;
+  keep fresh installation as a separate proof.
 - Verify redistribution obligations separately from technical operation. Free
   use, downloadable binaries and successful builds are not legal clearance.
 

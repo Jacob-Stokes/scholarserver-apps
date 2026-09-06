@@ -198,8 +198,8 @@ were not audited as part of this API pass.
 - Final release-artifact repetition of the successful managed AMD64 enrollment below.
 - A physical device using the same graph bidirectionally; native ARM64 encrypted sync.
 - Broader compatibility beyond this exact pinned CLI/browser/sync combination.
-- Attachments, reconnect after network loss and consistent backup/restore.
-- Actual devices-only installation; the recommended browser choice is verified below.
+- Large/multiple attachments, conflicting offline edits to the same block, and cross-host disaster recovery.
+- Fresh devices-only enrollment; switching an enrolled installation between variants is verified below.
 - Final package manifest, release image digests and full redistribution/source notices.
 
 This is not available in the published catalog. `RELEASE_BLOCKED.md` records the
@@ -245,6 +245,47 @@ upload confirmation; that text-only follow-up is not part of the `.2` image.
 No real graph, physical device or account from another user was used. The backup
 preceded graph enrollment: do not call it an encrypted-graph restore proof.
 Remaining gates are listed in `RELEASE_BLOCKED.md`.
+
+## Recovery and variant checks — 6 September 2026
+
+The same unpublished AMD64 `.2` installation and encrypted disposable graph were
+used. No application binaries or real notebooks were changed.
+
+- Stopped only the sync container. MCP appended a synthetic block while the
+  independent browser edited a different nested block. Restarting sync delivered
+  both edits without another login. MCP and browser each observed the other side's
+  marker; the final MCP assertions require exactly one matching block. This is
+  service-outage recovery, not every possible network failure or a same-block
+  conflict test.
+- Uploaded a synthetic 68-byte PNG through the browser's **Upload an asset**
+  input. The helper independently downloaded the asset. Its bytes matched exactly:
+  SHA-256 `6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec`.
+  The MCP page contained the attachment title. This proves one small image, not
+  large-file or all-format compatibility.
+- Created verified application backup `5d1a0aab1f21a27fc1e8fe24` through Manager.
+  Disconnected the browser, appended a post-backup marker through MCP, and restored
+  through Manager. The newer marker disappeared; the pre-backup browser edit and
+  exact attachment bytes remained. All four declared data paths were included.
+  This is same-host application restore, not migration or off-site recovery.
+- Normal lifecycle plan/apply switched `browser` to `devices` (revision 3): only
+  helper, MCP and sync remained; the editor origin router disappeared; requests
+  for editor access options were rejected. The setup UI showed Connected, the
+  private sync URL, and no editor offer. Encrypted MCP reads still worked.
+- Switching back to `browser` (revision 4) restored the original editor address.
+  The browser reopened the notebook and rendered the attachment. It had been
+  disconnected before the post-backup write, so could not reintroduce that write.
+  A fresh browser edit then reached MCP; the persisted research-tool assertions
+  passed again, including the task, nested note and backlinks.
+
+`development/check-recovery-mcp.mjs` is a disposable-container proof with explicit
+graph identity, `read`/`append`/`absent` phases and optional marker assertions. Run
+through standard input in the MCP container; it reads the service token internally
+and prints only assertion outcomes, not graph content or credentials. The graph
+ID does not establish that a graph is disposable: the operator must ensure this.
+
+Core `pnpm check`, complete apps `npm test` and apps lint passed. No production-code
+change was required. Physical-device, native ARM64 encrypted sync, fresh devices-only
+enrollment and final release-artifact gates remain open.
 
 ## Reproduce
 
