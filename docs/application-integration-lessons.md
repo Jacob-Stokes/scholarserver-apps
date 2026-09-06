@@ -64,6 +64,11 @@ release checklist or proof that a particular application is ready.
 - Source tests and compilation do not prove a container can start. Exercise the
   final image's entry point, installed dependencies, non-root permissions and
   read-only filesystem on each supported native architecture.
+- Shared UI dependencies must resolve in each independent image build, not only
+  an npm workspace. File-linked UI packages can leave transitive dependencies
+  uninstalled. Pin required runtime dependencies in the consuming UI manifests
+  and check fresh isolated installs. Shared motion respects the browser-wide off
+  preference and device reduction; animate explicit navigation, never status polls.
 - Pinning makes selected inputs deliberate; final digests make installation
   repeatable. Neither alone proves cross-component compatibility or bit-for-bit
   rebuilds. Record compatible versions and remaining moving build inputs.

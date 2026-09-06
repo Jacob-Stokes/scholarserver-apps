@@ -1,4 +1,5 @@
 import React from "react";
+import { MotionSurface } from "./motion.tsx";
 
 export interface ApplicationTab<T extends string> {
   id: T;
@@ -84,7 +85,7 @@ export function ApplicationScreen<T extends string>({
             <span className="ss-spinner" /> Loading {name}…
           </div>
         ) : null}
-        {children}
+        <MotionSurface change={currentTab}>{children}</MotionSurface>
       </main>
     </div>
   );

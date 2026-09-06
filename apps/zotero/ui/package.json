@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "motion": "13.2.0",
     "@radix-ui/react-dialog": "1.1.15",
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
     "lucide-react": "0.475.0",

@@ -237,6 +237,29 @@ try {
     await page.reload();
     await page.locator(".ss-loading").waitFor({ state: "hidden" });
     console.log(`${name}: shared navigation, responsive configuration and failed-status recovery passed`);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.evaluate(() => localStorage.setItem("scholarserver.animations-off.v1", "true"));
+    await page.reload();
+    await page.getByRole("heading", { name, exact: true }).waitFor();
+    assert.equal(await page.locator("html").getAttribute("data-motion"), "off", `${name}: global browser preference`);
+    await page
+      .getByRole("navigation", { name: `${name} sections` })
+      .getByRole("button", { name: "Configuration", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .locator("[data-motion-surface]")
+        .evaluateAll(
+          (elements) =>
+            elements
+              .flatMap((element) => element.getAnimations())
+              .filter((animation) => animation.playState === "running").length
+        ),
+      0,
+      `${name}: navigation respects animations off`
+    );
+    await page.evaluate(() => localStorage.removeItem("scholarserver.animations-off.v1"));
+    await page.emulateMedia({ reducedMotion: "reduce" });
   }
 
   logseqStatus = { ...logseqStatus, addressRequired: true, syncAddress: null, browserAvailable: true };

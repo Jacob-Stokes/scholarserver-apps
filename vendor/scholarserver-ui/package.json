@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./motion": "./motion.tsx",
+    "./motion-preference": "./motion-preference.ts",
     "./application-screen": "./application-screen.tsx",
     "./appearance": "./appearance.ts",
     "./themes": "./themes.ts",
@@ -18,5 +20,6 @@
     "react": ">=18",
     "react-dom": ">=18"
   },
-  "scholarserverSource": "scholarserver/packages/ui@0.1.0"
+  "scholarserverSource": "scholarserver/packages/ui@0.1.0",
+  "dependencies": { "motion": "13.2.0" }
 }
