@@ -22,9 +22,10 @@ Upstream application images retain their original files and notices. See
   notices are preserved in that installation. Older published controller images
   still contain the previously bundled client; this source change does not
   retroactively alter those immutable images.
-- The official-client adapter's bundled dependencies `better-sqlite3`,
-  `commander` and `tar` are MIT-licensed. Their licence files remain in
-  `node_modules`; they are not the proprietary Obsidian client.
+- The official-client adapter's bundled `better-sqlite3` and `commander`
+  dependencies are MIT-licensed. `tar` 7.5.22 uses the Blue Oak Model License
+  1.0.0 (`BlueOak-1.0.0`). Their licence files remain in `node_modules`; they
+  are not the proprietary Obsidian client.
 
 ## Application icons
 
