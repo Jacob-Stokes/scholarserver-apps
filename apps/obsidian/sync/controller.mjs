@@ -113,6 +113,14 @@ async function runOb(args, { credentialKind = null } = {}) {
     });
     child.stdin.on("error", () => {});
     child.stdin.end(JSON.stringify({ entrypoint, args }));
+    let timedOut = false;
+    const deadline = setTimeout(
+      () => {
+        timedOut = true;
+        child.kill("SIGKILL");
+      },
+      credentialKind === "account" ? 55_000 : 15 * 60_000
+    );
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -121,8 +129,13 @@ async function runOb(args, { credentialKind = null } = {}) {
     child.stderr.on("data", (chunk) => {
       if (stderr.length < 1024 * 1024) stderr += chunk;
     });
-    child.on("error", reject);
+    child.on("error", () => {
+      clearTimeout(deadline);
+      reject(new Error("Could not start the official Obsidian client"));
+    });
     child.on("exit", (code) => {
+      clearTimeout(deadline);
+      if (timedOut) return reject(new Error("Obsidian took too long to respond. Check your connection and retry."));
       if (code === 0) return resolve(stdout.trim());
       const commandOutput = `${stderr}\n${stdout}`;
       let detail = "Obsidian could not complete this operation. Check your connection and retry.";
