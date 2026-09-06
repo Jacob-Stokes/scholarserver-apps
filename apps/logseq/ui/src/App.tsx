@@ -1,9 +1,13 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useCallback, useEffect, useState } from "react";
+import { PrivateConnection } from "./PrivateConnection";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
 type Status = {
+  addressRequired?: boolean;
+  syncAddress?: string | null;
+  browserAvailable?: boolean;
   canRetry: boolean;
   phase: string;
   ready: boolean;
@@ -91,7 +95,15 @@ export function App() {
       setBusy(false);
     }
   }
-  const stage = status?.ready ? "ready" : status?.accountConnected ? "notebook" : "account";
+  const needsAddress = status?.addressRequired && !status.syncAddress;
+  const setupStages = status?.addressRequired ? [{ id: "connection", label: "Connection" }, ...stages] : stages;
+  const stage = needsAddress
+    ? "connection"
+    : status?.ready
+      ? "ready"
+      : status?.accountConnected
+        ? "notebook"
+        : "account";
   const waiting = status?.account.state === "waiting";
   const authenticating = status?.account.state === "authenticating";
   return (
@@ -115,11 +127,21 @@ export function App() {
           </button>
         </section>
       ) : null}
-      {tab === "configuration" ? <SetupProgress stages={stages} current={stage} /> : null}
+      {tab === "configuration" ? <SetupProgress stages={setupStages} current={stage} /> : null}
+      {status?.addressRequired ? (
+        <PrivateConnection
+          browserAvailable={Boolean(status.browserAvailable)}
+          syncAddress={status.syncAddress ?? null}
+          configure={async (url) => {
+            await request("address", { url });
+            await refresh();
+          }}
+        />
+      ) : null}
       {tab === "configuration" && status && stage === "account" ? (
         <SetupPanel
-          stage={1}
-          total={3}
+          stage={status.addressRequired ? 2 : 1}
+          total={setupStages.length}
           title="Connect your Logseq account"
           description="Your notebook stays on your server. Logseq provides the account sign-in; no paid sync subscription is needed for this setup."
         >
@@ -183,8 +205,8 @@ export function App() {
       ) : null}
       {tab === "configuration" && status && stage === "notebook" ? (
         <SetupPanel
-          stage={2}
-          total={3}
+          stage={status.addressRequired ? 3 : 2}
+          total={setupStages.length}
           title="Choose your notebook"
           description="Create an encrypted notebook in Logseq using this server’s sync address, or choose one already there. Existing notebooks are never replaced."
         >
@@ -299,8 +321,8 @@ export function App() {
       ) : null}
       {tab === "configuration" && status && stage === "ready" ? (
         <SetupPanel
-          stage={3}
-          total={3}
+          stage={setupStages.length}
+          total={setupStages.length}
           title="Your notebook is connected"
           description="AI tools can now read and edit this notebook. Connect your other devices to the same notebook to share those edits."
         >

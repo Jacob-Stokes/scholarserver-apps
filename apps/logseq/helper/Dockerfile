@@ -32,6 +32,7 @@ RUN npm ci --omit=dev --ignore-scripts --install-links && npm cache clean --forc
 COPY apps/logseq/helper/server.mjs apps/logseq/helper/operations.mjs apps/logseq/helper/runner.mjs apps/logseq/helper/cli-bridge.cjs ./
 COPY apps/logseq/helper/worker-http.mjs apps/logseq/helper/http-operations.mjs apps/logseq/helper/references.mjs ./
 COPY apps/logseq/helper/enrollment.mjs apps/logseq/helper/setup.mjs ./
+COPY apps/logseq/helper/sync-launcher.mjs ./
 COPY --from=ui-build /source/apps/logseq/ui/dist /app/ui
 RUN mkdir /graph /runtime && chown 1000:1000 /graph /runtime
 USER 1000:1000

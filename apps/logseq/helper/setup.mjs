@@ -7,6 +7,7 @@ import { Enrollment } from "./enrollment.mjs";
 import { HttpOperations } from "./http-operations.mjs";
 import { GraphError, validateGraphName } from "./operations.mjs";
 import { GraphRunner } from "./runner.mjs";
+import { privateSyncAddress, readSyncAddress } from "./sync-launcher.mjs";
 import { WorkerHttp } from "./worker-http.mjs";
 
 export function selectedRemote(graphs, id) {
@@ -104,6 +105,19 @@ export async function startManaged({ graphServer, serviceToken }) {
   const root = process.env.LOGSEQ_GRAPH_ROOT ?? "/graph";
   const runtime = process.env.LOGSEQ_RUNTIME ?? "/runtime";
   const uiRoot = process.env.LOGSEQ_UI_ROOT ?? "/app/ui";
+  const syncConfig = process.env.LOGSEQ_SYNC_CONFIG;
+  let syncAddress = null;
+  if (syncConfig) {
+    await mkdir(syncConfig, { recursive: true, mode: 0o755 });
+    // The upstream sync image mounts only this public configuration directory,
+    // never the helper's credentials or notebook. It runs our small launcher.
+    await atomicWrite(
+      path.join(syncConfig, "launcher.mjs"),
+      await readFile(new URL("./sync-launcher.mjs", import.meta.url)),
+      0o644
+    );
+    syncAddress = await readSyncAddress(path.join(syncConfig, "address.json"));
+  }
   await mkdir(root, { recursive: true, mode: 0o700 });
   const configPath = path.join(root, "scholarserver.json");
   const cliPath = path.join(root, "cli.edn");
@@ -149,6 +163,9 @@ export async function startManaged({ graphServer, serviceToken }) {
   async function status() {
     return {
       phase,
+      addressRequired: Boolean(syncConfig),
+      syncAddress,
+      browserAvailable: process.env.LOGSEQ_BROWSER_EDITOR === "1",
       ready,
       sync,
       graph: selection?.graph ?? null,
@@ -161,6 +178,7 @@ export async function startManaged({ graphServer, serviceToken }) {
   }
 
   async function remoteGraphs() {
+    requireSyncAddress();
     if (["waiting", "authenticating"].includes(enrollment.status().state)) {
       throw new GraphError("busy", "Finish signing in first.", 409);
     }
@@ -171,6 +189,26 @@ export async function startManaged({ graphServer, serviceToken }) {
       // Discovery must not leave a second worker running or occupy a real notebook name.
       await accountRunner.run(["server", "stop"]);
     }
+  }
+
+  function requireSyncAddress() {
+    if (syncConfig && !syncAddress)
+      throw new GraphError("address-required", "Set up the private sync address first.", 409);
+  }
+
+  async function configureAddress(value) {
+    if (!syncConfig) throw new GraphError("unavailable", "This installation manages its address separately.", 409);
+    let next;
+    try {
+      next = privateSyncAddress(value);
+    } catch {
+      throw new GraphError("invalid-address", "Choose the private sync address supplied by ScholarServer.");
+    }
+    if (selection && next !== syncAddress)
+      throw new GraphError("already-connected", "The connected notebook's server address was not changed.", 409);
+    await atomicJson(path.join(syncConfig, "address.json"), { url: next }, 0o644);
+    syncAddress = next;
+    return status();
   }
 
   async function openReplica() {
@@ -307,7 +345,9 @@ export async function startManaged({ graphServer, serviceToken }) {
         return send(200, { graphs: await remoteGraphs() });
       if (request.method === "POST") {
         const body = await requestBody(request);
+        if (url.pathname === "/api/address") return send(200, await configureAddress(body.url));
         if (url.pathname === "/api/account/start") {
+          requireSyncAddress();
           if (selection)
             throw new GraphError(
               "already-selected",

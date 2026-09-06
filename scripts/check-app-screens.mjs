@@ -80,6 +80,8 @@ try {
     error: null
   };
   let selection = null;
+  const logseqAddresses = {};
+  let failEditorRoute = false;
   const calls = [];
   const option = {
     id: "private",
@@ -99,6 +101,31 @@ try {
     if (url.origin !== origin) return route.abort();
     if (!url.pathname.includes("/api/")) return route.continue();
     calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
+    if (url.pathname.endsWith("/logseq/api/address")) {
+      logseqStatus.syncAddress = request.postDataJSON().url;
+      return route.fulfill({ json: logseqStatus });
+    }
+    if (url.pathname.includes("/instances/logseq/endpoints/")) {
+      const endpoint = url.pathname.includes("/editor/") ? "editor" : "sync";
+      const urlValue = `https://synthetic.test.ts.net:${endpoint === "sync" ? 12000 : 12001}/`;
+      if (request.method() === "PUT") {
+        if (endpoint === "editor" && failEditorRoute) return route.fulfill({ status: 503, json: {} });
+        logseqAddresses[endpoint] = { url: urlValue };
+      }
+      return route.fulfill({
+        json: {
+          options: [
+            {
+              ...option,
+              id: "tailscale",
+              url: urlValue,
+              authentication: { ...option.authentication, authentik: "unsupported" }
+            }
+          ],
+          selection: logseqAddresses[endpoint] ?? null
+        }
+      });
+    }
     if (url.pathname.endsWith("/logseq/api/graphs"))
       return route.fulfill({
         json: {
@@ -212,6 +239,21 @@ try {
     console.log(`${name}: shared navigation, responsive configuration and failed-status recovery passed`);
   }
 
+  logseqStatus = { ...logseqStatus, addressRequired: true, syncAddress: null, browserAvailable: true };
+  await page.goto(`${origin}/apps/logseq/configuration`);
+  await page.getByRole("button", { name: "Set up private connection", exact: true }).waitFor();
+  assert.equal(Object.keys(logseqAddresses).length, 0, "reading options must not publish a route");
+  failEditorRoute = true;
+  await page.getByRole("button", { name: "Set up private connection", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Could not set up the private address" }).waitFor();
+  assert.ok(logseqAddresses.sync);
+  assert.equal(logseqStatus.syncAddress, null, "partial setup must not start enrollment");
+  failEditorRoute = false;
+  await page.getByRole("button", { name: "Set up private connection", exact: true }).click();
+  await page.getByRole("button", { name: "Start Logseq sign-in", exact: true }).waitFor();
+  await page.reload();
+  await page.getByRole("link", { name: "Open Logseq", exact: true }).waitFor();
+  console.log("Logseq: private route creation, partial failure, retry and reload passed");
   logseqStatus.accountConnected = true;
   await page.goto(`${origin}/apps/logseq/configuration`);
   await page.getByRole("button", { name: "Find my notebooks", exact: true }).click();

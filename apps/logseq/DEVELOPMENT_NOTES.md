@@ -232,3 +232,24 @@ browser, returned a browser edit to MCP, and repeated after a service restart.
 The new setup image has not yet been tested on native ARM64 or installed through
 the real catalog. Endpoint provisioning and the optional editor choice remain
 package integration work, not verified features of this development compose file.
+
+## Installer address configuration follow-up
+
+Core checkpoint `e9fc896` adds generic private, cookie-free isolated origins;
+it does not contain Logseq rules. The candidate setup now requests those routes
+through the shared endpoint selector before starting account enrollment. Requests
+can be retried if only one route was created. No public route is implied.
+
+The pinned upstream sync process reads `DB_SYNC_BASE_URL` only at startup. Its
+generated asset links must use the selected HTTPS origin. A small app-owned Node
+launcher runs inside the unchanged upstream sync image, reading a public-only
+configuration volume written by the helper. It stops the old process before
+restarting with a changed address. The sync image never mounts helper credentials.
+Raw upstream process output is suppressed; health and setup report failures.
+This keeps runtime configuration in the app without adding arbitrary environment
+mutation or application-specific behavior to the executor.
+
+Source tests cover address validation, stop-before-restart and idempotent config
+writes. The new setup is not yet a published package or a verified native
+catalog-install proof. Initial internal-only startup exists solely to make setup
+available; account/notebook enrollment is blocked until the private address is set.
