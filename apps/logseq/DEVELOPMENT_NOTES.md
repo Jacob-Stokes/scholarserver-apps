@@ -258,6 +258,21 @@ graph have one mount at the upstream-required home path, and services tolerate
 independent startup. Development-only standalone recipes explicitly opt out.
 Do not add an executor exception to make a development Compose file installable.
 
+### Containerized Tailscale is not a host network client
+
+The fresh host runs Tailscale in its own userspace container. The helper cannot
+use a browser's private HTTPS address as an ordinary external download URL.
+The earlier Resolution proof had a host Tailscale client and hid this distinction.
+
+The helper now uses Undici's documented dispatcher/interceptor API, loaded by
+Node's normal preload mechanism for the upstream CLI and worker. Only the exact
+configured sync origin maps to the fixed internal `http://sync:8787` service;
+paths, streamed bodies and authentication are preserved. Other origins retain
+normal routing and TLS verification. There is no certificate bypass, rewrite of
+upstream program bytes, or new tailnet-wide proxy. Tests verify exact-origin
+matching and unchanged requests to other hosts. Native worker inheritance and
+same-graph downloads still need live proof before this is accepted as complete.
+
 Source tests cover address validation, stop-before-restart and idempotent config
 writes. The new setup is not yet a published package or a verified native
 catalog-install proof. Initial internal-only startup exists solely to make setup

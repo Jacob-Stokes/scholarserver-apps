@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@scholarserver/controller-runtime": "file:../../../packages/controller-runtime",
-    "transit-js": "0.8.874"
+    "transit-js": "0.8.874",
+    "undici": "7.29.1"
   }
 }

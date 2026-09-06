@@ -56,7 +56,16 @@ export class GraphRunner {
         ...command
       ];
       const child = this.spawnProcess(this.executable, [this.bridge], {
-        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: "1",
+          ...(process.env.LOGSEQ_SYNC_CONFIG
+            ? {
+                NODE_OPTIONS:
+                  `${process.env.NODE_OPTIONS ?? ""} --require=${JSON.stringify(fileURLToPath(new URL("./local-sync-transport.cjs", import.meta.url)))}`.trim()
+              }
+            : {})
+        },
         stdio: ["pipe", "pipe", "pipe"]
       });
       const stdout = [];
