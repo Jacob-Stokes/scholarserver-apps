@@ -7,6 +7,12 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const lock = JSON.parse(await readFile(path.join(repositoryRoot, "icons.lock.json"), "utf8"));
 
 for (const [application, icon] of Object.entries(lock.icons)) {
+  if (icon.source === "local") {
+    const content = await readFile(path.join(repositoryRoot, icon.path));
+    if (createHash("sha256").update(content).digest("hex") !== icon.sha256)
+      throw new Error(`${application}: local icon checksum changed`);
+    continue;
+  }
   const url = `https://cdn.jsdelivr.net/gh/${lock.upstream.repository}@${lock.upstream.commit}/webp/${icon.reference}.webp`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${application}: icon download failed with HTTP ${response.status}`);

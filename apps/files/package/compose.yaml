@@ -1,0 +1,31 @@
+services:
+  mcp:
+    image: ghcr.io/jacob-stokes/scholarserver-files@sha256:fea262ef1cc4d8951e12ceee3ebaba915d03ddd6d0f9ee38d9c89d9bd7de43b6
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "1000:1000"
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 64
+    tmpfs:
+      - "/tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777"
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_READ_ONLY}:/shared/read-only:ro
+      - ${SCHOLARSERVER_DATA_READ_WRITE}:/shared/read-write
+    expose: ["7014"]
+    networks:
+      instance:
+        aliases: [files-mcp]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:7014/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 7s
+      start_period: 15s
+      retries: 6
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true

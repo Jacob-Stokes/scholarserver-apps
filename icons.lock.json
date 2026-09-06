@@ -7,6 +7,12 @@
     "licenseUrl": "https://github.com/selfhst/icons/blob/main/LICENSE"
   },
   "icons": {
+    "files": {
+      "source": "local",
+      "reference": "files",
+      "path": "apps/files/package/assets/icons/files.webp",
+      "sha256": "34750b0a3360417fb4e89dab6d6b3ac671472fbd973d57aa3b90fd9b7792072d"
+    },
     "docling": {
       "reference": "docling",
       "path": "apps/docling/package/assets/icons/docling.webp",

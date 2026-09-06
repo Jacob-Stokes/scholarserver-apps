@@ -1,0 +1,99 @@
+schemaVersion: 1
+id: org.scholarserver.files
+name: Files
+packageVersion: 0.1.0-beta.1
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: MCP Filesystem Server
+  version: 2026.8.31
+  license: Apache-2.0 AND MIT
+support:
+  tier: official
+  architectures: [amd64, arm64]
+delivery:
+  class: headless-service
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides: [files.read, files.write, files.move]
+  requires: []
+  conflicts: []
+resources:
+  minimum: { cpu: 0.25, memory: 256MiB, disk: 256MiB }
+  recommended: { cpu: 0.5, memory: 256MiB, disk: 1GiB }
+permissions:
+  networkEgress: []
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities: [ALL]
+images:
+  - service: mcp
+    reference: ghcr.io/jacob-stokes/scholarserver-files@sha256:fea262ef1cc4d8951e12ceee3ebaba915d03ddd6d0f9ee38d9c89d9bd7de43b6
+data:
+  - id: runtime
+    mountPath: /runtime
+    owner: files
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: read-only
+    mountPath: /shared/read-only
+    owner: files
+    filesystem: { uid: 1000, gid: 1000, mode: "0750" }
+    backup: filesystem-consistent
+    retention: preserve
+    externalStorage:
+      mountable: true
+      access: read-only
+      content: generic
+  - id: read-write
+    mountPath: /shared/read-write
+    owner: files
+    filesystem: { uid: 1000, gid: 1000, mode: "0750" }
+    backup: filesystem-consistent
+    retention: preserve
+    externalStorage:
+      mountable: true
+      access: read-write
+      content: generic
+endpoints:
+  - id: mcp
+    service: mcp
+    port: 7014
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: Files
+      namespace: files
+      hostname: files-mcp
+      credentialData: runtime
+      credentialFile: service-token
+presentation:
+  icon:
+    path: assets/icons/files.webp
+    mediaType: image/webp
+    attribution:
+      name: ScholarServer
+      url: https://github.com/Jacob-Stokes/scholarserver-apps
+      license: CC-BY-4.0
+      licenseUrl: https://creativecommons.org/licenses/by/4.0/
+lifecycle:
+  required: true
+  supportsDisable: false
+  removeDataDefault: false
+  rollback: reversible
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Files starts with its own empty folders; other server files stay private.
+    - Use Change shared storage to choose folders agents may read or change.
+    - Do not share credentials, system folders or application databases. Use each app's own tools for its library.
+    - Writes can replace files. Keep backups, especially for folders synced to other devices.
+  actions: []

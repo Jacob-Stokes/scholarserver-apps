@@ -23,6 +23,9 @@ build() {
   target="$REGISTRY/$repository:sha-$REVISION$tag_suffix-$ARCH"
   docker build --pull --build-arg TARGETARCH="$ARCH" --file "$dockerfile" --tag "$target" "$context"
   python3 scripts/check-image-contents.py "$target"
+  if [ "$image" = files ]; then
+    bash apps/files/test-container.sh "$target"
+  fi
   docker push "$target"
   case "$image" in
     obsidian-sync|obsidian-api|obsidian-mcp)
@@ -34,6 +37,7 @@ build() {
   esac
 }
 
+build files apps/files/Dockerfile .
 build obsidian-sync apps/obsidian/sync/Dockerfile .
 build obsidian-api apps/obsidian/api/Dockerfile apps/obsidian/api
 build obsidian-mcp apps/obsidian/mcp/Dockerfile .

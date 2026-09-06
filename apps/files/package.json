@@ -1,0 +1,13 @@
+{
+  "name": "@scholarserver/files",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/server-filesystem": "2026.8.31"
+  }
+}
