@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:f
 import path from "node:path";
 import { x as extract } from "tar";
 
-// Metadata only. The proprietary package is fetched on the user's server,
-// never by the image build or release workflow.
+// Metadata only. The proprietary package is fetched into user-owned storage,
+// never embedded by the image build. Runtime tests use disposable storage.
 export const approvedClient = Object.freeze({
   version: "0.0.14",
   url: "https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-0.0.14.tgz",
