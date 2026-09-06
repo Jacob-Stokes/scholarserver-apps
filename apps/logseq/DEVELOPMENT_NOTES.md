@@ -22,8 +22,10 @@ references are linked in [README](README.md#sources-and-notices).
 ### Independent startup is not integrated sync
 
 The helper/MCP works on native AMD64 and ARM64. The upstream browser and sync
-images start, but the browser currently opens its own Demo graph. **That graph is
-not the MCP graph.** No bidirectional device/browser/server sync has been proved.
+images initially opened separate Demo graphs. The later account test proved
+bidirectional sync between two browser origins through our server, using one
+disposable encrypted graph. **The helper/MCP graph remains separate.** Do not
+mistake this browser proof for headless or physical-device acceptance.
 
 Keep the candidate unpublished until all participants join the same graph and
 edits are verified both ways. Browser availability must remain an optional,
@@ -36,10 +38,35 @@ default. The alternative sync-worker's semantic MCP supports only non-E2EE
 graphs, so it is not an acceptable shortcut that silently removes encryption.
 
 The proposed route is a locally authorized headless replica, with Logseq owning
-decryption and database access. Actual account enrollment and encrypted sync are
-unverified. The CLI's localhost OAuth callback also needs a supported remote-server
+decryption and database access. A newly created unpaid account now works for
+encrypted browser sync through our server. Headless enrollment is unverified.
+The CLI's localhost OAuth callback also needs a supported remote-server
 onboarding flow; do not claim that problem is solved or introduce an unreviewed
-credential broker. A disposable graph/account test is still needed.
+credential broker. A disposable headless/device test is still needed.
+
+### Healthy sync did not mean account verification was configured
+
+The development container returned `/health` 200 without Cognito configuration,
+but rejected the signed-in browser with 401. Explicit upstream issuer, public
+client identifier and signing-key URL fixed this. These are public configuration,
+not credentials. The recipe now also accepts the external base URL for asset links.
+`tests/image-packaging.test.mjs` guards this configuration. Test both authenticated
+success and unauthenticated rejection, not just health.
+
+### Configure the destination before enrollment, and test the shipped browser
+
+The public test site's create-graph dialog remained disabled after selecting
+encrypted sync. Its console reported `ui-request-timeout` for an encryption
+password prompt that was not visible. Do not call this a paid-account restriction
+or bypass it by turning encryption off. The pinned self-hosted browser displayed
+the password prompt and completed creation. The public site subsequently joined
+and edited that same graph successfully.
+
+Set the custom sync URL before login/encryption enrollment, then reload to ensure
+it applies. Key records belong to the selected server. Verify actual request
+destinations; the words "Use Logseq Sync?" also label self-hosted sync in the UI.
+Use distinct browser origins or clean browser contexts for replication proofs:
+two tabs sharing the same IndexedDB are not independent clients.
 
 ### A passing build hid a missing runtime dependency
 
@@ -93,8 +120,8 @@ Linux repository packages still prevent a claim of bit-for-bit reproducibility.
 
 ## Next evidence to obtain
 
-1. Supported account enrollment and encrypted setup on a disposable graph.
-2. Same graph across browser, headless replica and device; verify edits both ways.
+1. Supported headless enrollment in the disposable encrypted graph.
+2. Same graph across browser, headless replica and physical device; verify edits both ways.
 3. Attachments, network interruption/reconnect and consistent backup/restore.
 4. Shared ScholarServer setup/access UI, including the no-browser choice.
 5. Compatible version matrix, complete upstream notices and final release images.

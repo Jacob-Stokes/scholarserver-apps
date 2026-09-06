@@ -4,6 +4,12 @@ services:
   sync:
     profiles: [upstream-preview]
     image: ghcr.io/yshalsager/logseq-selfhost-sync@sha256:354c0913eefbee78a6f6a8b122ef257226b625e9c29708e41518dec61943aef5
+    # These public identifiers validate upstream account tokens; they are not secrets.
+    environment:
+      COGNITO_ISSUER: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dtagLnju8
+      COGNITO_CLIENT_ID: 69cs1lgme7p8kbgld8n5kseii6
+      COGNITO_JWKS_URL: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dtagLnju8/.well-known/jwks.json
+      DB_SYNC_BASE_URL: ${LOGSEQ_SYNC_URL:-http://127.0.0.1:8787}
     read_only: true
     user: "65532:65532"
     cap_drop: [ALL]

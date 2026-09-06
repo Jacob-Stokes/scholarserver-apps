@@ -43,3 +43,14 @@ test("runtime launcher is delivered and image-content audit precedes any push", 
   const script = await readFile("scripts/build-native-images.sh", "utf8");
   assert.ok(script.indexOf("check-image-contents.py") < script.indexOf('docker push "$target"'));
 });
+
+test("Logseq sync preview configures account verification, not just an HTTP health endpoint", async () => {
+  const compose = parse(await readFile("apps/logseq/development/compose.yaml", "utf8"));
+  const { environment, networks } = compose.services.sync;
+  assert.equal(environment.COGNITO_ISSUER, "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dtagLnju8");
+  assert.equal(environment.COGNITO_CLIENT_ID, "69cs1lgme7p8kbgld8n5kseii6");
+  assert.equal(environment.COGNITO_JWKS_URL, `${environment.COGNITO_ISSUER}/.well-known/jwks.json`);
+  assert.match(environment.DB_SYNC_BASE_URL, /LOGSEQ_SYNC_URL/);
+  assert.ok(networks.includes("egress"), "Account signing keys must be reachable");
+  assert.equal(compose.services.sync.ports, undefined, "Preview does not publish a public host port");
+});
