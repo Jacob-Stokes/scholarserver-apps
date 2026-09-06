@@ -11,11 +11,9 @@ test("the private API requires its service credential before running any graph c
   const token = "test-only-token-with-at-least-32-characters";
   const server = graphServer({
     token,
-    runner: {
-      run: async (args) => {
-        calls.push(args);
-        return { result: [1] };
-      }
+    execute: async (operation, input) => {
+      calls.push([operation, input]);
+      return { result: [1] };
     }
   });
   server.listen(0, "127.0.0.1");

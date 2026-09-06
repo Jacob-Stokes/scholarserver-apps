@@ -18,7 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 COPY --from=download /opt/logseq /opt/logseq
 WORKDIR /app
+COPY apps/logseq/helper/package.json apps/logseq/helper/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY apps/logseq/helper/server.mjs apps/logseq/helper/operations.mjs apps/logseq/helper/runner.mjs apps/logseq/helper/cli-bridge.cjs ./
+COPY apps/logseq/helper/worker-http.mjs apps/logseq/helper/http-operations.mjs apps/logseq/helper/references.mjs ./
 RUN mkdir /graph /runtime && chown 1000:1000 /graph /runtime
 USER 1000:1000
 ENV PORT=8080

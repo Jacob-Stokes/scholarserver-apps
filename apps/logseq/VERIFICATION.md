@@ -1,5 +1,70 @@
 # Logseq candidate proof — 6 September 2026
 
+## Current result: direct worker HTTP
+
+This follow-up supersedes the CLI-per-request decision described in the historical
+sections below. All fourteen research operations now use worker HTTP; the CLI is
+retained for lifecycle and explicit sync setup/resume.
+
+### Speed, final candidate
+
+Native AMD64, same small disposable encrypted graph and unchanged worker PID.
+Twenty measured samples per path per operation after an initial comparison;
+CLI/HTTP execution order alternated. Includes HTTP identity checking, validation,
+Transit decoding and output shaping. No GUI process. Times are milliseconds.
+
+| Operation | CLI median | HTTP median | CLI p95 | HTTP p95 | Median speedup |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| List pages | 319.41 | 14.39 | 362.99 | 22.84 | 22.2× |
+| Read page | 305.60 | 5.97 | 421.71 | 8.59 | 51.2× |
+| Search blocks | 306.18 | 5.64 | 335.16 | 7.13 | 54.3× |
+| Edit block | 324.35 | 15.08 | 342.56 | 24.81 | 21.5× |
+| Append block | 328.96 | 26.23 | 353.62 | 32.52 | 12.5× |
+| Set task status | 323.38 | 19.78 | 331.31 | 27.36 | 16.3× |
+
+`development/benchmark-operations.mjs` checks equivalent useful outputs, persisted
+edit/task state and exactly 42 added blocks (initial pair plus 20 per path).
+Edits/status calls repeat fixed values; appends create real new blocks. These are
+small-graph latency results, not large-graph throughput or whole AI-response speed.
+
+Complete local MCP requests were also measured independently (20 samples after
+warmup): list pages median **20.50 ms**, p95 **32.87 ms**; page reading median
+**12.75 ms**, p95 **14.64 ms**. These include the SDK, MCP transport, helper and
+worker, but exclude a cloud AI provider and internet latency. Reproduce using
+`development/benchmark-mcp.mjs` inside the disposable MCP container.
+
+### Functional and failure evidence
+
+- Final images built and ran natively on AMD64 and ARM64, not emulation.
+- All fourteen tools passed through real MCP: reads/search/pagination, creation,
+  nested children, edits, task completion, invalid IDs/status rejection.
+- Three successive edits retained backlinks. Reads render canonical UUID links
+  as readable page references; Datascript entities become plain JSON.
+- Existing encrypted AMD64 graph/credentials survived replacement of the old
+  CLI-per-call helper. Graph UUID and E2EE flag remained unchanged.
+- Final MCP-created notes, task and page reference appeared in the pinned browser.
+  A browser child edit returned through MCP; a further fresh edit after helper
+  restart returned too. No researcher data was used.
+- Stopped the worker deliberately: a create request returned safe HTTP 503 without
+  CLI fallback or replay. After helper restart and readiness, the requested page
+  remained absent and existing notes/backlinks remained present.
+- Native ARM64 fresh and restart protocol tests passed, including a further
+  restart-phase backlink assertion. ARM64 encrypted/device sync was not tested.
+- 23 helper unit tests cover bounds, identity mismatch, unsupported addresses and
+  revisions, deadlines/queue admission, no retry after lost responses, Transit,
+  references, authentication and non-destructive initialization. Full repository
+  `npm test` and `npm run lint` passed.
+
+Sync resume after restart is still explicit engineering setup, not automatic
+installer behaviour. Stopped-worker health may remain marked ready until a graph
+request detects the missing worker; requests fail closed and advise helper restart.
+One early restart probe raced startup and received a not-ready response; rerunning
+after readiness verified absence of the rejected write. This was a test-harness
+timing issue, not evidence of a successful write.
+
+Compatibility limits and remaining app release gates are in `API_DECISION.md` and
+`RELEASE_BLOCKED.md`. No catalog release or image publication is claimed here.
+
 ## Initial native helper/MCP proof
 
 Disposable graphs and native Docker containers: AMD64 on Resolution and ARM64 on

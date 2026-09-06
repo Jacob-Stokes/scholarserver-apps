@@ -2,8 +2,10 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { lstat, mkdir, open, readFile, rmdir } from "node:fs/promises";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
+import { HttpOperations } from "./http-operations.mjs";
 import { GraphError, graphCommand } from "./operations.mjs";
 import { GraphRunner } from "./runner.mjs";
+import { WorkerHttp } from "./worker-http.mjs";
 
 function authorized(request, token) {
   const supplied = Buffer.from(request.headers.authorization ?? "");
@@ -26,7 +28,7 @@ async function body(request) {
   }
 }
 
-export function graphServer({ runner, token, ready = () => true }) {
+export function graphServer({ execute, token, ready = () => true }) {
   return createServer(async (request, response) => {
     const send = (status, result) => {
       response.writeHead(status, {
@@ -42,8 +44,8 @@ export function graphServer({ runner, token, ready = () => true }) {
       if (!ready()) return send(503, { error: "Logseq is starting. Try again shortly." });
       if (request.method !== "POST" || request.url !== "/v1/graph") return send(404, { error: "Not found." });
       const input = await body(request);
-      const command = graphCommand(input?.operation, input?.input);
-      const result = await runner.run(command);
+      graphCommand(input?.operation, input?.input);
+      const result = await execute(input.operation, input.input);
       send(200, { data: result });
     } catch (error) {
       if (error instanceof GraphError) return send(error.status, { code: error.code, error: error.message });
@@ -119,12 +121,23 @@ async function main() {
   });
   const token = await serviceToken(process.env.LOGSEQ_RUNTIME ?? "/runtime");
   let ready = false;
-  const server = graphServer({ runner, token, ready: () => ready });
+  let operations;
+  const server = graphServer({
+    execute: (operation, input) => operations.execute(operation, input),
+    token,
+    ready: () => ready
+  });
   server.requestTimeout = 90_000;
   server.headersTimeout = 10_000;
   server.listen(Number(process.env.PORT ?? 8080), "0.0.0.0");
   try {
     await initializeGraph(runner);
+    const { servers } = await runner.run(["server", "list"]);
+    const endpoint = servers.find((entry) => entry.repo === `logseq_db_${runner.graph}`);
+    if (!endpoint) throw new Error("Graph worker not found.");
+    const worker = new WorkerHttp({ endpoint, graph: runner.graph, root: runner.root });
+    await worker.check(AbortSignal.timeout(10_000));
+    operations = new HttpOperations({ worker, graph: runner.graph });
     ready = true;
     console.log("Logseq graph is ready.");
   } catch {

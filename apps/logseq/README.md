@@ -6,7 +6,9 @@ convert or reset a researcher's existing graph as part of installation.
 
 ## Ownership and boundaries
 
-The graph helper runs the **unmodified, checksum-verified official Logseq CLI**.
+The graph helper uses the **unmodified, checksum-verified official Logseq CLI**
+for lifecycle/setup and calls its persistent headless worker directly over HTTP
+for research operations. There is no CLI process launch for each MCP request.
 Logseq owns database access, block identities, transactions and sync. Our private
 HTTP API offers a small set of research operations; the separate MCP service uses
 the existing ScholarServer transport. Neither service edits SQLite directly.
@@ -34,7 +36,8 @@ packaging with a supported upstream headless artifact when one is available.
 - Non-root, read-only containers; no Docker socket or host ports in the recipe.
 - Only the helper mounts the graph. MCP receives only its service credential.
 - Graph commands are allowlisted. There is no shell, arbitrary CLI or database API.
-- Note contents travel through stdin, not OS command arguments. Output and runtime
+- Note contents travel in private HTTP bodies, not OS arguments. Lifecycle CLI
+  arguments use stdin. Output and runtime
   errors are bounded; raw upstream errors are not sent to callers or logs.
 - Commands are serialized. A timed-out write is **not automatically retried**.
 - The upstream daemon is the single graph writer. Restarting the helper reopens
@@ -69,6 +72,8 @@ existing Logseq data directory.
 - [Official 2.0.1 release](https://github.com/logseq/logseq/releases/tag/2.0.1)
 - [Logseq AGPL-3.0 licence](https://github.com/logseq/logseq/blob/2.0.1/LICENSE.md)
 - [Community packaging licence](https://github.com/yshalsager/logseq-selfhost/blob/master/LICENSE)
+- [Cognitect Transit — Apache-2.0](https://github.com/cognitect/transit-js/blob/master/LICENSE)
+  (`transit-js` 0.8.874 is integrity-locked; its package licence remains in the image).
 
 Retain upstream notices and satisfy corresponding-source obligations before
 distribution. This candidate does not change the licensing status of any other app.

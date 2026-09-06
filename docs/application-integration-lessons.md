@@ -25,6 +25,10 @@ release checklist or proof that a particular application is ready.
   Desktop/plugin APIs and headless-worker HTTP are not interchangeable just because
   both use HTTP. Measure CLI overhead before copying upstream validation and editing
   semantics; a compatibility shim can cost more maintenance than the code it replaces.
+- A direct worker transport need not replace the upstream engine. Keep lifecycle
+  in the official client and transactions/sync in its worker where practical.
+  Use maintained wire codecs, pin the internal API revision and measure equivalent
+  operations. Test repeated edits, references and restart, not just latency of a ping.
 
 ## Resolve authentication and encryption early
 

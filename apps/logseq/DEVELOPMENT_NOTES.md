@@ -171,6 +171,25 @@ does not prove protocol compatibility. Record a tested matrix after same-graph
 sync succeeds. The development lock holds exact upstream image references;
 Linux repository packages still prevent a claim of bit-for-bit reproducibility.
 
+## HTTP transport follow-up
+
+The API decision now uses direct worker HTTP for fourteen everyday operations;
+the CLI owns lifecycle only. Do not confuse worker HTTP with desktop `/api`.
+Use the maintained Transit library: retain keyword namespaces, convert lists and
+Datascript entities to plain JSON, and preserve typed UUIDs on the wire. Verify
+worker identity before dispatch and never replay uncertain writes.
+
+Testing caught lexicographic block ordering (`Zz` precedes `a0`), descending ID
+tie-breaking in lists, and canonical UUID references. Plain `[[Page]]` can look
+correct yet lose backlinks after another edit/rebuild. Check repeated edits and
+browser sync, not just one insertion. Keep upstream transactions authoritative;
+do not repair reference handling with direct database writes.
+
+The first latency probe skipped compatibility work. The final benchmark runs
+actual adapters on one graph, alternates order and checks persisted results.
+Native builds and live MCP tests caught issues that mock tests did not. Keep
+these evidence layers separate and repeat them for runtime upgrades.
+
 ## Next evidence to obtain
 
 1. Turn the manual headless enrollment proof into safe remote-server setup and automatic sync resume.

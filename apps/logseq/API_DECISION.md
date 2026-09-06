@@ -2,76 +2,73 @@
 
 ## Decision
 
-Retain the unmodified official 2.0.1 CLI behind our narrow private HTTP helper.
-It discovers and reuses one headless worker. Do not replace it with direct worker
-calls or install a full desktop solely to use a different MCP. This is a deliberate
-maintenance/correctness trade-off, not a claim that subprocess overhead is free.
+Use direct **headless worker HTTP for all fourteen research operations**. Keep the
+unmodified official CLI for graph initialization, worker discovery, account/sync
+setup and shutdown. This supersedes the earlier decision to use the CLI on every
+request: startup overhead is material, while the worker still owns transactions,
+graph locking and encrypted sync.
 
-The path remains MCP → authenticated helper → official CLI → loopback worker
-HTTP → Logseq graph and encrypted sync. No direct SQLite writes, patched upstream
-runtime, Electron renderer, desktop API emulation or public worker endpoint.
+The path is MCP → authenticated, allowlisted helper → loopback worker → graph
+and sync. No direct SQLite writes, desktop renderer, patched upstream runtime,
+public worker endpoint or desktop API emulation. Graph operations never silently
+fall back to the CLI.
 
-## Alternatives reviewed
+## What we maintain
 
-| Option | Benefit | Cost / finding | Decision |
-| --- | --- | --- | --- |
-| Official CLI | Upstream owns selection, validation, task semantics, graph lifecycle and output conversion | Per-request process startup | Keep for this candidate |
-| Direct worker HTTP | Avoids the per-request CLI process | Own Transit serialization, typed lookups, outliner operations, task resolution, result shaping and revision/owner checks | Not justified by this benchmark |
-| `ergut/mcp-logseq` + desktop HTTP | Existing MIT MCP, broader tools | Its `/api` requires application/plugin APIs; our pinned headless worker has no compatible endpoint | Not a drop-in replacement |
-| Emulate desktop API for that MCP | Reuse its tool definitions | Own a substantial compatibility layer as well as another service | Reject unless a small, independently useful adapter emerges |
+- `worker-http.mjs`: bounded HTTP transport and maintained Cognitect Transit codec;
+  typed keywords/UUIDs and plain JSON conversion, not a home-grown wire codec.
+- `http-operations.mjs`: fourteen fixed operations using upstream pull/query,
+  list and outliner methods; validation, queue and deadline bounds.
+- `references.mjs`: display page links ↔ canonical UUID references. Repeated edits
+  retain backlinks; unknown references stay intact. Not a full Markdown parser
+  or a replacement for Logseq's graph engine.
+- `runner.mjs`: official CLI lifecycle and a reproducible benchmark baseline.
 
-The community MCP was reviewed at `2202586962eaf36e07eda3aef3242f6007c7cd1b`.
-Its DB-mode option does not make the desktop and worker protocols interchangeable.
-No full desktop deployment or comparative desktop RAM benchmark was performed.
+The address is discovered once at startup. Loopback address, graph, root, revision
+and PID are verified; identity is checked before every operation. Supported worker
+revision is pinned to `b09316a` from Logseq 2.0.1. A changed worker fails closed
+and requires helper restart; uncertain writes are never automatically retried.
+The helper remains non-root and read-only except graph/runtime volumes, with no
+Docker socket. MCP cannot mount graph or account data.
 
-## Evidence and limits
+## Why not the existing desktop MCP?
 
-On the native AMD64 disposable encrypted graph, ten warmed page-list samples:
+`ergut/mcp-logseq` at `2202586962eaf36e07eda3aef3242f6007c7cd1b` expects the
+desktop/plugin `/api`, which returned 404 on this headless worker. Both use HTTP
+but are not interchangeable. A full desktop solely for this API or an emulation
+layer would expand the integration unnecessarily.
 
-- CLI: 303–330 ms; mean 313.6 ms.
-- Direct worker HTTP: 9–14 ms; mean 11.5 ms.
-- Worker PID unchanged across all calls; desktop `/api` returned 404.
+Fourteen focused tools are retained, not all community-MCP capabilities. General
+queries, arbitrary properties, page deletion/rename, namespaces and semantic
+indexing remain outside this pass. Reads retain linked references and nested
+blocks; numeric IDs are local to this replica. Records can include additional UUID
+metadata: equivalence means graph behaviour, not byte-identical CLI presentation.
 
-A second run after restart measured 296–313 ms through CLI and 10–21 ms through
-HTTP, again with one worker and no desktop API. The HTTP probe is a latency floor,
-not an equivalent implementation: it skips CLI lifecycle discovery, validation and
-output conversion. This small, quiet graph does not establish large-graph throughput,
-concurrent load or memory cost. The CLI queue still serializes operations;
-high-volume use may justify revisiting this.
+## Evidence and maintenance limits
 
-`development/benchmark-transport.mjs` reproduces the read-only comparison without
-printing notes or credentials. The raw worker endpoint is loopback-only and is
-not safe to expose as our authenticated, allowlisted application API.
+See `VERIFICATION.md` for measurements, native builds, real MCP calls, encrypted
+browser round trips and failure/restart checks. The benchmark exercises actual
+operations including identity checks and output conversion—not a raw HTTP ping.
+`development/benchmark-operations.mjs` alternates CLI/HTTP order on the same graph,
+checks equivalent useful results and confirms one unchanged worker. It verifies
+persisted edits, task state and the exact number of appended blocks.
 
-The CLI is not merely a transport wrapper: page/task operations resolve entities
-and status properties, apply outliner operations, and shape results. The official
-documentation also assigns daemon discovery, revision matching and ownership to
-the CLI. Copying this logic would expand our maintenance boundary.
+Small-graph timings are not large-graph throughput guarantees. Lists/searches are
+collected by the worker before helper pagination; oversized results fail with a
+bounded error. Deep/nested reference rendering, uncommon Markdown constructs and
+large graphs need broader coverage. The internal worker protocol is version-specific:
+repeat these tests when updating Logseq, rather than assuming compatibility.
 
-## What we built
-
-Fourteen focused MCP operations cover metadata, page listing/search/reading,
-page creation, block-text search/reading/editing, nested/appended notes, and task
-creation/listing/status discovery/status changes. The fixed status query is
-upstream-provided; arbitrary queries, CLI flags, paths and commands are not exposed.
-IDs returned by these tools are local to this replica, not transferable device IDs.
-
-This is not full community-MCP parity. Page rename/delete, standalone backlinks
-tools, general property/namespace/query operations and semantic indexing remain
-outside this pass. Page reads already include upstream linked-reference data.
-Use the same upstream boundary for additions; do not quietly add a second
-database implementation to fill gaps.
-
-Revisit when an upstream supported headless application API/MCP becomes available,
-or representative workloads show this boundary is a bottleneck. A dedicated
-upstream headless artifact could also remove the desktop-archive packaging
-exception. No such improvement is assumed to exist in this pinned build.
+The app remains a development candidate. Installer enrollment, opt-in automatic
+sync resume, physical-device/ARM64 encrypted sync, attachments and backup/restore
+are separate release gates, not completed by this transport change.
 
 ## Primary sources
 
-- [CLI lifecycle and commands](https://github.com/logseq/logseq/blob/2.0.1/docs/cli/logseq-cli.md)
-- [Worker HTTP routes](https://github.com/logseq/logseq/blob/2.0.1/src/main/frontend/worker/db_worker_node.cljs)
-- [Desktop API renderer dispatch](https://github.com/logseq/logseq/blob/2.0.1/src/electron/electron/server.cljs)
-- [CLI worker transport](https://github.com/logseq/logseq/blob/2.0.1/cli/lib/transport.ml)
-- [Upstream editing semantics](https://github.com/logseq/logseq/blob/2.0.1/cli/lib/upsert.ml)
-- [Community MCP](https://github.com/ergut/mcp-logseq/tree/2202586962eaf36e07eda3aef3242f6007c7cd1b)
+- [CLI lifecycle](https://github.com/logseq/logseq/blob/2.0.1/docs/cli/logseq-cli.md)
+- [Worker routes](https://github.com/logseq/logseq/blob/2.0.1/src/main/frontend/worker/db_worker_node.cljs)
+- [Worker operations](https://github.com/logseq/logseq/blob/2.0.1/src/main/frontend/worker/db_core.cljs)
+- [Outliner transactions](https://github.com/logseq/logseq/blob/2.0.1/deps/outliner/src/logseq/outliner/op.cljs)
+- [Canonical references](https://github.com/logseq/logseq/blob/2.0.1/deps/db/src/logseq/db/frontend/content.cljs)
+- [CLI editing](https://github.com/logseq/logseq/blob/2.0.1/cli/lib/upsert.ml)
+- [Cognitect Transit](https://github.com/cognitect/transit-js)

@@ -11,6 +11,7 @@
     "apps/zotero/mcp",
     "apps/zotero/ui",
     "apps/logseq/mcp",
+    "apps/logseq/helper",
     "packages/mcp-common",
     "vendor/scholarserver-ui",
     "packages/controller-runtime"
