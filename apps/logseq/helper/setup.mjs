@@ -165,7 +165,7 @@ export async function startManaged({ graphServer, serviceToken }) {
       phase,
       addressRequired: Boolean(syncConfig),
       syncAddress,
-      browserAvailable: process.env.LOGSEQ_BROWSER_EDITOR === "1",
+      browserAvailable: process.env.LOGSEQ_BROWSER_EDITOR === "1" || process.env.SCHOLARSERVER_VARIANT === "browser",
       ready,
       sync,
       graph: selection?.graph ?? null,
