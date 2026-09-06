@@ -242,12 +242,21 @@ can be retried if only one route was created. No public route is implied.
 
 The pinned upstream sync process reads `DB_SYNC_BASE_URL` only at startup. Its
 generated asset links must use the selected HTTPS origin. A small app-owned Node
-launcher runs inside the unchanged upstream sync image, reading a public-only
-configuration volume written by the helper. It stops the old process before
+launcher is added in a thin image layer above the pinned upstream sync image,
+reading a public-only configuration volume written by the helper. It stops the old process before
 restarting with a changed address. The sync image never mounts helper credentials.
 Raw upstream process output is suppressed; health and setup report failures.
 This keeps runtime configuration in the app without adding arbitrary environment
 mutation or application-specific behavior to the executor.
+
+Actual catalog validation rejected development Compose's environment overrides,
+startup command, dependency ordering and duplicate graph mounts. The production
+contract intentionally does not support those features. The adapter image fixes
+the public account-verification settings and launcher command; upstream software
+is not rebuilt. Managed helper startup is now the image default, credentials and
+graph have one mount at the upstream-required home path, and services tolerate
+independent startup. Development-only standalone recipes explicitly opt out.
+Do not add an executor exception to make a development Compose file installable.
 
 Source tests cover address validation, stop-before-restart and idempotent config
 writes. The new setup is not yet a published package or a verified native

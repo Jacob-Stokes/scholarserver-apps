@@ -102,20 +102,15 @@ async function requestBody(request) {
 }
 
 export async function startManaged({ graphServer, serviceToken }) {
-  const root = process.env.LOGSEQ_GRAPH_ROOT ?? "/graph";
+  const root = process.env.LOGSEQ_GRAPH_ROOT ?? "/home/node/logseq";
   const runtime = process.env.LOGSEQ_RUNTIME ?? "/runtime";
   const uiRoot = process.env.LOGSEQ_UI_ROOT ?? "/app/ui";
   const syncConfig = process.env.LOGSEQ_SYNC_CONFIG;
   let syncAddress = null;
   if (syncConfig) {
     await mkdir(syncConfig, { recursive: true, mode: 0o755 });
-    // The upstream sync image mounts only this public configuration directory,
-    // never the helper's credentials or notebook. It runs our small launcher.
-    await atomicWrite(
-      path.join(syncConfig, "launcher.mjs"),
-      await readFile(new URL("./sync-launcher.mjs", import.meta.url)),
-      0o644
-    );
+    // The sync adapter mounts only this public configuration directory,
+    // never the helper's credentials or notebook.
     syncAddress = await readSyncAddress(path.join(syncConfig, "address.json"));
   }
   await mkdir(root, { recursive: true, mode: 0o700 });

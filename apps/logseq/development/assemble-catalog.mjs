@@ -2,15 +2,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const [output, helper, mcp] = process.argv.slice(2);
+const [output, helper, mcp, sync] = process.argv.slice(2);
 if (
   !output ||
-  ![helper, mcp].every((value) => /^localhost:5000\/logseq-(helper|mcp)@sha256:[a-f0-9]{64}$/.test(value))
+  ![helper, mcp, sync].every((value) => /^localhost:5000\/logseq-(helper|mcp|sync)@sha256:[a-f0-9]{64}$/.test(value))
 ) {
-  throw new Error("Provide a new output directory and the two digest-pinned test-registry images.");
+  throw new Error("Provide a new output directory and the three digest-pinned test-registry images.");
 }
-const sync =
-  "ghcr.io/yshalsager/logseq-selfhost-sync@sha256:354c0913eefbee78a6f6a8b122ef257226b625e9c29708e41518dec61943aef5";
 const editor =
   "ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d";
 const resources = {
@@ -18,7 +16,7 @@ const resources = {
   recommended: { cpu: 2, memory: "3GiB", disk: "10GiB" }
 };
 const data = [
-  { id: "graph", mountPath: "/graph", uid: 1000, backup: "filesystem-consistent" },
+  { id: "graph", mountPath: "/home/node/logseq", uid: 1000, backup: "filesystem-consistent" },
   { id: "runtime", mountPath: "/runtime", uid: 1000, backup: "reproducible" },
   { id: "sync", mountPath: "/app/data", uid: 65532, backup: "filesystem-consistent" },
   { id: "sync-config", mountPath: "/sync-config", uid: 1000, backup: "reproducible" }
@@ -150,12 +148,10 @@ const compose = {
     helper: {
       ...service(helper, "1000:1000", "1536m", nodeHealth("node", 8081)),
       environment: {
-        LOGSEQ_MANAGED_SETUP: "1",
-        LOGSEQ_SYNC_CONFIG: "/sync-config",
         SCHOLARSERVER_VARIANT: "${SCHOLARSERVER_VARIANT}"
       },
+      expose: ["8081"],
       volumes: [
-        "${SCHOLARSERVER_DATA_GRAPH}:/graph",
         "${SCHOLARSERVER_DATA_GRAPH}:/home/node/logseq",
         "${SCHOLARSERVER_DATA_RUNTIME}:/runtime",
         "${SCHOLARSERVER_DATA_SYNC_CONFIG}:/sync-config"
@@ -164,23 +160,20 @@ const compose = {
     },
     mcp: {
       ...service(mcp, "1000:1000", "256m", nodeHealth("node", 7013)),
+      expose: ["7013"],
       volumes: ["${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro"],
-      depends_on: { helper: { condition: "service_healthy" } },
       networks: { instance: { aliases: ["logseq-mcp"] } }
     },
     sync: {
       ...service(sync, "65532:65532", "512m", nodeHealth("/nodejs/bin/node", 8787)),
-      command: ["/sync-config/launcher.mjs"],
-      environment: {
-        COGNITO_ISSUER: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dtagLnju8",
-        COGNITO_CLIENT_ID: "69cs1lgme7p8kbgld8n5kseii6",
-        COGNITO_JWKS_URL: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dtagLnju8/.well-known/jwks.json"
-      },
+      expose: ["8787"],
       volumes: ["${SCHOLARSERVER_DATA_SYNC}:/app/data", "${SCHOLARSERVER_DATA_SYNC_CONFIG}:/sync-config:ro"],
-      networks: ["instance", "egress"],
-      depends_on: { helper: { condition: "service_healthy" } }
+      networks: ["instance", "egress"]
     },
-    editor: service(editor, "101:101", "128m", ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"])
+    editor: {
+      ...service(editor, "101:101", "128m", ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]),
+      expose: ["8080"]
+    }
   },
   networks: {
     instance: { name: "${SCHOLARSERVER_INSTANCE_NETWORK}", internal: true },

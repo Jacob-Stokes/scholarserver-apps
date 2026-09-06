@@ -37,6 +37,7 @@ COPY --from=ui-build /source/apps/logseq/ui/dist /app/ui
 RUN mkdir /graph /runtime && chown 1000:1000 /graph /runtime
 USER 1000:1000
 ENV PORT=8080
+ENV LOGSEQ_MANAGED_SETUP=1 LOGSEQ_SYNC_CONFIG=/sync-config
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "server.mjs"]

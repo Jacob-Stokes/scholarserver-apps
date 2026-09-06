@@ -5,6 +5,8 @@ services:
     image: scholarserver-logseq-setup:helper
     environment:
       LOGSEQ_MANAGED_SETUP: "1"
+      LOGSEQ_SYNC_CONFIG: ""
+      LOGSEQ_GRAPH_ROOT: /graph
     volumes:
       - ./data/graph:/home/node/logseq
     networks: [graph, egress]

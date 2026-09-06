@@ -44,6 +44,9 @@ services:
       retries: 12
   helper:
     image: scholarserver-logseq-proof:helper
+    environment:
+      LOGSEQ_MANAGED_SETUP: "0"
+      LOGSEQ_SYNC_CONFIG: ""
     read_only: true
     user: "1000:1000"
     cap_drop: [ALL]
