@@ -69,6 +69,16 @@ try {
   let reads = 0;
   let status = zoteroStatus();
   let obsidianStatus = null;
+  let logseqStatus = {
+    phase: "setup",
+    ready: false,
+    sync: "unavailable",
+    graph: null,
+    canRetry: false,
+    accountConnected: false,
+    account: { state: "idle" },
+    error: null
+  };
   let selection = null;
   const calls = [];
   const option = {
@@ -89,6 +99,30 @@ try {
     if (url.origin !== origin) return route.abort();
     if (!url.pathname.includes("/api/")) return route.continue();
     calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
+    if (url.pathname.endsWith("/logseq/api/graphs"))
+      return route.fulfill({
+        json: {
+          graphs: [
+            {
+              "graph-id": "91433be7-718c-48a3-b76c-672568a8a19d",
+              "graph-name": "Synthetic notebook",
+              "graph-e2ee?": true,
+              "graph-ready-for-use?": true
+            }
+          ]
+        }
+      });
+    if (url.pathname.endsWith("/logseq/api/join") || url.pathname.endsWith("/logseq/api/retry")) {
+      if (failSave) return route.fulfill({ status: 503, json: { error: "Synthetic connection failure" } });
+      logseqStatus = {
+        ...logseqStatus,
+        phase: "downloading",
+        graph: "Synthetic notebook",
+        canRetry: false,
+        error: null
+      };
+      return route.fulfill({ status: 202, json: logseqStatus });
+    }
     if (url.pathname.endsWith("/client/install")) {
       assert.equal(request.postDataJSON().confirmed, true);
       obsidianStatus.officialClient.phase = "downloading";
@@ -102,19 +136,7 @@ try {
       reads++;
       if (failStatus) return route.fulfill({ status: 503, json: { error: "Synthetic status unavailable" } });
       if (url.pathname.includes("/zotero/")) return route.fulfill({ json: status });
-      if (url.pathname.includes("/logseq/"))
-        return route.fulfill({
-          json: {
-            phase: "setup",
-            ready: false,
-            sync: "unavailable",
-            graph: null,
-            canRetry: false,
-            accountConnected: false,
-            account: { state: "idle" },
-            error: null
-          }
-        });
+      if (url.pathname.includes("/logseq/")) return route.fulfill({ json: logseqStatus });
       if (url.pathname.includes("/obsidian/"))
         return route.fulfill({
           json: obsidianStatus || {
@@ -189,6 +211,38 @@ try {
     await page.locator(".ss-loading").waitFor({ state: "hidden" });
     console.log(`${name}: shared navigation, responsive configuration and failed-status recovery passed`);
   }
+
+  logseqStatus.accountConnected = true;
+  await page.goto(`${origin}/apps/logseq/configuration`);
+  await page.getByRole("button", { name: "Find my notebooks", exact: true }).click();
+  await page.getByRole("combobox").selectOption("91433be7-718c-48a3-b76c-672568a8a19d");
+  const logseqPassword = page.getByLabel("Notebook encryption password", { exact: false });
+  await logseqPassword.fill("synthetic-encryption-password");
+  const logseqReads = reads;
+  await page.waitForTimeout(2500);
+  assert.ok(reads > logseqReads);
+  assert.equal(await logseqPassword.inputValue(), "synthetic-encryption-password");
+  failSave = true;
+  await page.getByRole("button", { name: "Connect notebook", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Synthetic connection failure" }).waitFor();
+  await page.waitForTimeout(2500);
+  assert.equal(await logseqPassword.inputValue(), "synthetic-encryption-password");
+  assert.ok(await page.getByRole("alert").filter({ hasText: "Synthetic connection failure" }).isVisible());
+  failSave = false;
+  await page.getByRole("button", { name: "Connect notebook", exact: true }).click();
+  await page.getByRole("progressbar", { name: "Connecting notebook" }).waitFor();
+  await page.reload();
+  await page.getByRole("progressbar", { name: "Connecting notebook" }).waitFor();
+  logseqStatus = { ...logseqStatus, phase: "needs-attention", canRetry: true, error: "Synthetic interrupted download" };
+  await page.getByRole("button", { name: "Retry download", exact: true }).waitFor();
+  assert.equal(await logseqPassword.inputValue(), "");
+  await logseqPassword.fill("synthetic-encryption-password");
+  await page.getByRole("button", { name: "Retry download", exact: true }).click();
+  logseqStatus = { ...logseqStatus, phase: "ready", ready: true, sync: "up-to-date" };
+  await page.getByRole("heading", { name: "Your notebook is connected" }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", { name: "Your notebook is connected" }).waitFor();
+  console.log("Logseq: draft/error preservation, reload during download, safe retry and connected-state resume passed");
 
   obsidianStatus = {
     state: "client-install-required",
