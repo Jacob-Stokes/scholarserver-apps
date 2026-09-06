@@ -32,6 +32,26 @@ function unique(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be unique`);
 }
 
+test("app-owned main screens reuse shared presentation instead of copying the platform frame", async () => {
+  const entries = await readdir(applicationsRoot, { withFileTypes: true });
+  let checked = 0;
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    let source;
+    try {
+      source = await readFile(path.join(applicationsRoot, entry.name, "ui", "src", "App.tsx"), "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") continue; // Not every package has a ScholarServer-owned screen.
+      throw error;
+    }
+    assert.match(source, /import \{ ApplicationScreen \} from "@scholarserver\/ui\/application-screen"/, entry.name);
+    assert.match(source, /<ApplicationScreen[\s>]/, entry.name);
+    assert.doesNotMatch(source, /className="ss-app-header"/, `${entry.name}: header must stay shared`);
+    checked++;
+  }
+  assert.ok(checked > 0, "At least one app-owned main screen was checked");
+});
+
 test("every first-party package satisfies the reusable package boundary", async () => {
   const discovered = await packages();
   assert.ok(discovered.length > 0, "at least one first-party package must be discovered");

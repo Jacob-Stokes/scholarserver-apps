@@ -595,4 +595,4 @@ app.post("/bulk/read", async (c) => {
 });
 // ── Start ────────────────────────────────────────────────────────
 console.log(`obsidian-api listening on :${PORT}, vault: ${VAULT_PATH}`);
-serve({ fetch: app.fetch, port: PORT });
+export const server = serve({ fetch: app.fetch, port: PORT });

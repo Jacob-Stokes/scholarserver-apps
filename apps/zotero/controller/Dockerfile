@@ -13,6 +13,7 @@ LABEL org.opencontainers.image.source="https://github.com/Jacob-Stokes/scholarse
 WORKDIR /app
 RUN apk add --no-cache tini
 COPY --chown=10001:10001 apps/zotero/controller/controller.mjs ./controller.mjs
+COPY --chown=10001:10001 apps/zotero/controller/status-model.mjs ./status-model.mjs
 COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
 COPY --from=ui-build --chown=10001:10001 /source/apps/zotero/ui/dist /app/ui
 RUN mkdir -p /runtime /data /linked /cache \

@@ -1,3 +1,4 @@
+import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, type SetupPipelineStage, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useCallback, useEffect, useState } from "react";
 
@@ -235,231 +236,200 @@ export function App() {
   const ready = status?.state === "ready";
   const liveSyncRunning = Boolean(status?.liveSyncWorker?.running);
   return (
-    <div className="ss-app">
-      <header className="ss-app-header">
-        <div className="ss-app-header-inner">
-          <div className="ss-brand">
-            <div className="ss-brand-mark">S</div>
-            <div>
-              <p className="ss-brand-title">ScholarServer</p>
-              <p className="ss-brand-context">Obsidian</p>
+    <ApplicationScreen
+      name="Obsidian"
+      description={"Keep a server copy of your vault synchronized and choose which folder AI tools may use."}
+      status={
+        status ? (
+          <span className={`ss-badge ${ready ? "ss-badge-success" : "ss-badge-warning"}`}>
+            {ready ? "Connected" : "Setup needed"}
+          </span>
+        ) : null
+      }
+      tabs={tabs}
+      currentTab={tab}
+      onNavigate={navigate}
+      notice={notice}
+      error={error || statusError}
+      loading={!status}
+    >
+      {status && tab === "overview" ? (
+        <div className="ss-stack">
+          <div className="ss-grid ss-grid-3">
+            <div className="ss-card">
+              <div className="ss-metric-label">Sync method</div>
+              <div className="ss-metric-value">{profileLabel(status.profile)}</div>
             </div>
-          </div>
-          <a className="ss-button ss-button-secondary" href="/">
-            Back to ScholarServer
-          </a>
-        </div>
-      </header>
-      <main className="ss-main">
-        <div className="ss-page-heading">
-          <div>
-            <h1>Obsidian</h1>
-            <p>Keep a server copy of your vault synchronized and choose which folder AI tools may use.</p>
-          </div>
-          {status ? (
-            <span className={`ss-badge ${ready ? "ss-badge-success" : "ss-badge-warning"}`}>
-              {ready ? "Connected" : "Setup needed"}
-            </span>
-          ) : null}
-        </div>
-        <nav className="ss-tabs" aria-label="Obsidian sections">
-          {tabs.map((item) => (
-            <button key={item.id} className="ss-tab" aria-selected={tab === item.id} onClick={() => navigate(item.id)}>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        {notice ? <div className="ss-alert ss-alert-success">{notice}</div> : null}
-        {error || statusError ? (
-          <div className="ss-alert ss-alert-error" role="alert">
-            {error || statusError}
-          </div>
-        ) : null}
-        {!status ? (
-          <div className="ss-card ss-loading">
-            <span className="ss-spinner" /> Loading Obsidian…
-          </div>
-        ) : null}
-
-        {status && tab === "overview" ? (
-          <div className="ss-stack">
-            <div className="ss-grid ss-grid-3">
-              <div className="ss-card">
-                <div className="ss-metric-label">Sync method</div>
-                <div className="ss-metric-value">{profileLabel(status.profile)}</div>
-              </div>
-              <div className="ss-card">
-                <div className="ss-metric-label">Server sync</div>
-                <div className="ss-metric-value">
-                  {status.profile === "livesync"
-                    ? liveSyncRunning
-                      ? "Running"
-                      : "Starting"
-                    : status.workerRunning
-                      ? "Running"
-                      : "Stopped"}
-                </div>
-              </div>
-              <div className="ss-card">
-                <div className="ss-metric-label">AI-accessible folder</div>
-                <div className="ss-metric-value">
-                  <code className="ss-code">{status.scopePath || "/"}</code>
-                </div>
+            <div className="ss-card">
+              <div className="ss-metric-label">Server sync</div>
+              <div className="ss-metric-value">
+                {status.profile === "livesync"
+                  ? liveSyncRunning
+                    ? "Running"
+                    : "Starting"
+                  : status.workerRunning
+                    ? "Running"
+                    : "Stopped"}
               </div>
             </div>
+            <div className="ss-card">
+              <div className="ss-metric-label">AI-accessible folder</div>
+              <div className="ss-metric-value">
+                <code className="ss-code">{status.scopePath || "/"}</code>
+              </div>
+            </div>
+          </div>
+          <section className="ss-card">
+            <div className="ss-toolbar">
+              <div>
+                <h2>Vault connection</h2>
+                <p className="ss-card-description">
+                  {ready
+                    ? `Your server replica uses ${profileLabel(status.profile)}.`
+                    : "Choose and connect a sync method to begin."}
+                </p>
+              </div>
+              <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
+                Refresh
+              </button>
+            </div>
+            {status.liveSyncWorker?.lastError ? (
+              <div className="ss-alert ss-alert-error">{status.liveSyncWorker.lastError}</div>
+            ) : null}
+          </section>
+          {!ready ? (
             <section className="ss-card">
               <div className="ss-toolbar">
                 <div>
-                  <h2>Vault connection</h2>
-                  <p className="ss-card-description">
-                    {ready
-                      ? `Your server replica uses ${profileLabel(status.profile)}.`
-                      : "Choose and connect a sync method to begin."}
-                  </p>
+                  <h2>Finish setup</h2>
+                  <p className="ss-card-description">ScholarServer will guide you through the safe steps.</p>
                 </div>
-                <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
-                  Refresh
+                <button className="ss-button" onClick={() => navigate("configuration")}>
+                  Continue setup
                 </button>
               </div>
-              {status.liveSyncWorker?.lastError ? (
-                <div className="ss-alert ss-alert-error">{status.liveSyncWorker.lastError}</div>
-              ) : null}
             </section>
-            {!ready ? (
-              <section className="ss-card">
-                <div className="ss-toolbar">
-                  <div>
-                    <h2>Finish setup</h2>
-                    <p className="ss-card-description">ScholarServer will guide you through the safe steps.</p>
-                  </div>
-                  <button className="ss-button" onClick={() => navigate("configuration")}>
-                    Continue setup
-                  </button>
-                </div>
-              </section>
-            ) : null}
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      ) : null}
 
-        {status && tab === "configuration" ? (
-          <div className="ss-stack">
-            {status.profile === "none" ? <ProfileChoice busy={busy} choose={chooseProfile} /> : null}
-            {status.profile === "official" && status.state === "setup-required" ? (
-              <OfficialLogin
-                busy={busy}
-                values={{ email, password, mfa }}
-                setters={{ setEmail, setPassword, setMfa }}
-                signIn={signIn}
-              />
-            ) : null}
-            {status.profile === "official" &&
-            (status.state === "vault-selection-required" || status.state === "initial-sync") ? (
-              <OfficialVault
-                page={officialPage}
-                setPage={setOfficialPage}
-                busy={busy}
-                vaults={vaults}
-                vault={vault}
-                setVault={setVault}
-                encryptionPassword={encryptionPassword}
-                setEncryptionPassword={setEncryptionPassword}
-                scopePath={scopePath}
-                setScopePath={setScopePath}
-                connect={connectVault}
-              />
-            ) : null}
-            {status.profile === "livesync" && status.state === "setup-required" ? (
-              <LiveSyncPrepare
-                page={liveSyncPage}
-                setPage={setLiveSyncPage}
-                busy={busy}
-                accessMethod={liveSyncAccess}
-                setAccessMethod={setLiveSyncAccess}
-                connectionUrl={connectionUrl}
-                setConnectionUrl={setConnectionUrl}
-                vaultPassphrase={vaultPassphrase}
-                setVaultPassphrase={setVaultPassphrase}
-                vaultPassphraseAgain={vaultPassphraseAgain}
-                setVaultPassphraseAgain={setVaultPassphraseAgain}
-                scopePath={scopePath}
-                setScopePath={setScopePath}
-                otherSyncOff={otherSyncOff}
-                setOtherSyncOff={setOtherSyncOff}
-                configure={configureLiveSync}
-              />
-            ) : null}
-            {status.profile === "livesync" && status.state === "livesync-preparing" ? (
-              <>
-                <SetupProgress stages={setupStages} current="device" />
-                <SetupPanel
-                  stage={5}
-                  total={6}
-                  title="Preparing LiveSync"
-                  description="ScholarServer is creating the private sync service before you connect Obsidian."
-                >
-                  <div className="ss-loading">
-                    <span className="ss-spinner" />
-                    <span>Starting the database and preparing encrypted vault access…</span>
+      {status && tab === "configuration" ? (
+        <div className="ss-stack">
+          {status.profile === "none" ? <ProfileChoice busy={busy} choose={chooseProfile} /> : null}
+          {status.profile === "official" && status.state === "setup-required" ? (
+            <OfficialLogin
+              busy={busy}
+              values={{ email, password, mfa }}
+              setters={{ setEmail, setPassword, setMfa }}
+              signIn={signIn}
+            />
+          ) : null}
+          {status.profile === "official" &&
+          (status.state === "vault-selection-required" || status.state === "initial-sync") ? (
+            <OfficialVault
+              page={officialPage}
+              setPage={setOfficialPage}
+              busy={busy}
+              vaults={vaults}
+              vault={vault}
+              setVault={setVault}
+              encryptionPassword={encryptionPassword}
+              setEncryptionPassword={setEncryptionPassword}
+              scopePath={scopePath}
+              setScopePath={setScopePath}
+              connect={connectVault}
+            />
+          ) : null}
+          {status.profile === "livesync" && status.state === "setup-required" ? (
+            <LiveSyncPrepare
+              page={liveSyncPage}
+              setPage={setLiveSyncPage}
+              busy={busy}
+              accessMethod={liveSyncAccess}
+              setAccessMethod={setLiveSyncAccess}
+              connectionUrl={connectionUrl}
+              setConnectionUrl={setConnectionUrl}
+              vaultPassphrase={vaultPassphrase}
+              setVaultPassphrase={setVaultPassphrase}
+              vaultPassphraseAgain={vaultPassphraseAgain}
+              setVaultPassphraseAgain={setVaultPassphraseAgain}
+              scopePath={scopePath}
+              setScopePath={setScopePath}
+              otherSyncOff={otherSyncOff}
+              setOtherSyncOff={setOtherSyncOff}
+              configure={configureLiveSync}
+            />
+          ) : null}
+          {status.profile === "livesync" && status.state === "livesync-preparing" ? (
+            <>
+              <SetupProgress stages={setupStages} current="device" />
+              <SetupPanel
+                stage={5}
+                total={6}
+                title="Preparing LiveSync"
+                description="ScholarServer is creating the private sync service before you connect Obsidian."
+              >
+                <div className="ss-loading">
+                  <span className="ss-spinner" />
+                  <span>Starting the database and preparing encrypted vault access…</span>
+                </div>
+              </SetupPanel>
+            </>
+          ) : null}
+          {status.profile === "livesync" && status.state === "livesync-device-setup" && status.liveSyncOnboarding ? (
+            <LiveSyncDevice
+              onboarding={status.liveSyncOnboarding}
+              busy={busy}
+              pluginConnected={pluginConnected}
+              setPluginConnected={setPluginConnected}
+              copy={copy}
+              complete={completeLiveSync}
+            />
+          ) : null}
+          {status.profile === "livesync" && status.state === "livesync-server-joining" ? (
+            <>
+              <SetupProgress stages={setupStages} current="ready" />
+              <SetupPanel
+                stage={6}
+                total={6}
+                title="Connecting the server copy"
+                description="Your first device is ready. ScholarServer is now downloading the vault safely."
+              >
+                <div className="ss-loading">
+                  <span className="ss-spinner" />
+                  <span>This page updates automatically. You can keep it open.</span>
+                </div>
+                {status.lastError ? <div className="ss-alert ss-alert-error">{status.lastError}</div> : null}
+              </SetupPanel>
+            </>
+          ) : null}
+          {status.state === "ready" ? (
+            <>
+              <SetupProgress stages={setupStages} current="ready" />
+              <SetupPanel
+                stage={6}
+                total={6}
+                title="Obsidian is connected"
+                description={`${profileLabel(status.profile)} is active and the server copy is ready.`}
+              >
+                <div className="ss-alert ss-alert-success">
+                  Setup is complete. Notes can now synchronize between your devices, the server, and approved AI tools.
+                </div>
+                {status.profile === "livesync" ? (
+                  <div className="ss-callout ss-callout-warning">
+                    <strong>Keep other vault sync methods turned off.</strong> Running two sync systems against the same
+                    vault can create conflicts.
                   </div>
-                </SetupPanel>
-              </>
-            ) : null}
-            {status.profile === "livesync" && status.state === "livesync-device-setup" && status.liveSyncOnboarding ? (
-              <LiveSyncDevice
-                onboarding={status.liveSyncOnboarding}
-                busy={busy}
-                pluginConnected={pluginConnected}
-                setPluginConnected={setPluginConnected}
-                copy={copy}
-                complete={completeLiveSync}
-              />
-            ) : null}
-            {status.profile === "livesync" && status.state === "livesync-server-joining" ? (
-              <>
-                <SetupProgress stages={setupStages} current="ready" />
-                <SetupPanel
-                  stage={6}
-                  total={6}
-                  title="Connecting the server copy"
-                  description="Your first device is ready. ScholarServer is now downloading the vault safely."
-                >
-                  <div className="ss-loading">
-                    <span className="ss-spinner" />
-                    <span>This page updates automatically. You can keep it open.</span>
-                  </div>
-                  {status.lastError ? <div className="ss-alert ss-alert-error">{status.lastError}</div> : null}
-                </SetupPanel>
-              </>
-            ) : null}
-            {status.state === "ready" ? (
-              <>
-                <SetupProgress stages={setupStages} current="ready" />
-                <SetupPanel
-                  stage={6}
-                  total={6}
-                  title="Obsidian is connected"
-                  description={`${profileLabel(status.profile)} is active and the server copy is ready.`}
-                >
-                  <div className="ss-alert ss-alert-success">
-                    Setup is complete. Notes can now synchronize between your devices, the server, and approved AI
-                    tools.
-                  </div>
-                  {status.profile === "livesync" ? (
-                    <div className="ss-callout ss-callout-warning">
-                      <strong>Keep other vault sync methods turned off.</strong> Running two sync systems against the
-                      same vault can create conflicts.
-                    </div>
-                  ) : null}
-                  <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
-                    Check connection
-                  </button>
-                </SetupPanel>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </main>
-    </div>
+                ) : null}
+                <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
+                  Check connection
+                </button>
+              </SetupPanel>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </ApplicationScreen>
   );
 }
 

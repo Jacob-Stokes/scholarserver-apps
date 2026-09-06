@@ -7,6 +7,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
+import { desktopWorkspaceStatus, onlineLibraryStatus, onlineStorageModes, storageModes } from "./status-model.mjs";
 
 const runtimePath = "/runtime";
 const requestsPath = path.join(runtimePath, "requests");
@@ -28,8 +29,6 @@ const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://deskto
 const automationsBaseUrl = process.env.ZOTERO_AUTOMATIONS_URL ?? "http://automations:8081/v1";
 const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
-const storageModes = new Set(["zotero-storage", "webdav", "linked-folder", "server-only"]);
-const onlineStorageModes = new Set(["metadata-only", "zotero-storage"]);
 let attachmentIndexCache = { expiresAt: 0, items: [] };
 let onlineAccountCache = { expiresAt: 0, value: null };
 
@@ -208,41 +207,28 @@ async function discoverServerId() {
 
 async function currentStatus(lastError = null) {
   const config = await configuration();
+  let value;
   if (onlineLibrary) {
-    let account = null;
-    let accountError = null;
-    try {
-      account = await inspectOnlineAccount();
-    } catch (error) {
-      accountError = error instanceof Error ? error.message : "Could not reach Zotero";
-    }
-    const storageMode =
-      config?.mode === "online-library" && onlineStorageModes.has(config?.storageMode) ? config.storageMode : null;
-    const state = !account ? "account-required" : !storageMode ? "storage-required" : "ready";
-    const value = {
-      state,
-      variant,
-      connectionMode: "online-library",
-      desktop: "not-installed",
-      version: null,
-      localApi: "not-applicable",
-      storageMode,
-      accountConnected: Boolean(account),
-      userId: account?.userId ?? (config?.mode === "online-library" ? config?.userId : null) ?? null,
-      username: account?.username ?? (config?.mode === "online-library" ? config?.username : null) ?? null,
-      permissions: account?.permissions ?? null,
-      downloadMode: storageMode === "zotero-storage" ? "on-demand" : null,
-      groupFileSync: false,
-      linkedFolder: null,
-      linkedFolderAutomation: false,
-      storageVerified: Boolean(storageMode),
-      syncInProgress: false,
-      features: { desktop: false, automations: false, localAttachments: false },
-      lastError: lastError ?? accountError
-    };
-    await atomicJson(statusPath, value, 0o644);
-    return value;
+    const { account, accountError } = await probeOnlineAccount();
+    value = onlineLibraryStatus({ config, account, accountError, lastError, variant });
+  } else {
+    const probes = await probeDesktop(config);
+    value = desktopWorkspaceStatus({ config, ...probes, lastError, variant });
   }
+  await atomicJson(statusPath, value, 0o644);
+  return value;
+}
+
+async function probeOnlineAccount() {
+  try {
+    return { account: await inspectOnlineAccount(), accountError: null };
+  } catch (error) {
+    const accountError = error instanceof Error ? error.message : "Could not reach Zotero";
+    return { account: null, accountError };
+  }
+}
+
+async function probeDesktop(config) {
   let desktop = "unavailable";
   let localApi = "not-configured";
   let version = null;
@@ -271,35 +257,7 @@ async function currentStatus(lastError = null) {
       localApi = error instanceof Error && /HTTP 403/.test(error.message) ? "disabled" : "unavailable";
     }
   }
-  const storageMode = storageModes.has(config?.storageMode) ? config.storageMode : null;
-  let state = "setup-required";
-  if (desktop === "available" && engine && !engine.accountConnected) state = "account-required";
-  else if (desktop === "available" && engine?.accountConnected && !storageMode) state = "storage-required";
-  else if (storageMode && localApi === "authorized") state = "ready";
-  else if (storageMode) state = "authorization-required";
-  const value = {
-    state,
-    variant,
-    connectionMode: "complete-workspace",
-    desktop,
-    version,
-    localApi,
-    storageMode,
-    accountConnected: engine?.accountConnected ?? false,
-    userId: config?.userId ?? engine?.userId ?? null,
-    username: engine?.username ?? null,
-    downloadMode: engine?.downloadMode ?? null,
-    groupFileSync: engine?.groupFileSync ?? false,
-    linkedFolder: engine?.linkedFolder ?? null,
-    linkedFolderAutomation: engine?.linkedFolderAutomation ?? false,
-    storageVerified: engine?.storageVerified ?? false,
-    syncInProgress: engine?.syncInProgress ?? false,
-    permissions: null,
-    features: { desktop: true, automations: true, localAttachments: true },
-    lastError
-  };
-  await atomicJson(statusPath, value, 0o644);
-  return value;
+  return { desktop, localApi, version, engine };
 }
 
 async function healthStatus() {

@@ -54,3 +54,49 @@ pinned CouchDB dependency, and the LiveSync worker in its expected waiting state
 The isolated Docker daemon, containers, volumes and images were removed afterward.
 These are packaging/startup checks, not new Zotero account authorization or
 two-device LiveSync acceptance tests. No published manifest was changed.
+
+## Readability follow-up
+
+The [coverage checklist](readability-coverage.md) records this separate pass;
+most files still await an end-to-end readability read. Contributor instructions
+now explicitly prefer readable branches and visible ownership over fewer lines.
+
+Zotero status probes now feed pure online/desktop status builders, with a single
+status-file write. Tests cover account/storage/authorization precedence and
+disagreeing health probes. A local comparison against the previous implementation
+matched 364 status combinations. The new module is copied into the controller image.
+
+Obsidian had an unused TypeScript API alongside its active JavaScript API. The
+obsolete implementation and its unused compiler configuration were removed after
+checking entry points; Git retains them. The active API image recipe also omitted
+its imported frontmatter helper. The recipe is fixed, with a regression test that
+starts exactly its copied source files and reads a synthetic note over authenticated
+HTTP. It also verifies unauthenticated access is rejected.
+
+Apps lint, tests and every workspace build passed. This follow-up's startup test
+runs native Node locally, not a Docker image or a real user's vault. The earlier
+container evidence above applies to the earlier pass, not these new source changes.
+New native images and immutable package versions remain necessary before release.
+
+## Consistent application screens
+
+All current app-owned main screens use `@scholarserver/ui/application-screen`.
+The shared primitive renders the header, heading, section navigation and feedback;
+each app retains its requests, routes, credentials and state. The canonical source
+is core `packages/ui/application-screen.tsx`; the vendor file is its build snapshot.
+The existing shared setup pipeline and endpoint selector remain the setup building
+blocks. A package contract test prevents future app main screens from copying
+their own platform header instead.
+
+Zotero's account and storage panels are now separate, stateless components.
+Storage editing has one parent-owned draft; status polling does not replace it.
+Pure setup rules explicitly preserve resume and desktop-choice precedence.
+
+`npm test` now includes every app UI's type check and the setup decision tests.
+`npm run test:ui:browser` builds the three screens and checks four viewport widths,
+shared navigation, failed-status recovery and Zotero setup regressions against
+synthetic APIs. Supply `SCHOLARSERVER_BROWSER_MODULES` when using an external
+Playwright installation. Chrome is the default browser channel. No account or
+running ScholarServer is required; the script blocks external browser requests
+and closes its local test server. Screenshots go under ignored `.dev/app-screens`.
+This does not replace external-account or fresh-container acceptance testing.

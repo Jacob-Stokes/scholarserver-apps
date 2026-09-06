@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./application-screen": "./application-screen.tsx",
     "./appearance": "./appearance.ts",
     "./themes": "./themes.ts",
     "./endpoint-access": "./endpoint-access.tsx",
