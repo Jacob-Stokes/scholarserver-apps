@@ -8,5 +8,6 @@ Downloaded archive SHA-256:
 
 Copyright Nebula Entertainment & Broadcasting LLC, based on Adobe Source Sans.
 SIL OFL 1.1; see LICENSE.txt and https://nebulasans.com/license/.
-The full licence is also retained in nebula.css for compiled distributions.
+The full licence and both families' notices are also retained in typography.css
+for compiled distributions (CSS bundlers can discard a later imported comment).
 All six weights and their italics are bundled; browsers load only the faces used.

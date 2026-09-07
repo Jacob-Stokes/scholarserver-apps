@@ -219,6 +219,15 @@ try {
       await page.evaluate((font) => localStorage.setItem("scholarserver.font.v1", font), font);
       await page.reload();
       await page.getByRole("heading", { name, exact: true }).waitFor();
+      const stylesheets = await page
+        .locator('link[rel="stylesheet"]')
+        .evaluateAll((links) => links.map((link) => link.href));
+      let builtCSS = "";
+      for (const url of stylesheets) builtCSS += await (await context.request.get(url)).text();
+      assert.ok(
+        builtCSS.includes("Andrey V. Panov") && builtCSS.includes("Nebula Entertainment"),
+        `${app}: retains both font notices in the build`
+      );
       const fontReady = await page.evaluate(async (family) => {
         const faces = await document.fonts.load(`16px "${family}"`);
         return (
