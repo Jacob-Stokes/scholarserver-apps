@@ -25,6 +25,7 @@ start_reader() {
 }
 start_integration() {
   docker run -d --name "$prefix-integration" --network "$prefix" --network-alias integration \
+    -e SCHOLARSERVER_INSTANCE_ID=freshrss-proof \
     --read-only --cap-drop ALL --security-opt no-new-privileges \
     -v "$proof_dir/runtime:/runtime" "$integration_image" >/dev/null
 }

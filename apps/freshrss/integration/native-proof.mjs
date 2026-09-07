@@ -42,7 +42,12 @@ try {
     headers: { "accept-encoding": "gzip, deflate, br" }
   });
   assert.equal(readerPage.headers.get("content-encoding"), null, "reader proxy supplies an uncompressed body");
-  assert.match(await readerPage.text(), /FreshRSS/, "reader login page loads through the proxy");
+  const readerHtml = await readerPage.text();
+  assert.match(readerHtml, /FreshRSS/, "reader login page loads through the proxy");
+  if (process.env.SCHOLARSERVER_INSTANCE_ID) {
+    assert.match(readerHtml, /\/apps\/freshrss-proof\/endpoints\/reader\/i\//, "login links retain the managed subpath");
+    assert.doesNotMatch(readerHtml, /href="\/i\//, "login links never escape to the dashboard root");
+  }
   const api = new FreshRssClient("http://freshrss:8080", "/runtime/account.json");
   await api.request("subscription/quickadd", { quickadd: "http://integration:8099/feed.xml", output: "json" }, "POST");
   assert.equal((await api.request("subscription/list", { output: "json" })).subscriptions.length, 1);
