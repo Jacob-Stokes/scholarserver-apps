@@ -1,0 +1,37 @@
+# DESIGN SKETCH ONLY: invalid digest prevents use. Not schema/runtime certified.
+schemaVersion: 1
+id: org.scholarserver.stirling-pdf
+name: Stirling PDF (Draft)
+packageVersion: 0.0.0-draft.1
+compatibility: { platform: ">=0.1.0", schema: 1 }
+upstream: { name: Stirling PDF, version: 2.14.3, license: "MIT AND LicenseRef-Stirling-PDF-User-License" }
+support: { tier: official, architectures: [amd64, arm64] }
+delivery: { class: headless-service, management: managed }
+tenancy: { mode: per-workspace }
+capabilities: { provides: [pdf.inspect, pdf.rotate], requires: [], conflicts: [] }
+permissions: { networkEgress: [], hostMounts: [], devices: [] }
+hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
+images:
+  - { service: stirling, reference: "docker.stirlingpdf.com/stirlingtools/stirling-pdf@sha256:UNRESOLVED_DIGEST_DO_NOT_RUN" }
+  - { service: integration, reference: "ghcr.io/jacob-stokes/scholarserver-stirling-adapter@sha256:UNRESOLVED_DIGEST_DO_NOT_RUN" }
+data:
+  - { id: configs, mountPath: /configs, owner: stirling, filesystem: { uid: 1000, gid: 1000, mode: "0700" }, backup: filesystem-consistent, retention: preserve }
+  - { id: runtime, mountPath: /runtime, owner: integration, filesystem: { uid: 1000, gid: 1000, mode: "0700" }, backup: filesystem-consistent, retention: preserve }
+  - { id: artifacts, mountPath: /artifacts, owner: integration, filesystem: { uid: 1000, gid: 1000, mode: "0700" }, backup: filesystem-consistent, retention: preserve }
+endpoints:
+  - id: pdf-workspace
+    service: stirling
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+    remoteAccess: { routing: path, private: true, public: false, authentik: optional, defaultAuthentik: false }
+  - id: mcp
+    service: integration
+    port: 7017
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway: { displayName: Stirling PDF, namespace: stirling, hostname: stirling-mcp, credentialData: runtime, credentialFile: service-token }
+lifecycle: { supportsDisable: true, removeDataDefault: false, rollback: backup-required }
+# UI preview is review-only and intentionally not declared as an installed UI endpoint.

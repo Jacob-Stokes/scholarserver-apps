@@ -1,0 +1,32 @@
+# NON-RUNNABLE topology sketch. No image build or deployment is authorized.
+services:
+  stirling:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf@sha256:UNRESOLVED_DIGEST_DO_NOT_RUN
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      MCP_ENABLED: "true"
+      MCP_AUTH_MODE: apikey
+      MCP_ALLOWEDOPERATIONS: get-info-on-pdf,rotate-pdf
+      MCP_MAXREQUESTBYTES: "2000000"
+      MCP_MAXINLINERESPONSEBYTES: "1000000"
+    volumes: ["configs:/configs"]
+    networks: [pdf-internal]
+    # Writable temp/file-store locations and non-shell health check require image proof.
+  integration:
+    image: ghcr.io/jacob-stokes/scholarserver-stirling-adapter@sha256:UNRESOLVED_DIGEST_DO_NOT_RUN
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes: ["runtime:/runtime:ro", "artifacts:/artifacts"]
+    networks: [pdf-internal]
+    # Gateway network/instance alias wiring remains a rendered-package acceptance gate.
+volumes:
+  configs: {}
+  runtime: {}
+  artifacts: {}
+networks:
+  pdf-internal: { internal: true }
