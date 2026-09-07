@@ -1,0 +1,20 @@
+# Not executable until a reviewed immutable image exists. No build recipe or ports.
+services:
+  connector:
+    image: "RELEASE_BLOCKED:NO_APPROVED_CONNECTOR_IMAGE"
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    volumes: ["./runtime:/runtime:ro"]
+    networks: [gateway, egress]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:7016/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+networks:
+  gateway: { internal: true }
+  egress: {}

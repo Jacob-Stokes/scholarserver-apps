@@ -1,0 +1,38 @@
+# DESIGN DRAFT ONLY. Deliberately unusable; never move to package/ as-is.
+schemaVersion: 1
+id: org.scholarserver.literature
+name: Literature (Draft)
+packageVersion: 0.0.0-draft.1
+compatibility: { platform: ">=0.1.0", schema: 1 }
+upstream: { name: ScholarServer metadata connector, version: 0.0.0-draft.1, license: MIT }
+delivery: { class: headless-service, management: managed }
+tenancy: { mode: per-workspace }
+images:
+  - service: connector
+    reference: "RELEASE_BLOCKED:NO_APPROVED_CONNECTOR_IMAGE"
+permissions:
+  networkEgress: [api.crossref.org, export.arxiv.org]
+  hostMounts: []
+  devices: []
+hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
+data:
+  - id: runtime
+    mountPath: /runtime
+    owner: connector
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+endpoints:
+  - id: mcp
+    service: connector
+    port: 7016
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: Literature metadata
+      namespace: literature
+      hostname: literature-mcp
+      credentialData: runtime
+      credentialFile: service-token
+# UI is a static source preview, not a working packaged endpoint yet.
