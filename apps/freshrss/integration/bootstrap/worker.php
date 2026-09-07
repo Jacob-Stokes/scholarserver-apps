@@ -25,6 +25,7 @@ function command(array $arguments): void {
     if ($state['exitcode'] !== 0) throw new RuntimeException('FreshRSS operation failed');
 }
 $lastRefresh = 0;
+$addressConfigured = false;
 while (true) {
     touch('/runtime/heartbeat');
     try {
@@ -32,12 +33,18 @@ while (true) {
             $account = json_decode(file_get_contents('/runtime/account.json'), true, 32, JSON_THROW_ON_ERROR);
             status(['phase' => 'preparing', 'ready' => false]);
             if (!is_file('/var/www/FreshRSS/data/applied_migrations.txt')) {
-                command(['php', 'cli/do-install.php', '--default-user', $account['username'], '--db-type', 'sqlite', '--api-enabled', '--disable-update', '--base-url', 'http://freshrss:8080']);
+                command(['php', 'cli/do-install.php', '--default-user', $account['username'], '--db-type', 'sqlite', '--api-enabled', '--disable-update', '--base-url', '']);
             }
             command(['php', '/opt/scholarserver/setup.php']);
             file_put_contents('/runtime/setup-complete', '1');
         }
         if (is_file('/runtime/setup-complete')) {
+            if (!$addressConfigured) {
+                // Infer the browser origin and subpath from our proxy headers.
+                // A fixed internal URL breaks login links behind Manager.
+                command(['php', 'cli/reconfigure.php', '--base-url', '']);
+                $addressConfigured = true;
+            }
             if (time() - $lastRefresh >= 1800 || is_file('/runtime/refresh-request')) {
                 status(['phase' => 'refreshing', 'ready' => true]);
                 @unlink('/runtime/refresh-request');
