@@ -45,3 +45,14 @@ operations rather than replaying writes. `test-restart.sh` kills the identified
 worker and verifies automatic Docker recovery, stable credentials and preserved
 data on native AMD64 and ARM64. Its published image digest is
 `cc59419df8d6beab5c65b3b3c600a13abb8b3eeb48e36bf591672856034c031c`.
+
+The same disposable installation then passed a signed core upgrade from
+`0.1.0-files-proof.1` to `.2` and an explicit Files beta.1-to-beta.2 package
+upgrade. Both shared-folder grants and the synthetic note were preserved;
+the Gateway proof passed again against the deployed beta.2 image. Detaching
+the writable folder denied access immediately after applying the change;
+reattaching it recovered the unchanged file without deleting storage content.
+The final browser screen showed Running, Built-in and both folder grants, with
+Update Files / Review change wording and no stop or remove action. Neighbouring
+installations remained healthy. These are test deployments and published app
+images, not publication of a new public ScholarServer core release.
