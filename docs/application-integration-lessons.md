@@ -91,6 +91,20 @@ release checklist or proof that a particular application is ready.
 
 ## Keeping these notes useful
 
+### Local device setup is separate from server setup
+
+Keep the web experience complete. An optional future desktop companion may reuse
+app-owned setup guidance, but is not implemented. When documenting a new app,
+state which steps run on the server and which require software on the user's
+computer. Record the official download source, supported setup link/API, version
+limitations, consent needed and manual fallback in the app's development notes.
+Separate server paths from device folders. Do not silently modify existing
+vaults/libraries, assume OS administrator rights or embed arbitrary native scripts
+in the package contract. Prefer existing links and shared presentation; no new
+manifest schema or desktop abstraction is justified without a real consumer.
+
+### Other reusable checks
+
 - Direct MCP tests do not prove Gateway compatibility. Assert the manifest's tool
   namespace in definitions, then verify actual Gateway discovery and authenticated
   calls separately. Include duplicate-instance ownership checks: tool names,

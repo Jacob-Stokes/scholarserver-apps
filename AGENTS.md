@@ -45,6 +45,17 @@ or YAML inheritance to eliminate small, understandable differences between apps.
 - Test shared navigation and feedback across all current screens, then test each
   changed workflow's save failure, draft preservation and resume behaviour.
 
+## Web-first and future device setup
+
+The web interface must remain complete; a desktop companion is optional future
+work. Keep local setup instructions with each app: distinguish server installation
+from software on the researcher's computer, document supported upstream download
+and setup links, prerequisites, consent and a manual fallback. Never confuse a
+server data path with a local folder. Do not silently edit existing libraries or
+install plugins. Do not add executable catalog scripts or speculative manifest
+fields for a companion that does not exist. Browser effects stay at presentation
+edges; app rules and secrets do not move into shared UI or Manager.
+
 ## Required checks
 
 - Run `npm test` before committing.
