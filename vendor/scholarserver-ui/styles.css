@@ -31,22 +31,22 @@ SOFTWARE.
   --foreground: #18211d;
   --card: #ffffff;
   --card-foreground: #18211d;
-  --primary: #176c54;
+  --primary: #194c32;
   --primary-foreground: #ffffff;
   --secondary: #edf3ef;
   --secondary-foreground: #25483c;
   --muted: #f0f2ef;
-  --muted-foreground: #68736e;
+  --muted-foreground: #60635e;
   --accent: #e9f1ed;
   --accent-foreground: #23483b;
   --destructive: #b83b3b;
-  --border: #dde3df;
+  --border: #dedbd2;
   --input: #d5ddd8;
   --ring: #5b9d87;
-  --page: #f7f8f5;
-  --sidebar: #fbfcfa;
+  --page: #fcfaf6;
+  --sidebar: #f5f4ed;
   --sidebar-accent: #eaf1ed;
-  --sidebar-accent-foreground: #1f5947;
+  --sidebar-accent-foreground: #194c32;
   --radius: 0.75rem;
   font-family: var(--ss-font-sans);
 }
@@ -64,7 +64,7 @@ button, input, select, textarea { font: inherit; }
 .ss-brand-context { margin: .1rem 0 0; color: var(--muted-foreground); font-size: .75rem; }
 .ss-main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 4rem; }
 .ss-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
-.ss-page-heading h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: -.035em; }
+.ss-page-heading h1 { font-family: var(--ss-font-heading); font-weight: 400; margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: normal; font-kerning: normal; }
 .ss-page-heading p { max-width: 46rem; margin: .45rem 0 0; color: var(--muted-foreground); }
 .ss-tabs { display: flex; gap: .25rem; margin-bottom: 1.5rem; overflow-x: auto; border-bottom: 1px solid var(--border); }
 .ss-tab { appearance: none; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted-foreground); padding: .8rem .9rem; cursor: pointer; white-space: nowrap; }

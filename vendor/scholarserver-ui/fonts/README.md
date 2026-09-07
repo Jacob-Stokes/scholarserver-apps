@@ -1,8 +1,12 @@
-# Computer Modern Sans Serif
+# Computer Modern
 
 Unmodified Computer Modern Unicode Sans webfonts from
 https://github.com/bitmaks/cm-web-fonts/tree/333f55ec19733c28cdc43567ecf72eafd6b0af61/font/Sans
 (regular, bold, italic and bold italic). This is Sans, not Bright or Serif.
+
+Headlines use the unmodified regular Serif face (`font/Serif/cmunrm.woff`)
+from the same pinned revision, alongside the selected sans-serif body font.
+SHA-256: `32115abbbfb231586813333bfa5a234f4dc7f28b27df7260f42f81146ccd9097`.
 
 Original fonts by Donald Knuth et al.; Unicode fonts by Andrey V. Panov;
 webfont conversion by Christian Perfect. Distributed under SIL OFL 1.1.
