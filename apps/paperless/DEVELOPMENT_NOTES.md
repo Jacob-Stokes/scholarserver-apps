@@ -1,5 +1,34 @@
 # Paperless development notes
 
+## Ingestion/access follow-up — 7 September 2026
+
+The pinned 3.1.3 task API is paginated, uses lowercase states and returns the
+document ID in `result_data.document_id`. The prose API example still described
+the older response. Read pinned source and test the real response; do not retry
+an upload merely because status decoding fails. A regression test covers this.
+The probe uploads only generated synthetic content; production tools stay read-only.
+
+The app-owned address panel uses the existing shared selector and Manager API.
+There is one owner for its editable selection; no polling overwrites drafts.
+Saving has a deadline and reports uncertainty without automatically retrying.
+Only confirmed HTTPS addresses without embedded credentials become Open links.
+The browser test is mocked, not evidence of native login/proxy correctness.
+
+The shared MCP build lock was updated within declared dependency ranges to
+resolve seven reported advisories. Both build and final dependency installations
+report zero on this date; that is not an upstream image security audit.
+
+Cold recovery must preserve file ownership on both copies: a non-root upstream
+service cannot safely recover root-owned index/media. The test uses a second
+isolated project, never deletes source volumes to simulate a restore and checks
+that its new volumes differ from the source. See REVIEW.md for execution results.
+
+Resolution's Docker default address pools were exhausted when a second pair of
+test networks was requested. Do not alter shared daemon settings or prune other
+apps to make a probe pass. After capture, remove only the stopped source project's
+containers/networks (preserving its volumes), then create the recovery project.
+Both sets of synthetic volumes are removed and checked at final cleanup.
+
 ## Native follow-up — 7 September 2026
 
 See `development/README.md` for the explicit opt-in probe and pinned candidates.

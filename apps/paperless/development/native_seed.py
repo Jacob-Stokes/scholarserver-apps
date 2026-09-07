@@ -12,6 +12,8 @@ assert not User.objects.exclude(
 reader = User.objects.create_user(username="synthetic-reader")
 other = User.objects.create_user(username="synthetic-other")
 reader.user_permissions.add(Permission.objects.get(codename="view_document"))
+reader.user_permissions.add(Permission.objects.get(codename="add_document"))
+reader.user_permissions.add(Permission.objects.get(codename="view_paperlesstask"))
 other.user_permissions.add(Permission.objects.get(codename="view_document"))
 visible = Document.objects.create(
     title="synthetic-visible",

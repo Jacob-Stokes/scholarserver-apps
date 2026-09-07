@@ -1,27 +1,10 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { DocumentAccess } from "./DocumentAccess";
 
 export function App() {
   const [tab, setTab] = useState("overview");
-  const [address, setAddress] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
-    if (!instance) return;
-    const abort = new AbortController();
-    void fetch(`/api/v1/instances/${instance}/endpoints/documents/access-options`, { signal: abort.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("The document address is not available. Check Access.");
-        const result = await response.json();
-        const value = result.selection?.url;
-        if (typeof value === "string" && /^https?:\/\//.test(value)) setAddress(value);
-      })
-      .catch(() => {
-        if (!abort.signal.aborted) setError("The document address is not available. Check Access.");
-      });
-    return () => abort.abort();
-  }, []);
   return (
     <ApplicationScreen
       name="Paperless"
@@ -32,7 +15,6 @@ export function App() {
       ]}
       currentTab={tab}
       onNavigate={setTab}
-      error={error}
       status={<span className="ss-badge">Draft · not installable</span>}
     >
       {tab === "overview" ? (
@@ -42,13 +24,6 @@ export function App() {
             This draft can search and read documents through a restricted Paperless account. It does not upload, delete
             or change documents.
           </p>
-          {address ? (
-            <a className="ss-button" href={address} rel="noreferrer" target="_blank">
-              Open Paperless
-            </a>
-          ) : (
-            <p>A document address will appear after installation and Access setup are verified.</p>
-          )}
           <p>
             Original files, OCR text and permissions remain in Paperless. AI access uses one connected account, not each
             visitor’s native identity.
@@ -85,6 +60,7 @@ export function App() {
               Paperless usage guide
             </a>
           </SetupPanel>
+          <DocumentAccess />
         </>
       )}
     </ApplicationScreen>

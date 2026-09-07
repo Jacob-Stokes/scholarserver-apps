@@ -15,6 +15,8 @@ import time
 import urllib.error
 import urllib.request
 
+from native_ingestion import ingest, verify_original
+from native_recovery import restore_copy
 
 PAPERLESS = "ghcr.io/paperless-ngx/paperless-ngx@sha256:aa810a36942c63d4ee70d00eda7236cd3d6acfb7eb3f7987fb568ed14df8817a"
 POSTGRES = (
@@ -28,6 +30,12 @@ def run(args, data=None):
         args, input=data, text=True, capture_output=True, timeout=300
     )
     if result.returncode:
+        if "create" in args:
+            print("Synthetic container creation: " + result.stderr[-1600:], flush=True)
+        if "psql" in args:
+            for line in result.stderr.splitlines():
+                if line.startswith("ERROR:"):
+                    print("Synthetic recovery: " + line, flush=True)
         # Do not echo commands/bodies or native logs that could contain secrets.
         if "manage.py" in args:
             # The fixture runs only in our newly created synthetic database.
@@ -215,6 +223,15 @@ def main():
         file = root / "compose.json"
         file.write_text(json.dumps(compose))
         command = ["docker", "compose", "-p", project, "-f", str(file)]
+        recovery_project = project + "-restore"
+        recovery_command = [
+            "docker",
+            "compose",
+            "-p",
+            recovery_project,
+            "-f",
+            str(file),
+        ]
         print(f"Disposable project: {project}", flush=True)
         try:
             run(command + ["up", "-d", "db", "broker", "paperless"])
@@ -267,6 +284,7 @@ def main():
             (runtime / "paperless-token").chmod(0o600)
             if os.getuid() == 0:
                 os.chown(runtime / "paperless-token", 1000, 1000)
+            uploaded_id, original_pdf = ingest(address, credentials["token"])
             run(command + ["up", "-d", "mcp"])
             endpoint = (
                 "http://127.0.0.1:"
@@ -314,6 +332,7 @@ def main():
                 for document, visible in [
                     (credentials["visible"], True),
                     (credentials["hidden"], False),
+                    (uploaded_id, True),
                 ]:
                     request = {
                         "jsonrpc": "2.0",
@@ -328,10 +347,12 @@ def main():
                     assert status == 200
                     payload = rpc_payload(text)["result"]
                     if visible:
-                        assert (
-                            not payload.get("isError")
-                            and "synthetic-visible-marker" in text
+                        marker = (
+                            "synthetic ingestion marker"
+                            if document == uploaded_id
+                            else "synthetic-visible-marker"
                         )
+                        assert not payload.get("isError") and marker in text
                     else:
                         assert (
                             payload.get("isError")
@@ -366,11 +387,43 @@ def main():
             endpoint = published_address(command, "mcp", 7016) + "/mcp"
             wait_for_native(address, command)
             check_mcp()
+            verify_original(address, credentials["token"], uploaded_id, original_pdf)
             print(
                 "PASS same-volume restart retains documents, token and ACLs", flush=True
             )
+            print(f"Disposable recovery project: {recovery_project}", flush=True)
+            restore_copy(command, recovery_command, root, run)
+            address = published_address(recovery_command, "paperless", 8000)
+            endpoint = published_address(recovery_command, "mcp", 7016) + "/mcp"
+            wait_for_native(address, recovery_command)
+            check_mcp()
+            verify_original(address, credentials["token"], uploaded_id, original_pdf)
+            print(
+                "PASS cold database/media/index recovery into distinct new volumes, MCP ACLs and original bytes",
+                flush=True,
+            )
         finally:
+            run(recovery_command + ["down", "--volumes", "--remove-orphans"])
             run(command + ["down", "--volumes", "--remove-orphans"])
+            assert not run(
+                [
+                    "docker",
+                    "ps",
+                    "-aq",
+                    "--filter",
+                    f"label=com.docker.compose.project={recovery_project}",
+                ]
+            ).strip()
+            assert not run(
+                [
+                    "docker",
+                    "volume",
+                    "ls",
+                    "-q",
+                    "--filter",
+                    f"label=com.docker.compose.project={recovery_project}",
+                ]
+            ).strip()
             assert not run(
                 [
                     "docker",

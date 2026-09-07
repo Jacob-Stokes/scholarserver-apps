@@ -23,7 +23,7 @@
     "packages/controller-runtime"
   ],
   "scripts": {
-    "test:paperless": "npm run build -w packages/mcp-common && npm test -w apps/paperless/integration && npm run typecheck -w apps/paperless/ui && npm run build -w apps/paperless/ui",
+    "test:paperless": "npm run build -w packages/mcp-common && npm test -w apps/paperless/integration && python3 -m unittest discover -s apps/paperless/development -p 'test_*.py' && npm run typecheck -w apps/paperless/ui && npm run build -w apps/paperless/ui",
     "build": "npm run build -w apps/freshrss/ui && npm run build -w apps/docling/ui && npm run build -w apps/obsidian/ui && npm run build -w apps/zotero/ui && npm run build -w apps/logseq/ui && npm run build -w apps/obsidian/api && npm run build -w packages/mcp-common && npm run build -w apps/obsidian/mcp && npm run build -w apps/zotero/mcp && npm run build -w apps/logseq/mcp",
     "format": "biome check --write apps packages scripts tests icons.lock.json",
     "icons:sync": "node scripts/sync-icons.mjs",

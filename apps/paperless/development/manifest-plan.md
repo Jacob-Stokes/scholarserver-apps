@@ -6,7 +6,10 @@ The compose topology is intentionally unusable and must not enter `package/`.
 Endpoints planned: app-ui (platform-session); documents (native Paperless login
 behind generic Access); mcp (service-identity, namespace paperless, credential
 runtime/service-token). Native path-prefix/cookie handling is NOT verified; no
-public route is ready. UI is independently buildable but not yet served by the
+public route is ready. The documents endpoint should declare `launchLabel: Documents`
+in a new immutable package requiring a compatible Manager. The setup screen now
+uses the shared access selector and generic access-options API, but has only
+mocked browser evidence. UI is independently buildable but not yet served by the
 integration process. No custom core fields are proposed.
 
 Persistent bindings: database (Postgres-owned), data/media (Paperless-owned),

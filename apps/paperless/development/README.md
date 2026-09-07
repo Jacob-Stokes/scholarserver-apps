@@ -30,16 +30,31 @@ review even though those build dependencies are not copied into the final image.
 1. Starts native services with generated file-based secrets and no Linux
    capabilities. Paperless and MCP use uid 1000 and read-only root filesystems.
 2. Waits for native migrations and HTTP readiness.
-3. Seeds **synthetic database records**, using a Django fixture guarded against
-   existing users. This bypasses OCR/ingestion deliberately; it does not prove
-   originals were uploaded or converted. No application runtime code writes SQL.
+3. Seeds two synthetic accounts and ownership records, guarded against existing
+   users, then uploads a generated one-page PDF through the native multipart API.
+   Waits for its specific consumption task; verifies extracted text and exact
+   original bytes. The fixture account can upload; the production MCP stays read-only.
 4. Starts the real MCP image with the restricted native reader's token.
 5. Checks anonymous MCP rejection, visible document text, hidden document denial
    and ACL-filtered search, then repeats after restarting Paperless and MCP.
-6. Removes and verifies removal of its disposable containers and data volumes.
+6. Stops writers, captures a native database dump and matching media/index, and
+   restores into a second project with demonstrably distinct volumes. Repeats
+   MCP/ACL and original-byte checks. Both projects use the same host and private
+   token files; this is not cross-host credential recovery or in-flight job recovery.
+7. Removes and verifies removal of both projects' containers and data volumes.
 
-No browser onboarding, Manager installation, installed Gateway/OAuth, upload/OCR,
-backup/restore or production deployment proof follows from these checks.
+No browser onboarding, Manager installation, installed Gateway/OAuth, scanned-image
+OCR quality, Manager backup/restore or production deployment proof follows from
+these checks. See REVIEW.md for which complete executions actually passed.
+
+## Access screen checks
+
+After building the UI, run `node apps/paperless/development/check-access-ui.mjs`
+with `SCHOLARSERVER_BROWSER_MODULES` pointing to installed Playwright modules.
+An optional `SCHOLARSERVER_BROWSER_CHANNEL=chrome` uses installed Chrome. This
+serves the real UI with a synthetic Manager API; it checks recommended private
+access, required sign-in, preserving a failed-save draft, explicit retry and the
+confirmed Open URL. It does not create routes or provision a native account.
 
 ## Runtime details discovered
 

@@ -19,16 +19,17 @@ Required gates:
   generic Access route and actual authenticated Gateway discovery/calls.
 - Write real package schema and the setup/controller serving path. A separate MCP
   image recipe and non-root/read-only native probe now exist, but neither completes
-  the Manager installation. Review build-stage dependency advisories before release.
+  the Manager installation. Build-stage dependency advisories were resolved in
+  the follow-up; upstream image security/licence review remains outstanding.
 - Upload is intentionally unavailable. Ingest state transitions are a pure design
   model, NOT persistent job handling. Add durable intent/task ownership, explicit
   consent, bounded synthetic intake, unknown-outcome reconciliation without replay
   and native task ACL tests before exposing upload or task-status tools.
 - Test consistent backup/restore of DB, media/original bytes, OCR/index, pending
   intake, broker and secrets; preserve restricted permissions after restoration.
-- Native startup and synthetic indexed reads have candidate evidence. Fresh
-  Manager installation, upgrade/rollback, actual PDF upload/OCR and restore
-  remain untested; check REVIEW.md for the exact restart evidence.
+- Native startup, real synthetic PDF upload/processing and MCP reads have candidate
+  evidence. Fresh Manager installation, upgrade/rollback, realistic scanned OCR
+  quality and Manager restore remain untested; check REVIEW.md for exact evidence.
 
 Native Docker/SSH testing is limited to disposable synthetic projects on existing
 development infrastructure. No paid servers, live research accounts, email intake,
