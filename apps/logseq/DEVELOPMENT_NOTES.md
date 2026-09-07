@@ -1,5 +1,25 @@
 # Logseq development notes
 
+## Setup status ordering — 7 September 2026
+
+Replaced overlapping interval reads with an app-owned status observer. The next
+poll starts after the previous read settles; an explicit post-action refresh
+cancels and supersedes an older read. Late results/errors are ignored even when
+cancellation is not honoured, and unmount stops further observations. Status GETs
+have a deadline; mutations are not automatically retried. Polling never owns the
+account return link, selected notebook or encryption-password form state.
+
+An initial status failure now displays the error rather than remaining behind
+the shared loading screen. Synthetic tests cover slow requests, stale success,
+stale failure, unmount and reconnect. This is source-level setup hardening, not
+device-sync acceptance or a published package change.
+
+Freelove's beta.1 private-address retry remains blocked: the executor requires
+installation-owned container Tailscale, while the current dashboard uses host
+Tailscale. Its Gateway runtime.env is also absent, so normal managed provisioning
+must not be run without first preserving and reconciling its external OAuth
+configuration. Existing host routes and containers were left unchanged.
+
 ## Catalog beta preparation — 7 September 2026
 
 The user explicitly requested a labelled beta despite remaining feature acceptance

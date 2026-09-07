@@ -1,7 +1,8 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PrivateConnection } from "./PrivateConnection";
+import { observeStatus } from "./status-observer";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
 type Status = {
@@ -34,11 +35,11 @@ function currentTab() {
   return window.location.pathname.endsWith("/overview") ? "overview" : "configuration";
 }
 
-async function request<T>(endpoint: string, value?: unknown): Promise<T> {
+async function request<T>(endpoint: string, value?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(
     `${base}/api/${endpoint}`,
     value === undefined
-      ? undefined
+      ? { signal }
       : {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -61,19 +62,26 @@ export function App() {
   const [remoteId, setRemoteId] = useState("");
   const [password, setPassword] = useState("");
   const [listed, setListed] = useState(false);
-  const refresh = useCallback(async () => {
-    try {
-      setStatus(await request<Status>("status"));
-      setStatusError(null);
-    } catch (caught) {
-      setStatusError(caught instanceof Error ? caught.message : "Could not check Logseq.");
-    }
-  }, []);
+  const observer = useRef<ReturnType<typeof observeStatus<Status>> | null>(null);
+  async function refresh() {
+    await observer.current?.refresh();
+  }
   useEffect(() => {
-    void refresh();
-    const timer = setInterval(() => void refresh(), 2000);
-    return () => clearInterval(timer);
-  }, [refresh]);
+    const observation = observeStatus<Status>({
+      read: (signal) => request("status", undefined, AbortSignal.any([signal, AbortSignal.timeout(15000)])),
+      accept: (value) => {
+        setStatus(value);
+        setStatusError(null);
+      },
+      failed: () => setStatusError("Could not check Logseq. Reconnecting automatically; your entries are kept.")
+    });
+    observer.current = observation;
+    void observation.refresh();
+    return () => {
+      observation.stop();
+      observer.current = null;
+    };
+  }, []);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
@@ -113,7 +121,7 @@ export function App() {
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}
-      loading={!status}
+      loading={!status && !statusError}
       error={error ?? statusError ?? status?.error ?? status?.account.error}
       status={<span className="ss-badge">{status?.ready ? "Connected" : "Setup needed"}</span>}
     >
