@@ -26,6 +26,8 @@ const server = createServer(async (request, response) => {
     let contentType = "text/html";
     if (asset?.endsWith(".js")) contentType = "text/javascript";
     if (asset?.endsWith(".css")) contentType = "text/css";
+    if (asset?.endsWith(".woff")) contentType = "font/woff";
+    if (asset?.endsWith(".woff2")) contentType = "font/woff2";
     const content = await readFile(file);
     response.writeHead(200, { "content-type": contentType }).end(content);
   } catch {
@@ -209,6 +211,24 @@ try {
 
   for (const app of apps) {
     const name = app[0].toUpperCase() + app.slice(1);
+    for (const [font, family] of [
+      ["computer-modern", "Computer Modern Sans"],
+      ["nebula", "Nebula Sans"]
+    ]) {
+      await page.goto(`${origin}/apps/${app}/overview`);
+      await page.evaluate((font) => localStorage.setItem("scholarserver.font.v1", font), font);
+      await page.reload();
+      await page.getByRole("heading", { name, exact: true }).waitFor();
+      const fontReady = await page.evaluate(async (family) => {
+        const faces = await document.fonts.load(`16px "${family}"`);
+        return (
+          faces.length > 0 &&
+          faces.every((face) => face.status === "loaded") &&
+          getComputedStyle(document.body).fontFamily.includes(family)
+        );
+      }, family);
+      assert.ok(fontReady, `${app}: ${family} actually loads from its own assets`);
+    }
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`${origin}/apps/${app}/overview`);

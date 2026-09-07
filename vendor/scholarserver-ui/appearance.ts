@@ -1,5 +1,6 @@
 import { type Appearance, defaultAppearance, parseAppearance, themeTokens } from "./themes.ts";
 import "./motion-preference.ts";
+import "./fonts.ts";
 
 const storageKey = "scholarserver.appearance.v1";
 const changeEvent = "scholarserver:appearance";

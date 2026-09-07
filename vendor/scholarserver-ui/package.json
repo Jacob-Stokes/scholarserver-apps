@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./fonts": "./fonts.ts",
     "./motion": "./motion.tsx",
     "./motion-preference": "./motion-preference.ts",
     "./application-screen": "./application-screen.tsx",
