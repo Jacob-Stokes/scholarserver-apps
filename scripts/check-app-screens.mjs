@@ -493,6 +493,51 @@ try {
   await page.getByRole("heading", { name: "Connect your Obsidian account" }).waitFor();
   assert.equal(calls.filter((call) => call.path.endsWith("/client/install")).length, 2);
   console.log("Obsidian: explicit download, reload during progress, failed-download retry and sign-in handover passed");
+  let obsidianReads = 0;
+  let releaseObsidianPoll;
+  let installedClient = false;
+  await page.route("**/apps/obsidian/api/status", async (route) => {
+    obsidianReads++;
+    const installed = installedClient;
+    if (obsidianReads === 2)
+      await new Promise((resolve) => {
+        releaseObsidianPoll = resolve;
+      });
+    await route
+      .fulfill({
+        json: {
+          profile: "official",
+          state: installed ? "vault-selection-required" : "client-install-required",
+          scopePath: "/",
+          vaults: [{ id: "synthetic-vault", name: "Synthetic vault" }],
+          remoteVault: null,
+          workerRunning: false,
+          lastError: null,
+          officialClient: { phase: installed ? "installed" : "not-installed", approvedVersion: "0.0.14" }
+        }
+      })
+      .catch(() => {});
+  });
+  await page.route("**/apps/obsidian/api/client/install", (route) => {
+    installedClient = true;
+    return route.fulfill({ json: { phase: "installed" } });
+  });
+  await page.goto(`${origin}/apps/obsidian/configuration`);
+  await page.getByRole("button", { name: "Install and connect", exact: true }).waitFor();
+  await page.waitForTimeout(2300);
+  assert.equal(obsidianReads, 2);
+  await page.getByRole("button", { name: "Install and connect", exact: true }).click();
+  await page.getByRole("heading", { name: "Choose the vault", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  const scope = page.getByLabel("Folder available to AI tools", { exact: false });
+  await scope.fill("Research/draft");
+  releaseObsidianPoll();
+  await page.waitForTimeout(300);
+  assert.equal(await scope.inputValue(), "Research/draft", "Old install status cannot replace current setup or scope");
+  assert.equal(obsidianReads, 3, "Installation completion performs one status refresh, not two");
+  await page.unroute("**/apps/obsidian/api/status");
+  await page.unroute("**/apps/obsidian/api/client/install");
+  console.log("Obsidian: completed installation supersedes old polling without replacing the folder draft");
   obsidianStatus = null;
 
   // Online library: account -> attachment choice -> failed save -> ready -> reload.

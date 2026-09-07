@@ -1,0 +1,22 @@
+# Obsidian development notes
+
+## Setup status ownership — 8 September 2026
+
+A delayed pre-install status poll could replace the status returned after client
+installation and reset an edited folder scope to `/`. The synthetic browser
+regression reproduced that failure against the old build.
+
+Only the current status request may update the screen. Explicit refresh supersedes
+an older request, routine polls do not overlap, and unmount cancels pending reads.
+Reads time out after 15 seconds. Edited folder scope remains a user-owned draft,
+separate from polled server state. Installation now uses the operation wrapper's
+single refresh rather than refreshing twice.
+
+An unreadable successful HTTP response is an error rather than a successful null
+result. These changes do not alter sync processes, stored credentials or vault
+contents, and do not automatically retry writes.
+
+Verification: source tests, production UI build and the four-app mock-browser suite
+passed, including a held old poll released after installation and scope editing.
+This is not device-to-server sync acceptance or a published package. Remaining
+mutation lifetimes and the wider setup component still need separate review.

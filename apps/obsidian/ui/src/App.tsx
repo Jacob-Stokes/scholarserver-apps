@@ -1,6 +1,6 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, type SetupPipelineStage, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type RemoteVault = { id: string; name: string };
 type SyncProfile = "none" | "official" | "livesync";
@@ -71,7 +71,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
   });
   const result = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok) throw new Error((result as { error?: string } | null)?.error ?? "Obsidian request failed");
+  if (!response.ok || result === null)
+    throw new Error((result as { error?: string } | null)?.error ?? "Obsidian returned an unreadable response");
   return result as T;
 }
 
@@ -100,6 +101,8 @@ function profileLabel(profile: SyncProfile): string {
 export function App() {
   const [tab, setTab] = useState<Tab>(currentTab);
   const [status, setStatus] = useState<Status | null>(null);
+  const statusRead = useRef<AbortController | null>(null);
+  const scopeEdited = useRef(false);
   const [vaults, setVaults] = useState<RemoteVault[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -123,27 +126,40 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    statusRead.current?.abort();
+    const controller = new AbortController();
+    statusRead.current = controller;
     try {
-      const next = await request<Status>("status");
+      const next = await request<Status>("status", {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
+      });
+      if (controller.signal.aborted || statusRead.current !== controller) return;
       const nextVaults = normalizeVaults(next.vaults);
       setStatus(next);
-      setScopePath(next.scopePath || "/");
+      if (!scopeEdited.current) setScopePath(next.scopePath || "/");
       if (nextVaults.length) {
         setVaults(nextVaults);
         setVault((current) => current || nextVaults[0].id);
       }
       setStatusError(null);
     } catch (caught) {
-      setStatusError(caught instanceof Error ? caught.message : "Could not inspect Obsidian");
+      if (!controller.signal.aborted && statusRead.current === controller) {
+        setStatusError(caught instanceof Error ? caught.message : "Could not inspect Obsidian");
+      }
+    } finally {
+      if (statusRead.current === controller) statusRead.current = null;
     }
   }, []);
 
   useEffect(() => {
     void refresh();
+    return () => statusRead.current?.abort();
   }, [refresh]);
   useEffect(() => {
     if (status?.state !== "livesync-server-joining" && status?.state !== "client-install-required") return;
-    const timer = window.setInterval(() => void refresh(), 2_000);
+    const timer = window.setInterval(() => {
+      if (!statusRead.current) void refresh();
+    }, 2_000);
     return () => window.clearInterval(timer);
   }, [refresh, status?.state]);
   useEffect(() => {
@@ -155,6 +171,10 @@ export function App() {
   const navigate = (next: Tab) => {
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
+  };
+  const editScopePath = (value: string) => {
+    scopeEdited.current = true;
+    setScopePath(value);
   };
   const run = async (operation: () => Promise<unknown>, success?: string) => {
     setBusy(true);
@@ -331,7 +351,6 @@ export function App() {
               install={() =>
                 run(async () => {
                   await request("client/install", { method: "POST", body: JSON.stringify({ confirmed: true }) });
-                  await refresh();
                 })
               }
             />
@@ -356,7 +375,7 @@ export function App() {
               encryptionPassword={encryptionPassword}
               setEncryptionPassword={setEncryptionPassword}
               scopePath={scopePath}
-              setScopePath={setScopePath}
+              setScopePath={editScopePath}
               connect={connectVault}
             />
           ) : null}
@@ -374,7 +393,7 @@ export function App() {
               vaultPassphraseAgain={vaultPassphraseAgain}
               setVaultPassphraseAgain={setVaultPassphraseAgain}
               scopePath={scopePath}
-              setScopePath={setScopePath}
+              setScopePath={editScopePath}
               otherSyncOff={otherSyncOff}
               setOtherSyncOff={setOtherSyncOff}
               configure={configureLiveSync}
