@@ -8,7 +8,7 @@ export function feedTools(client) {
   function tool(name, description, inputSchema, handler, readOnly = true) {
     return {
       def: {
-        name,
+        name: `freshrss_${name}`,
         description,
         inputSchema,
         annotations: {

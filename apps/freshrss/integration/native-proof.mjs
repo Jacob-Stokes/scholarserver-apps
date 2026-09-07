@@ -63,8 +63,9 @@ try {
   );
   const tools = await mcp.listTools();
   assert.equal(tools.tools.length, 6);
+  for (const tool of tools.tools) assert.match(tool.name, /^freshrss_[a-z_]+$/);
   async function call(name, args = {}) {
-    const result = await mcp.callTool({ name, arguments: args });
+    const result = await mcp.callTool({ name: `freshrss_${name}`, arguments: args });
     assert.ok(!result.isError, `${name} succeeds`);
     return JSON.parse(result.content[0].text);
   }

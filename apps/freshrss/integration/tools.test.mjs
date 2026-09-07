@@ -7,6 +7,7 @@ import { feedTools } from "./tools.mjs";
 test("all tools publish valid object schemas for real MCP clients", () => {
   const tools = feedTools({});
   assert.equal(tools.length, 6);
+  for (const tool of tools) assert.match(tool.def.name, /^freshrss_[a-z_]+$/);
   for (const tool of tools) assert.equal(zodToJsonSchema(tool.def.inputSchema).type, "object", tool.def.name);
 });
 test("article output is bounded text, strips images and never forwards URL passwords", () => {
@@ -20,7 +21,7 @@ test("article output is bounded text, strips images and never forwards URL passw
 });
 test("no state change occurs without an explicit requested state", async () => {
   const tool = feedTools({ request: () => assert.fail("must not write") }).find(
-    (tool) => tool.def.name === "set_article_state"
+    (tool) => tool.def.name === "freshrss_set_article_state"
   );
   await assert.rejects(tool.handler({ id: "example" }), /Choose a state/);
 });
@@ -30,7 +31,7 @@ test("article listing caps requested results and forwards unread filtering", asy
       assert.equal(parameters.xt, "user/-/state/com.google/read");
       return { items: [] };
     }
-  }).find((tool) => tool.def.name === "list_articles");
+  }).find((tool) => tool.def.name === "freshrss_list_articles");
   assert.throws(() => tool.def.inputSchema.parse({ limit: 10000 }));
   assert.equal((await tool.handler({ limit: 2, unreadOnly: true })).untrusted, true);
 });
