@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "apps/files/**"
+      - "apps/freshrss/**"
       - "apps/obsidian/api/**"
       - "apps/obsidian/mcp/**"
       - "apps/obsidian/sync/**"
@@ -58,13 +59,15 @@ jobs:
         run: ./scripts/build-native-images.sh
       - name: Verify native startup, user download and two-peer LiveSync
         run: sudo python3 scripts/check-obsidian-packaging.py
+      - name: Verify FreshRSS setup, MCP, restart and restore
+        run: bash apps/freshrss/test-container.sh ghcr.io/jacob-stokes/scholarserver-freshrss-reader:sha-${{ github.sha }}-${{ matrix.architecture }} ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-${{ github.sha }}-${{ matrix.architecture }}
 
   manifest:
     needs: build
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        image: [files, obsidian-sync, obsidian-api, obsidian-mcp, zotero-desktop, zotero-controller, zotero-local-api-bridge, zotero-automations, zotero-mcp, docling-app]
+        image: [files, obsidian-sync, obsidian-api, obsidian-mcp, zotero-desktop, zotero-controller, zotero-local-api-bridge, zotero-automations, zotero-mcp, docling-app, freshrss-reader, freshrss-app]
     steps:
       - uses: docker/login-action@v3
         with:

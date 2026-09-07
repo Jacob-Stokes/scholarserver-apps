@@ -1,0 +1,16 @@
+{
+  "name": "@scholarserver/freshrss-integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "mcp-common": "file:../../../packages/mcp-common",
+    "@scholarserver/controller-runtime": "file:../../../packages/controller-runtime",
+    "html-to-text": "9.0.5",
+    "zod": "3.25.76"
+  }
+}

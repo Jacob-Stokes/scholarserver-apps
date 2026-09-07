@@ -50,3 +50,5 @@ build zotero-local-api-bridge apps/zotero/local-api-bridge/Dockerfile .
 build zotero-automations apps/zotero/automations/Dockerfile .
 build zotero-mcp apps/zotero/mcp/Dockerfile .
 build docling-app apps/docling/controller/Dockerfile .
+build freshrss-reader apps/freshrss/reader/Dockerfile .
+build freshrss-app apps/freshrss/integration/Dockerfile .

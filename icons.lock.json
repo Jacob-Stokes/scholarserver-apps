@@ -7,6 +7,11 @@
     "licenseUrl": "https://github.com/selfhst/icons/blob/main/LICENSE"
   },
   "icons": {
+    "freshrss": {
+      "reference": "freshrss",
+      "path": "apps/freshrss/package/assets/icons/freshrss.webp",
+      "sha256": "9cf780d06fbfdd16286f586a671a108f81e325255598bbf1894940828fe85dc8"
+    },
     "logseq": {
       "reference": "logseq",
       "path": "apps/logseq/package/assets/icons/logseq.webp",

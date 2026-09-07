@@ -1,0 +1,98 @@
+schemaVersion: 1
+id: org.scholarserver.freshrss
+name: FreshRSS
+packageVersion: 0.1.0-beta.1
+compatibility: { platform: ">=0.1.0", schema: 1 }
+upstream: { name: FreshRSS, version: 1.29.1, license: AGPL-3.0 }
+support: { tier: official, architectures: [amd64, arm64] }
+delivery: { class: headless-service, management: managed }
+tenancy: { mode: per-workspace }
+capabilities:
+  provides: [feeds.read, feeds.reading-state]
+  requires: []
+  conflicts: []
+resources:
+  minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
+  recommended: { cpu: 1, memory: 1GiB, disk: 5GiB }
+permissions:
+  networkEgress: [subscribed-feed-websites]
+  hostMounts: []
+  devices: []
+hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
+images:
+  - service: freshrss
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: integration
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:0000000000000000000000000000000000000000000000000000000000000000
+data:
+  - id: reader
+    mountPath: /var/www/FreshRSS/data
+    owner: freshrss
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: runtime
+    mountPath: /runtime
+    owner: freshrss
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+endpoints:
+  - id: app-ui
+    service: integration
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+  - id: reader
+    service: integration
+    port: 8082
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+    remoteAccess:
+      routing: path
+      private: true
+      public: true
+      authentik: optional
+      defaultAuthentik: false
+  - id: mcp
+    service: integration
+    port: 7015
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: FreshRSS
+      namespace: freshrss
+      hostname: freshrss-mcp
+      credentialData: runtime
+      credentialFile: service-token
+ui: { mode: standalone, endpoint: app-ui, defaultPath: /configuration }
+presentation:
+  icon:
+    path: assets/icons/freshrss.webp
+    mediaType: image/webp
+    attribution:
+      name: selfh.st/icons
+      url: https://selfh.st/icons/
+      license: CC-BY-4.0
+      licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
+lifecycle: { supportsDisable: true, removeDataDefault: false, rollback: backup-required }
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Create your reader sign-in
+    - Choose where to open FreshRSS
+    - Add a feed or import your subscriptions
+  actions:
+    - id: connect
+      data: runtime
+      timeoutSeconds: 15
+      fields:
+        - { id: username, type: string, required: true, secret: false }
+        - { id: password, type: string, required: true, secret: true }
+    - id: status
+      data: runtime
+      timeoutSeconds: 10
+      fields: []

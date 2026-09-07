@@ -37,6 +37,11 @@ wrappers instead of inventing a platform feature solely to eliminate them.
 
 ## Version policy
 
+FreshRSS uses the same thin-wrapper exception as CouchDB: its official image is
+the immutable base, with only our non-root startup/account adapter added. The
+separate integration owns setup/UI/MCP; the upstream app owns its SQLite data.
+There is no FreshRSS source fork or platform-specific FreshRSS code.
+
 - Catalog releases select immutable image digests; no automatic upstream latest.
 - Every application Dockerfile pins its base digest. JavaScript installs use
   committed lockfiles. Updates to those inputs are explicit source changes.

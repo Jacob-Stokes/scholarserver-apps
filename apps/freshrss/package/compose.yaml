@@ -1,0 +1,58 @@
+services:
+  freshrss:
+    image: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.75
+    mem_limit: 256m
+    pids_limit: 64
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777"]
+    volumes:
+      - ${SCHOLARSERVER_DATA_READER}:/var/www/FreshRSS/data
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+    expose: ["8080"]
+    networks: [instance, egress]
+    healthcheck:
+      test: [CMD, php, /opt/scholarserver/health.php]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 4
+  integration:
+    image: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 192m
+    pids_limit: 64
+    environment:
+      SCHOLARSERVER_INSTANCE_ID: ${SCHOLARSERVER_INSTANCE_ID}
+      SCHOLARSERVER_WORKSPACE_ID: ${SCHOLARSERVER_WORKSPACE_ID}
+    volumes: ["${SCHOLARSERVER_DATA_RUNTIME}:/runtime"]
+    expose: ["8080", "8082", "7015"]
+    networks:
+      instance:
+        aliases: [freshrss-mcp]
+      edge: {}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 4
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false
+  edge:
+    name: scholarserver-edge
+    external: true

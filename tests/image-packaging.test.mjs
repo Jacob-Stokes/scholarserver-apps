@@ -17,7 +17,7 @@ async function recipes(directory) {
 
 test("every distributed custom image pins its base and cannot install official Headless", async () => {
   const files = await recipes("apps");
-  assert.equal(files.length, 15, "12 application image recipes and 3 unpublished Logseq candidate recipes");
+  assert.equal(files.length, 17, "Existing application recipes plus FreshRSS reader wrapper and integration");
   for (const file of files) {
     const source = await readFile(file, "utf8");
     for (const line of source.split("\n").filter((line) => line.startsWith("FROM ")))
