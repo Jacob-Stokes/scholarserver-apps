@@ -1,0 +1,52 @@
+{
+  "reviewed": "2026-09-07",
+  "status": "research pins; no approved application images",
+  "anki": {
+    "version": "26.08.1",
+    "commit": "39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20",
+    "repository": "https://github.com/ankitects/anki",
+    "artifacts": [
+      {
+        "filename": "anki-26.8.1-cp310-abi3-macosx_12_0_arm64.whl",
+        "sha256": "21383d59af4f694e4e27f3f6b780f5e7cb5288e2e47a8649ccb0c913c2e03260",
+        "url": "https://files.pythonhosted.org/packages/73/fa/48078039c057d8bb150286d0e1fbc296dd5b0e017a790b7ae29b4d360bca/anki-26.8.1-cp310-abi3-macosx_12_0_arm64.whl"
+      },
+      {
+        "filename": "anki-26.8.1-cp310-abi3-macosx_12_0_x86_64.whl",
+        "sha256": "609aeb2ac115b99225c26b3962efb26c7d985a6d452b74630de421794d6b4900",
+        "url": "https://files.pythonhosted.org/packages/6d/63/dd45a9ab1148b5cdcdcaa8b7df0e1aabef0a7cbeface9125a61722bd90fc/anki-26.8.1-cp310-abi3-macosx_12_0_x86_64.whl"
+      },
+      {
+        "filename": "anki-26.8.1-cp310-abi3-manylinux_2_35_aarch64.whl",
+        "sha256": "34445fb48b985eeeaf7bc65e2821f5a2ca3e3cf3880c38336ade27f906225e72",
+        "url": "https://files.pythonhosted.org/packages/0a/bd/82f15738d7d356b69f708816ecb9699bf2dd4a9ead26d17ab4f1010f5607/anki-26.8.1-cp310-abi3-manylinux_2_35_aarch64.whl"
+      },
+      {
+        "filename": "anki-26.8.1-cp310-abi3-manylinux_2_35_x86_64.whl",
+        "sha256": "049d718b7495487516c1b8beeea2c2b2df30499d881536678916ba016f20e3fd",
+        "url": "https://files.pythonhosted.org/packages/2d/cc/3d1fd48589b288347c7d8cc39018a61ec7ca704059c1185925657bd6e4f9/anki-26.8.1-cp310-abi3-manylinux_2_35_x86_64.whl"
+      },
+      {
+        "filename": "anki-26.8.1-cp310-abi3-win_amd64.whl",
+        "sha256": "76502c78e7e465841c95500fcfa8732dc9ce3773a017cc4e0c1311b5dc73dfc4",
+        "url": "https://files.pythonhosted.org/packages/29/87/801d79663d5046af799f70d1c2701d0272e86439631ef3738f5405328a61/anki-26.8.1-cp310-abi3-win_amd64.whl"
+      },
+      {
+        "filename": "anki-26.8.1-cp310-abi3-win_arm64.whl",
+        "sha256": "98d65a978e50c563530f32a71dcc54efe704e9595bd53649902429b09bc7ac22",
+        "url": "https://files.pythonhosted.org/packages/f9/fb/a2d87ef2154eebcd70435a57fee0b4fe1445342e372cf82d05d6a4baa4f8/anki-26.8.1-cp310-abi3-win_arm64.whl"
+      }
+    ]
+  },
+  "ankiconnect": {
+    "commit": "de6e6e1b8aaf4ae195eb1d1ff6db5409b99b2a3e",
+    "repository": "https://git.sr.ht/~foosoft/anki-connect",
+    "apiVersion": 6
+  },
+  "desktopCandidate": {
+    "repository": "https://github.com/chrislongros/anki-desktop-docker",
+    "commit": "5b802912b5cdd6da13b09d43d0bc21ded168c99a",
+    "approved": false,
+    "reason": "Launcher downloads mutable application runtime; hardening and addon integration unverified."
+  }
+}

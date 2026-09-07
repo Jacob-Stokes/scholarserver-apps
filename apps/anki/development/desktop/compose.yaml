@@ -1,0 +1,135 @@
+# NON-INSTALLABLE DRAFT: zero image digests; see ../../RELEASE_BLOCKED.md
+services:
+  controller:
+    image: ghcr.io/jacob-stokes/scholarserver-anki-controller@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    expose:
+      - "8081"
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+    networks:
+      - instance
+      - edge
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  desktop:
+    image: ghcr.io/jacob-stokes/scholarserver-anki-desktop@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 2g
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /dev/shm:rw,nosuid,nodev,size=1g
+    expose:
+      - "3000"
+    volumes:
+      - ${SCHOLARSERVER_DATA_DESKTOP}:/config
+    networks:
+      - instance
+      - egress
+      - edge
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:3000/',timeout=3).close()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  sync:
+    image: ghcr.io/jacob-stokes/scholarserver-anki-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    expose:
+      - "8080"
+    volumes:
+      - ${SCHOLARSERVER_DATA_SYNC}:/anki_data
+      - ${SCHOLARSERVER_DATA_SYNC_CREDENTIALS}:/sync-credentials:ro
+    networks:
+      - instance
+      - edge
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - import socket;
+          socket.create_connection(('127.0.0.1',8080),timeout=3).close()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  mcp:
+    image: ghcr.io/jacob-stokes/scholarserver-anki-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    expose:
+      - "7006"
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
+      - ${SCHOLARSERVER_DATA_OPERATIONS}:/operations
+    networks:
+      instance:
+        aliases:
+          - anki-mcp
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:7006/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false
+  edge:
+    name: scholarserver-edge
+    external: true

@@ -1,0 +1,111 @@
+# NON-INSTALLABLE DRAFT: zero image digests; see ../../RELEASE_BLOCKED.md
+schemaVersion: 1
+id: org.scholarserver.anki-sync
+name: Anki sync only (Draft)
+packageVersion: 0.1.0-draft.1
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: Anki
+  version: 26.08.1
+  license: AGPL-3.0-or-later
+support:
+  tier: official
+  architectures:
+    - amd64
+    - arm64
+delivery:
+  class: headless-service
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides:
+    - study.sync
+  requires: []
+  conflicts: []
+resources:
+  minimum:
+    cpu: 1
+    memory: 2GiB
+    disk: 2GiB
+  recommended:
+    cpu: 2
+    memory: 4GiB
+    disk: 10GiB
+permissions:
+  networkEgress: []
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities:
+    - ALL
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /configuration
+lifecycle:
+  supportsDisable: true
+  removeDataDefault: false
+  rollback: backup-required
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Choose the sync address or sign in inside Anki
+    - Back up before first sync
+    - Verify a disposable card and media on each device
+images:
+  - service: controller
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-controller@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: sync
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+data:
+  - id: runtime
+    mountPath: /runtime
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: sync
+    mountPath: /anki_data
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: sync-credentials
+    mountPath: /sync-credentials
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+endpoints:
+  - id: app-ui
+    service: controller
+    port: 8081
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+  - id: sync
+    service: sync
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: none-private
+    remoteAccess:
+      routing: origin
+      private: true
+      public: false
+      authentik: unsupported
+      defaultAuthentik: false

@@ -106,3 +106,9 @@ Keep unresolved questions explicit, remove obsolete advice, and never include
 credentials, enrollment links or personal research data.
 
 Current worked example: [Logseq development notes](../apps/logseq/DEVELOPMENT_NOTES.md).
+
+- For desktop launchers, pinning the container may leave the downloaded application
+  mutable. Review runtime downloads and relocated add-on repositories as separate
+  inputs before accepting an image. A sync-server API is not automatically an
+  editing API; keep desktop and server storage separate. See the unpublished
+  [Anki draft](../apps/anki/DEVELOPMENT_NOTES.md) for source evidence and open gates.

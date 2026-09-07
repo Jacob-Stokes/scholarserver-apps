@@ -1,0 +1,214 @@
+# NON-INSTALLABLE DRAFT: zero image digests; see ../../RELEASE_BLOCKED.md
+schemaVersion: 1
+id: org.scholarserver.anki
+name: Anki (Draft)
+packageVersion: 0.1.0-draft.1
+compatibility:
+  platform: ">=0.1.0"
+  schema: 1
+upstream:
+  name: Anki
+  version: 26.08.1
+  license: AGPL-3.0-or-later
+support:
+  tier: official
+  architectures:
+    - amd64
+    - arm64
+delivery:
+  class: remote-desktop
+  management: managed
+tenancy:
+  mode: per-workspace
+capabilities:
+  provides:
+    - study.flashcards
+    - mcp.anki
+  requires:
+    - gateway.mcp
+  conflicts: []
+resources:
+  minimum:
+    cpu: 1
+    memory: 2GiB
+    disk: 2GiB
+  recommended:
+    cpu: 2
+    memory: 4GiB
+    disk: 10GiB
+permissions:
+  networkEgress:
+    - ankiweb
+  hostMounts: []
+  devices: []
+hardening:
+  readOnlyRoot: true
+  noNewPrivileges: true
+  dropCapabilities:
+    - ALL
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /configuration
+lifecycle:
+  supportsDisable: true
+  removeDataDefault: false
+  rollback: backup-required
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Choose the sync address or sign in inside Anki
+    - Back up before first sync
+    - Verify a disposable card and media on each device
+images:
+  - service: controller
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-controller@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: desktop
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-desktop@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: sync
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-sync@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - service: mcp
+    reference: ghcr.io/jacob-stokes/scholarserver-anki-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000
+data:
+  - id: runtime
+    mountPath: /runtime
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: desktop
+    mountPath: /config
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: operations
+    mountPath: /operations
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: sync
+    mountPath: /anki_data
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+  - id: sync-credentials
+    mountPath: /sync-credentials
+    backup: filesystem-consistent
+    owner: anki
+    filesystem:
+      uid: 1000
+      gid: 1000
+      mode: "0700"
+    retention: preserve
+endpoints:
+  - id: app-ui
+    service: controller
+    port: 8081
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
+  - id: desktop
+    service: desktop
+    port: 3000
+    protocol: http
+    exposure: human-optional
+    auth: none-private
+    remoteAccess:
+      routing: origin
+      private: true
+      public: false
+      authentik: unsupported
+      defaultAuthentik: false
+  - id: sync
+    service: sync
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: none-private
+    remoteAccess:
+      routing: origin
+      private: true
+      public: false
+      authentik: unsupported
+      defaultAuthentik: false
+  - id: mcp
+    service: mcp
+    port: 7006
+    protocol: http
+    exposure: gateway
+    auth: service-identity
+    gateway:
+      displayName: Anki
+      namespace: anki
+      hostname: anki-mcp
+      credentialData: runtime
+      credentialFile: service-token
+variants:
+  - id: ankiweb-desktop
+    name: Browser desktop with AnkiWeb
+    description: Sign in inside Anki. Desktop and AI tools; no local sync server.
+    recommended: true
+    services:
+      - controller
+      - desktop
+      - mcp
+    data:
+      - runtime
+      - desktop
+      - operations
+    resources:
+      minimum:
+        cpu: 1
+        memory: 2GiB
+        disk: 2GiB
+      recommended:
+        cpu: 2
+        memory: 4GiB
+        disk: 10GiB
+    highlights:
+      - Browser study and optional AI card creation
+    limitations:
+      - "Draft: image and live sync acceptance incomplete"
+  - id: self-hosted-desktop
+    name: Browser desktop with self-hosted sync
+    description: Desktop and sync server use separate persistent copies.
+    recommended: false
+    services:
+      - controller
+      - desktop
+      - sync
+      - mcp
+    data:
+      - runtime
+      - desktop
+      - operations
+      - sync
+      - sync-credentials
+    resources:
+      minimum:
+        cpu: 1
+        memory: 2GiB
+        disk: 2GiB
+      recommended:
+        cpu: 2
+        memory: 4GiB
+        disk: 10GiB
+    highlights:
+      - Browser study and optional AI card creation
+    limitations:
+      - "Draft: image and live sync acceptance incomplete"
