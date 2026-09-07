@@ -118,7 +118,7 @@ export function App() {
   return (
     <ApplicationScreen
       name="Logseq"
-      description="Connect an encrypted notebook for research notes and AI tools."
+      description="Connect an encrypted Logseq notebook (graph) for research notes and AI tools."
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}

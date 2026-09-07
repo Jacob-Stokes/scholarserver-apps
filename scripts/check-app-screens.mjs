@@ -273,7 +273,11 @@ try {
     }
     failStatus = true;
     await page.reload();
-    await page.getByRole("alert").filter({ hasText: "Synthetic status unavailable" }).waitFor();
+    const statusFailure =
+      app === "logseq"
+        ? "Could not check Logseq. Reconnecting automatically; your entries are kept."
+        : "Synthetic status unavailable";
+    await page.getByRole("alert").filter({ hasText: statusFailure }).waitFor();
     failStatus = false;
     await page.reload();
     await page.locator(".ss-loading").waitFor({ state: "hidden" });
@@ -309,7 +313,10 @@ try {
   assert.equal(Object.keys(logseqAddresses).length, 0, "reading options must not publish a route");
   failEditorRoute = true;
   await page.getByRole("button", { name: "Set up private connection", exact: true }).click();
-  await page.getByRole("alert").filter({ hasText: "Could not set up the private address" }).waitFor();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "ScholarServer could not prepare this address. Check its activity and try again." })
+    .waitFor();
   assert.ok(logseqAddresses.sync);
   assert.equal(logseqStatus.syncAddress, null, "partial setup must not start enrollment");
   failEditorRoute = false;

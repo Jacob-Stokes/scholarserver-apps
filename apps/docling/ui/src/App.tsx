@@ -187,9 +187,7 @@ export function App() {
   return (
     <ApplicationScreen
       name="Docling"
-      description={
-        "Convert research PDFs into durable, AI-readable Markdown without blocking the rest of your workspace."
-      }
+      description={"Convert PDFs into Markdown for reading, searching and use with AI tools."}
       status={
         status ? (
           <span className={`ss-badge ${status.engine === "available" ? "ss-badge-success" : "ss-badge-warning"}`}>
@@ -354,7 +352,7 @@ export function App() {
           </section>
           <section className="ss-card ss-stack">
             <div>
-              <h2>Small backfill</h2>
+              <h2>Convert existing PDFs</h2>
               <p className="ss-card-description">
                 Check the first documents in storage and skip anything already converted.
               </p>
@@ -373,7 +371,7 @@ export function App() {
             <label className="ss-check">
               <input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} />
               <span>
-                <strong>Use OCR for this backfill</strong>
+                <strong>Recognise text in scanned pages (OCR)</strong>
                 <small>Leave disabled for normal text-based academic PDFs.</small>
               </span>
             </label>

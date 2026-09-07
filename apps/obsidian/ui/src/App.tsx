@@ -413,7 +413,7 @@ export function App() {
                 stage={6}
                 total={6}
                 title="Connecting the server copy"
-                description="Your first device is ready. ScholarServer is now downloading the vault safely."
+                description="Your first device is connected. ScholarServer is downloading the vault."
               >
                 <div className="ss-loading">
                   <span className="ss-spinner" />
@@ -481,10 +481,7 @@ function OfficialInstall({ status, busy, install }: { status: Status; busy: bool
         {installing ? (
           <div role="status" aria-live="polite">
             <progress aria-label="Installing Obsidian client" />
-            <p>
-              {phase === "verifying" ? "Verifying the download…" : "Downloading the client…"} You can safely reopen this
-              page.
-            </p>
+            <p>{phase === "verifying" ? "Verifying the download…" : "Downloading the client…"}</p>
           </div>
         ) : null}
         {status.lastError || status.officialClient?.error ? (
@@ -509,7 +506,7 @@ function ProfileChoice({
         stage={1}
         total={6}
         title="How should this vault sync?"
-        description="Choose one sync method. ScholarServer will guide you through the remaining steps."
+        description="Use one sync method for this vault."
       >
         <div className="ss-choice-grid">
           <button className="ss-choice-card" disabled={busy} onClick={() => void choose("livesync")}>
@@ -624,7 +621,7 @@ function OfficialVault({
           stage={3}
           total={6}
           title="Choose the vault"
-          description="ScholarServer downloads a safe server copy before it enables two-way synchronization."
+          description="ScholarServer downloads the vault before enabling two-way sync."
           next={() => setPage("scope")}
           nextDisabled={!vault}
         >

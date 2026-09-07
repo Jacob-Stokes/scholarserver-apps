@@ -347,7 +347,7 @@ export function App() {
       description={
         online
           ? "Use your zotero.org library with ScholarServer and approved AI tools."
-          : "Manage your private Zotero workspace, attachments, automations, and remote Zotero MCP."
+          : "Manage your Zotero library, attachments, automations and access from AI tools."
       }
       status={
         status ? (
@@ -461,8 +461,10 @@ export function App() {
         <div className="ss-grid ss-grid-3">
           <section className="ss-card ss-stack">
             <div>
-              <h2>Resolve an attachment</h2>
-              <p className="ss-card-description">Confirm that a Zotero attachment key resolves to a safe local file.</p>
+              <h2>Check attachment access</h2>
+              <p className="ss-card-description">
+                Check whether ScholarServer can read a Zotero attachment on this server.
+              </p>
             </div>
             <label className="ss-field">
               Attachment key
@@ -584,7 +586,7 @@ export function App() {
               stage={3}
               total={5}
               title="Choose how to open Zotero Desktop"
-              description="ScholarServer keeps Zotero behind a protected server address. Only connections already prepared in Access are shown here."
+              description="Choose how to open the Zotero desktop. Only connections configured in Access are available here."
               back={() => setSetupStage("storage")}
               next={saveDesktopAccess}
               nextLabel="Use this address"

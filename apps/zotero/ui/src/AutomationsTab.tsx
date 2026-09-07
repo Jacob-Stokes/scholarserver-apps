@@ -498,7 +498,7 @@ export function AutomationsTab({
         <div className="ss-toolbar">
           <div>
             <h3>Recent runs</h3>
-            <p className="ss-card-description">Progress and failures stay with the Zotero stack.</p>
+            <p className="ss-card-description">Review automation runs and any errors.</p>
           </div>
           <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
             Refresh

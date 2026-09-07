@@ -1,5 +1,8 @@
 # Contributor guide
 
+Follow `docs/editorial-style.md` for user-facing text. Keep terminology aligned
+with Manager and state consequences without unsupported reassurance.
+
 ## Scope
 
 This repository contains first-party ScholarServer application packages. Keep each
