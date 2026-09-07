@@ -15,6 +15,12 @@ const feed = createServer((_request, response) => {
 }).listen(8099, "0.0.0.0");
 const mcp = new Client({ name: "freshrss-disposable-proof", version: "1" });
 try {
+  const page = await fetch(`${origin}/configuration`);
+  assert.equal(page.status, 200, "setup page loads");
+  const html = await page.text();
+  const asset = html.match(/src="\.\/([^\"]+\.js)"/)?.[1];
+  assert.ok(asset, "built UI references a relative script");
+  assert.equal((await fetch(`${origin}/${asset}`)).status, 200, "setup script loads");
   const response = await fetch(`${origin}/api/connect`, {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -9,7 +9,7 @@ import { feedTools } from "./tools.mjs";
 
 const runtime = process.env.RUNTIME_PATH ?? "/runtime";
 const upstream = process.env.FRESHRSS_URL ?? "http://freshrss:8080";
-const ui = fileURLToPath(new URL("./ui/", import.meta.url));
+const ui = path.resolve(fileURLToPath(new URL("./ui/", import.meta.url)));
 const setup = new Setup(runtime);
 const token = await setup.initialize();
 const client = new FreshRssClient(upstream, `${runtime}/account.json`);
