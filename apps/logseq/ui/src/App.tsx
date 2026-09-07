@@ -42,6 +42,7 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
       ? { signal }
       : {
           method: "POST",
+          signal,
           headers: { "content-type": "application/json" },
           body: JSON.stringify(value)
         }
@@ -140,8 +141,8 @@ export function App() {
         <PrivateConnection
           browserAvailable={Boolean(status.browserAvailable)}
           syncAddress={status.syncAddress ?? null}
-          configure={async (url) => {
-            await request("address", { url });
+          configure={async (url, signal) => {
+            await request("address", { url }, signal);
             await refresh();
           }}
         />

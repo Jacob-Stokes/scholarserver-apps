@@ -1,5 +1,25 @@
 # Logseq development notes
 
+## Private connection failure handling — 7 September 2026
+
+Separated bounded endpoint requests and explicit sync/editor/configuration ordering
+from React presentation. Authentication failures no longer blame Tailscale;
+conflicts acknowledge both unavailable access and concurrent operations. Unreadable
+responses and interrupted writes give useful messages without forwarding upstream
+diagnostics or asserting that a possibly saved route was lost.
+
+Beginning setup cancels initial read observations, so late reads cannot replace
+the new editor address or current error. A synchronous in-flight guard prevents
+duplicate submissions. Unmount or a change of browser availability cancels the
+client request and prevents subsequent setup stages; cancellation is not server
+rollback. Explicit retries reuse the platform's stable address assignment. No
+mutation is automatically retried. Private-route provisioning remains core-owned.
+
+Seven new synthetic tests cover ordering, partial failure and explicit retry,
+cancellation, devices-only setup, classified failures, lost responses and malformed
+success bodies. Full repository tests, Logseq UI typecheck/build and UI formatting
+checks passed. This does not resolve Freelove's access migration or prove live sync.
+
 ## Setup status ordering — 7 September 2026
 
 Replaced overlapping interval reads with an app-owned status observer. The next
