@@ -15,9 +15,9 @@ async function recipes(directory) {
   return result;
 }
 
-test("every distributed custom image pins its base and cannot install official Headless", async () => {
+test("every custom image recipe, including drafts, pins its base and cannot install official Headless", async () => {
   const files = await recipes("apps");
-  assert.equal(files.length, 17, "Existing application recipes plus FreshRSS reader wrapper and integration");
+  assert.equal(files.length, 18, "Existing recipes plus the unpublished Paperless integration candidate");
   for (const file of files) {
     const source = await readFile(file, "utf8");
     for (const line of source.split("\n").filter((line) => line.startsWith("FROM ")))

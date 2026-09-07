@@ -1,5 +1,21 @@
 # Paperless development notes
 
+## Native follow-up — 7 September 2026
+
+See `development/README.md` for the explicit opt-in probe and pinned candidates.
+Native startup and real authenticated MCP read/search/ownership checks now have
+AMD64 evidence. The fixture does not upload PDFs or test OCR. Real initialization
+exposed s6's executable `/run` requirement, root-owned credential-file mismatch and
+the distinction between ORM fixture creation and upstream search indexing. Fix
+those boundaries rather than granting root or broad file access. Restart/cleanup
+results must be read from the completed acceptance record, not inferred.
+
+Maintain the Obsidian summary at
+`Projects/AcademicSystem/Apps/paperless/paperless.md`. Repo details are authoritative;
+source, native tests, publication and live deployment remain separate facts.
+
+The remainder records the original source-only draft.
+
 7 September 2026. Isolated source draft; upstream applications are not forked.
 
 ## Ownership and first slice
