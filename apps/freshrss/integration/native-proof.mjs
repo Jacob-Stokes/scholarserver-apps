@@ -38,6 +38,11 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   assert.ok(ready, "setup completes");
+  const readerPage = await fetch("http://127.0.0.1:8082/i/", {
+    headers: { "accept-encoding": "gzip, deflate, br" }
+  });
+  assert.equal(readerPage.headers.get("content-encoding"), null, "reader proxy supplies an uncompressed body");
+  assert.match(await readerPage.text(), /FreshRSS/, "reader login page loads through the proxy");
   const api = new FreshRssClient("http://freshrss:8080", "/runtime/account.json");
   await api.request("subscription/quickadd", { quickadd: "http://integration:8099/feed.xml", output: "json" }, "POST");
   assert.equal((await api.request("subscription/list", { output: "json" })).subscriptions.length, 1);

@@ -36,6 +36,9 @@ function json(response, status, result) {
 function reader(request, response, suffix) {
   const target = new URL(upstream);
   const headers = { ...request.headers };
+  // The outer Manager proxy consumes the body through fetch. Keep this internal
+  // hop uncompressed so its decoded body cannot retain a gzip response header.
+  headers["accept-encoding"] = "identity";
   // Native login cookies belong to FreshRSS; never pass Manager authentication.
   delete headers.authorization;
   delete headers["x-scholarserver-session"];
