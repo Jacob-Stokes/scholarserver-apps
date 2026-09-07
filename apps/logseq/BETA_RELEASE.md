@@ -31,3 +31,18 @@ it is not a new physical-device or final public OAuth test.
 
 Physical-device acceptance and fresh public OAuth/MCP acceptance remain open.
 No claim of legal clearance or managed-hosting endorsement is made.
+
+## Live catalog installation
+
+Catalog `v0.2.27` was published with all nine assets and its latest index was
+downloaded anonymously. Freelove's refresh API imported Logseq; the browser
+displayed its beta card and icon, offered both choices, and installed the browser
+choice through the normal six-stage wizard. Helper, MCP, sync and editor all
+became healthy, and the app-owned configuration screen loaded.
+
+Freelove still uses legacy host-level Tailscale. Its managed isolated-origin API
+returns 409 (connect Tailscale), so this host cannot finish Logseq's private
+connection step without access migration. That infrastructure was deliberately
+left unchanged. Logseq is installed, not account-connected. Existing app versions
+and data were preserved. Native test containers, temporary credentials and test
+checkouts were removed; no paid disposable server was created.
