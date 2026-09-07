@@ -16,6 +16,19 @@ findings beside the app. Include evidence or a regression test where possible;
 do not turn assumptions into verified claims. Update superseded guidance rather
 than accumulating contradictory instructions. Never record secrets or user data.
 
+## Obsidian app documentation
+
+Every existing or newly researched/drafted app has a project note in Jacob's
+Obsidian vault at `Projects/AcademicSystem/Apps/<app-id>/<app-id>.md` and an entry
+in `Projects/AcademicSystem/Apps/README.md`. Use the vault's `_template.md` and
+update the note after meaningful app changes. Cover purpose, stack ownership,
+API/MCP, setup/access, persistent data and recovery, decisions and evidence gaps.
+Keep repository documentation authoritative for exact implementation details;
+distinguish research, source tests, container/device checks, publication and
+deployment. Never store secrets or research data. If vault access is unavailable,
+record the pending update in the app's development notes and report it explicitly.
+This is contributor documentation, not an app runtime or build dependency.
+
 ## Readability over brevity
 
 Apply this to controllers, interfaces, MCP tools, tests, scripts and manifests.
