@@ -326,6 +326,96 @@ try {
     await page.emulateMedia({ reducedMotion: "reduce" });
   }
 
+  // Slow settings must not let a user save guessed defaults or replace an edited job choice.
+  let releaseSettings;
+  await page.route("**/apps/docling/api/settings", async (route) => {
+    await new Promise((resolve) => {
+      releaseSettings = resolve;
+    });
+    await route.fulfill({ json: { defaultOcr: false } });
+  });
+  await page.goto(`${origin}/apps/docling/configuration`);
+  const saveDefaults = page.getByRole("button", { name: "Save defaults", exact: true });
+  await saveDefaults.waitFor();
+  assert.equal(await saveDefaults.isDisabled(), true, "Do not save guessed defaults while settings load");
+  await page.getByRole("button", { name: "Process PDF", exact: true }).click();
+  const jobOcr = page.getByRole("checkbox").first();
+  await jobOcr.check();
+  releaseSettings();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "Save defaults" && !button.disabled
+    )
+  );
+  await page.getByRole("button", { name: "Process PDF", exact: true }).click();
+  assert.equal(await jobOcr.isChecked(), true, "Late defaults do not overwrite the edited OCR choice");
+  await page.unroute("**/apps/docling/api/settings");
+  let failDefaults = true;
+  await page.route("**/apps/docling/api/settings", (route) =>
+    route.fulfill({ status: failDefaults ? 503 : 200, json: failDefaults ? {} : { defaultOcr: true } })
+  );
+  await page.goto(`${origin}/apps/docling/configuration`);
+  await page.getByRole("alert").filter({ hasText: "Could not load conversion defaults" }).waitFor();
+  assert.equal(await saveDefaults.isDisabled(), true, "A failed settings read must not enable saving defaults");
+  failDefaults = false;
+  await page.getByRole("button", { name: "Reload defaults", exact: true }).click();
+  await page.getByRole("button", { name: "Reload defaults", exact: true }).waitFor({ state: "hidden" });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "Save defaults" && !button.disabled
+    )
+  );
+  assert.equal(await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(), true);
+  assert.equal(await saveDefaults.isEnabled(), true);
+  await page.unroute("**/apps/docling/api/settings");
+  console.log("Docling: delayed defaults cannot be saved or overwrite the job draft");
+
+  let statusRequests = 0;
+  let releaseOldStatus;
+  let paused = false;
+  await page.route("**/apps/docling/api/status", async (route) => {
+    statusRequests++;
+    const wasPaused = paused;
+    if (statusRequests === 2)
+      await new Promise((resolve) => {
+        releaseOldStatus = resolve;
+      });
+    await route
+      .fulfill({
+        json: {
+          state: wasPaused ? "paused" : "ready",
+          engine: "available",
+          workerConcurrency: 1,
+          jobs: [],
+          counts: { queued: 0, running: 0, succeeded: 0, failed: 0 },
+          outputFolder: "output",
+          updatedAt: new Date().toISOString()
+        }
+      })
+      .catch(() => {});
+  });
+  await page.route("**/apps/docling/api/queue/pause", (route) => {
+    paused = true;
+    return route.fulfill({ json: { state: "paused" } });
+  });
+  await page.goto(`${origin}/apps/docling/configuration`);
+  await page.getByRole("button", { name: "Pause queue", exact: true }).waitFor();
+  await page.waitForTimeout(3500);
+  assert.equal(statusRequests, 2, "The second status read is held in flight");
+  await page.getByRole("button", { name: "Pause queue", exact: true }).click();
+  await page.getByRole("button", { name: "Resume queue", exact: true }).waitFor();
+  releaseOldStatus();
+  await page.waitForTimeout(300);
+  assert.equal(
+    await page.getByRole("button", { name: "Resume queue", exact: true }).isVisible(),
+    true,
+    "An older status poll cannot reverse the displayed result of pausing"
+  );
+  await page.unroute("**/apps/docling/api/status");
+  await page.unroute("**/apps/docling/api/queue/pause");
+  console.log("Docling: completed actions supersede in-flight status polls");
+
   logseqStatus = { ...logseqStatus, addressRequired: true, syncAddress: null, browserAvailable: true };
   await page.goto(`${origin}/apps/logseq/configuration`);
   await page.getByRole("button", { name: "Set up private connection", exact: true }).waitFor();

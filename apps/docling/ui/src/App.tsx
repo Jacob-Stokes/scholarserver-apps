@@ -1,5 +1,5 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type JobState = "queued" | "running" | "succeeded" | "failed";
 type Job = {
@@ -53,7 +53,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
   });
   const value = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok) throw new Error((value as { error?: string } | null)?.error ?? "Docling request failed");
+  if (!response.ok || value === null)
+    throw new Error((value as { error?: string } | null)?.error ?? "Docling returned an unreadable response");
   return value as T;
 }
 
@@ -79,8 +80,13 @@ function badge(state: JobState): string {
 export function App() {
   const [tab, setTab] = useState<Tab>(currentTab);
   const [status, setStatus] = useState<Status | null>(null);
+  const statusRead = useRef<AbortController | null>(null);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [settings, setSettings] = useState<Settings>({ defaultOcr: false });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const settingsRead = useRef<AbortController | null>(null);
+  const ocrEdited = useRef(false);
   const [sourcePath, setSourcePath] = useState("");
   const [attachmentKey, setAttachmentKey] = useState("");
   const [ocr, setOcr] = useState(false);
@@ -91,12 +97,22 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    statusRead.current?.abort();
+    const controller = new AbortController();
+    statusRead.current = controller;
     try {
-      const next = await request<Status>("status");
+      const next = await request<Status>("status", {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
+      });
+      if (controller.signal.aborted || statusRead.current !== controller) return;
       setStatus(next);
       setStatusError(null);
     } catch (caught) {
-      setStatusError(caught instanceof Error ? caught.message : "Could not load the queue");
+      if (!controller.signal.aborted && statusRead.current === controller) {
+        setStatusError(caught instanceof Error ? caught.message : "Could not load the queue");
+      }
+    } finally {
+      if (statusRead.current === controller) statusRead.current = null;
     }
   }, []);
 
@@ -110,17 +126,45 @@ export function App() {
     }
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    settingsRead.current?.abort();
+    const controller = new AbortController();
+    settingsRead.current = controller;
+    setSettingsError(null);
+    try {
+      const value = await request<Settings>("settings", {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
+      });
+      if (controller.signal.aborted || settingsRead.current !== controller) return;
+      if (!value || typeof value.defaultOcr !== "boolean") throw new Error("Invalid settings response");
+      setSettings(value);
+      // Initial defaults may arrive after the user has chosen options for a job.
+      if (!ocrEdited.current) setOcr(value.defaultOcr);
+      setSettingsLoaded(true);
+    } catch {
+      if (!controller.signal.aborted && settingsRead.current === controller) {
+        setSettingsError("Could not load conversion defaults. Check your connection and try again.");
+      }
+    }
+  }, []);
+
+  const editOcr = (value: boolean) => {
+    ocrEdited.current = true;
+    setOcr(value);
+  };
+
   useEffect(() => {
     void refresh();
-    void request<Settings>("settings")
-      .then((value) => {
-        setSettings(value);
-        setOcr(value.defaultOcr);
-      })
-      .catch(() => undefined);
-    const timer = window.setInterval(() => void refresh(), 3000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
+    void loadSettings();
+    const timer = window.setInterval(() => {
+      if (!statusRead.current) void refresh();
+    }, 3000);
+    return () => {
+      window.clearInterval(timer);
+      settingsRead.current?.abort();
+      statusRead.current?.abort();
+    };
+  }, [refresh, loadSettings]);
 
   useEffect(() => {
     if (tab === "process" && files.length === 0) void discover();
@@ -331,7 +375,7 @@ export function App() {
               />
             </label>
             <label className="ss-check">
-              <input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} />
+              <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
               <span>
                 <strong>Use OCR</strong>
                 <small>Enable for scanned or image-only PDFs. It requires more processing time.</small>
@@ -369,7 +413,7 @@ export function App() {
               />
             </label>
             <label className="ss-check">
-              <input type="checkbox" checked={ocr} onChange={(event) => setOcr(event.target.checked)} />
+              <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
               <span>
                 <strong>Recognise text in scanned pages (OCR)</strong>
                 <small>Leave disabled for normal text-based academic PDFs.</small>
@@ -399,6 +443,7 @@ export function App() {
               <input
                 type="checkbox"
                 checked={settings.defaultOcr}
+                disabled={busy || !settingsLoaded}
                 onChange={(event) => setSettings({ defaultOcr: event.target.checked })}
               />
               <span>
@@ -406,10 +451,19 @@ export function App() {
                 <small>Recommended only when most of your library contains scanned pages.</small>
               </span>
             </label>
+            {!settingsLoaded && !settingsError ? <p role="status">Loading conversion defaults…</p> : null}
+            {settingsError ? (
+              <div>
+                <p role="alert">{settingsError}</p>
+                <button className="ss-button ss-button-secondary" onClick={() => void loadSettings()}>
+                  Reload defaults
+                </button>
+              </div>
+            ) : null}
             <div>
               <button
                 className="ss-button"
-                disabled={busy}
+                disabled={busy || !settingsLoaded}
                 onClick={() =>
                   void run(
                     () => request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) }),
