@@ -38,13 +38,18 @@ export function ApplicationScreen<T extends string>({
         <div className="ss-app-header-inner">
           <div className="ss-brand">
             <div className="ss-brand-mark">S</div>
-            <div>
+            <div className="ss-brand-copy">
               <p className="ss-brand-title">ScholarServer</p>
               <p className="ss-brand-context">{name}</p>
             </div>
           </div>
-          <a className="ss-button ss-button-secondary" href="/">
-            Back to ScholarServer
+          <a className="ss-button ss-button-secondary ss-dashboard-link" href="/" aria-label="Back to ScholarServer">
+            <span className="ss-dashboard-label-full" aria-hidden="true">
+              Back to ScholarServer
+            </span>
+            <span className="ss-dashboard-label-short" aria-hidden="true">
+              Dashboard
+            </span>
           </a>
         </div>
       </header>

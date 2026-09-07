@@ -121,12 +121,24 @@ input, select, textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
+  padding-block: 0.5rem;
 }
 .ss-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+}
+.ss-brand-copy {
+  min-width: 0;
+}
+.ss-dashboard-link,
+.ss-brand-mark {
+  flex-shrink: 0;
+}
+.ss-dashboard-label-short {
+  display: none;
 }
 .ss-brand-mark {
   display: grid;
@@ -142,6 +154,7 @@ input, select, textarea {
   margin: 0;
   font-weight: 650;
   letter-spacing: -0.015em;
+  white-space: nowrap;
 }
 .ss-brand-context {
   margin: 0.1rem 0 0;
@@ -513,6 +526,12 @@ input, select, textarea {
 }
 
 @media (max-width: 720px) {
+  .ss-dashboard-label-full {
+    display: none;
+  }
+  .ss-dashboard-label-short {
+    display: inline;
+  }
   .ss-grid-3 {
     grid-template-columns: 1fr;
   }

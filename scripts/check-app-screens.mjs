@@ -255,6 +255,25 @@ try {
       await page.goto(`${origin}/apps/${app}/overview`);
       await page.getByRole("heading", { name, exact: true }).waitFor();
       await page.locator(".ss-loading").waitFor({ state: "hidden" });
+      const dashboardLink = page.getByRole("link", { name: "Back to ScholarServer", exact: true });
+      assert.equal(await dashboardLink.getAttribute("href"), "/");
+      assert.equal(await page.locator(".ss-dashboard-label-short").isVisible(), width <= 720);
+      assert.equal(await page.locator(".ss-dashboard-label-full").isVisible(), width > 720);
+      const headerFits = await page.locator(".ss-app-header").evaluate((header) => {
+        const title = header.querySelector(".ss-brand-title");
+        const range = document.createRange();
+        range.selectNodeContents(title);
+        const titleLines = [...range.getClientRects()];
+        const link = header.querySelector(".ss-dashboard-link").getBoundingClientRect();
+        const brand = header.querySelector(".ss-brand").getBoundingClientRect();
+        return (
+          titleLines.length === 1 &&
+          brand.right <= innerWidth &&
+          link.right <= innerWidth &&
+          (brand.right <= link.left || brand.bottom <= link.top || link.bottom <= brand.top)
+        );
+      });
+      assert.ok(headerFits, `${app} ${width}px: brand stays on one line without overlapping the dashboard link`);
       const navigation = page.getByRole("navigation", { name: `${name} sections` });
       await navigation.getByRole("button", { name: "Configuration", exact: true }).click();
       assert.ok(page.url().endsWith("/configuration"));
