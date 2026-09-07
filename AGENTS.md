@@ -73,6 +73,13 @@ edges; app rules and secrets do not move into shared UI or Manager.
 
 ## Package contract
 
+- Upcoming app releases can provide `presentation.details` for the catalog guide:
+  plain-text description, tags, typed official/package/upstream/license links and
+  an optional direct demo video. See core `docs/catalog-details.md` for the schema
+  and platform compatibility requirement. Verify links and distinguish package
+  source from original software. Do not edit immutable published versions, invent
+  download sizes or insert fake recordings. Missing metadata is shown honestly.
+
 - Compose templates may use only placeholders declared by the ScholarServer schema.
 - Persistent paths must be declared in the package manifest.
 - One-time credentials must use declared onboarding actions and must never appear in
