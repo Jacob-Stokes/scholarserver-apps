@@ -1,5 +1,15 @@
 # Logseq development notes
 
+## Catalog beta preparation — 7 September 2026
+
+The user explicitly requested a labelled beta despite remaining feature acceptance
+gaps. Packaging is not waived: DISTRIBUTION.md records the exact sync/web runtime
+refs verified from upstream build logs, not only their wrapper revision labels.
+The beta and disposable acceptance harness now share one package definition;
+acceptance still rejects non-local image references. Images retain notices and
+the helper now explicitly includes Logseq's licence. Source archives, final native
+build checks and publication remain required before the beta is available.
+
 Gateway follow-up: direct app MCP tests missed the missing `logseq_` prefix.
 Gateway discovery rejected all tools until definitions and proof clients were
 corrected. Local-only acceptance `.3` now exposes all fourteen tools to Gateway.

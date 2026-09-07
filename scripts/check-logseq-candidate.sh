@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
+proof_project=${LOGSEQ_PROOF_PROJECT:-scholarserver-logseq-proof}
+export LOGSEQ_PROOF_HELPER_IMAGE=${LOGSEQ_PROOF_HELPER_IMAGE:-scholarserver-logseq-proof:helper}
+export LOGSEQ_PROOF_MCP_IMAGE=${LOGSEQ_PROOF_MCP_IMAGE:-scholarserver-logseq-proof:mcp}
 
 case "$(uname -m)" in
   x86_64) architecture=amd64 ;;
@@ -15,10 +18,10 @@ if [ -e "$proof_data" ]; then
 fi
 sudo install -d -m 700 -o 1000 -g 1000 "$proof_data/graph" "$proof_data/runtime"
 
-docker build --build-arg TARGETARCH="$architecture" -f apps/logseq/helper/Dockerfile -t scholarserver-logseq-proof:helper .
-docker build -f apps/logseq/mcp/Dockerfile -t scholarserver-logseq-proof:mcp .
-for image in helper mcp; do
-  actual=$(docker image inspect "scholarserver-logseq-proof:$image" --format '{{.Architecture}}')
+docker build --build-arg TARGETARCH="$architecture" -f apps/logseq/helper/Dockerfile -t "$LOGSEQ_PROOF_HELPER_IMAGE" .
+docker build -f apps/logseq/mcp/Dockerfile -t "$LOGSEQ_PROOF_MCP_IMAGE" .
+for image in "$LOGSEQ_PROOF_HELPER_IMAGE" "$LOGSEQ_PROOF_MCP_IMAGE"; do
+  actual=$(docker image inspect "$image" --format '{{.Architecture}}')
   if [ "$actual" != "$architecture" ]; then
     echo "Refusing an emulated runtime" >&2
     exit 1
@@ -26,7 +29,7 @@ for image in helper mcp; do
 done
 
 compose() {
-  docker compose -p scholarserver-logseq-proof -f apps/logseq/development/compose.yaml "$@"
+  docker compose -p "$proof_project" -f apps/logseq/development/compose.yaml "$@"
 }
 trap 'compose down --remove-orphans' EXIT
 compose up -d --wait --wait-timeout 120

@@ -43,7 +43,7 @@ services:
       timeout: 3s
       retries: 12
   helper:
-    image: scholarserver-logseq-proof:helper
+    image: ${LOGSEQ_PROOF_HELPER_IMAGE:-scholarserver-logseq-proof:helper}
     environment:
       LOGSEQ_MANAGED_SETUP: "0"
       LOGSEQ_SYNC_CONFIG: ""
@@ -65,7 +65,7 @@ services:
       start_period: 60s
       retries: 12
   mcp:
-    image: scholarserver-logseq-proof:mcp
+    image: ${LOGSEQ_PROOF_MCP_IMAGE:-scholarserver-logseq-proof:mcp}
     read_only: true
     user: "1000:1000"
     cap_drop: [ALL]

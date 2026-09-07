@@ -17,7 +17,8 @@ RUN case "$TARGETARCH" in \
     esac && \
     curl --fail --location --retry 3 -o logseq.zip "https://github.com/logseq/logseq/releases/download/2.0.1/Logseq-linux-${artifact}-2.0.1.zip" && \
     echo "$checksum  logseq.zip" | sha256sum --check --strict && \
-    unzip -q logseq.zip -d /opt/logseq
+    unzip -q logseq.zip -d /opt/logseq && \
+    curl --fail --location -o /opt/logseq/LICENSE.logseq.md https://raw.githubusercontent.com/logseq/logseq/2.0.1/LICENSE.md
 
 FROM node:22.22.0-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -26,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 COPY --from=download /opt/logseq /opt/logseq
 WORKDIR /app
+COPY LICENSE apps/logseq/DISTRIBUTION.md /usr/share/doc/scholarserver-logseq/
 COPY packages/controller-runtime /packages/controller-runtime
 COPY apps/logseq/helper/package.json apps/logseq/helper/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --install-links && npm cache clean --force
