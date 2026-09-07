@@ -32,6 +32,22 @@ export function logseqPackage({ helper, mcp, sync, version, architectures = ["am
     schemaVersion: 1,
     id: "org.scholarserver.logseq",
     name: beta ? "Logseq (Beta)" : "Logseq",
+    ...(beta
+      ? {
+          presentation: {
+            icon: {
+              path: "assets/icons/logseq.webp",
+              mediaType: "image/webp",
+              attribution: {
+                name: "selfh.st/icons",
+                url: "https://selfh.st/icons/",
+                license: "CC-BY-4.0",
+                licenseUrl: "https://github.com/selfhst/icons/blob/main/LICENSE"
+              }
+            }
+          }
+        }
+      : {}),
     packageVersion: version,
     compatibility: { platform: ">=0.1.0", schema: 1 },
     upstream: { name: "Logseq database graphs", version: "2.0.1", license: "AGPL-3.0" },

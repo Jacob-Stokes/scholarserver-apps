@@ -1,5 +1,8 @@
 # Logseq candidate packaging audit
 
+Historical pre-publication audit. The 7 September beta follow-up is recorded in
+`BETA_RELEASE.md`; `BETA_ACCEPTANCE.md` retains outstanding production checks.
+
 Engineering checkpoint, 6 September 2026. Not legal clearance or permission to
 publish. Successful runtime tests do not complete distribution requirements.
 
@@ -39,7 +42,8 @@ publish. Successful runtime tests do not complete distribution requirements.
    the distribution arrangement; do not infer it from the upstream image's licence.
 5. Repeat native checks against the final immutable artifacts and publish the
    source/notice inventory with their exact digests. Keep the candidate unpublished
-   until these checks and `RELEASE_BLOCKED.md` are satisfied.
+   until these checks and the production gates are satisfied, or explicitly label
+   a beta with the remaining functional acceptance limits.
 
 No upstream maintainers were contacted. No licence grant or approval was inferred
 from the successful tests, and no public images were published in this pass.

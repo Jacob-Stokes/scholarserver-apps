@@ -27,6 +27,14 @@ Upstream application images retain their original files and notices. See
   1.0.0 (`BlueOak-1.0.0`). Their licence files remain in `node_modules`; they
   are not the proprietary Obsidian client.
 
+Logseq's helper includes the unmodified official Logseq 2.0.1 archive (AGPL-3.0)
+with Electron and Chromium notices retained. Its MCP integration is separate.
+The sync adapter and optional browser use pinned community Logseq self-host
+images. Exact sources, packaging revisions and source delivery are documented
+in `apps/logseq/DISTRIBUTION.md` and supplied with the Logseq beta catalog release.
+ScholarServer-owned integration code remains under the repository MIT licence;
+this does not relicense upstream software.
+
 ## Application icons
 
 The packaged Docling, Obsidian and Zotero icons are sourced from

@@ -1,6 +1,6 @@
-# Logseq — integration candidate
+# Logseq — beta integration
 
-This is a **development candidate**, not a published catalog entry. It targets
+This is a **beta catalog package**. Start with a disposable notebook. It targets
 Logseq 2's database graphs, not the older Markdown-file graphs. Never import,
 convert or reset a researcher's existing graph as part of installation.
 
@@ -26,7 +26,8 @@ browser/headless self-hosted sync and MCP tools on the same encrypted
 graph. The managed development setup now completes browser enrollment and resumes
 sync after restart. Both installation choices passed unpublished AMD64 catalog
 acceptance, and an isolated native ARM64 stack passed encrypted sync. This is
-not yet a released catalog package; the physical-device and release gates remain.
+a beta rather than production acceptance; physical-device and final public
+OAuth/MCP tests remain. See `BETA_ACCEPTANCE.md` and `BETA_RELEASE.md`.
 
 The official release currently includes its new CLI in the desktop archive. The
 helper runs that archive's runtime in Node mode: no display server, remote desktop
@@ -80,4 +81,4 @@ existing Logseq data directory.
 
 Retain upstream notices and satisfy corresponding-source obligations before
 distribution. This candidate does not change the licensing status of any other app.
-See [packaging audit](PACKAGING_AUDIT.md) for the remaining concrete checks.
+See [distribution notes](DISTRIBUTION.md) and [beta release evidence](BETA_RELEASE.md).

@@ -7,6 +7,11 @@
     "licenseUrl": "https://github.com/selfhst/icons/blob/main/LICENSE"
   },
   "icons": {
+    "logseq": {
+      "reference": "logseq",
+      "path": "apps/logseq/package/assets/icons/logseq.webp",
+      "sha256": "11cf95c7d7c4239cb5933182a4d480333594406d52afee80593d4dc66b756609"
+    },
     "files": {
       "source": "local",
       "reference": "files",

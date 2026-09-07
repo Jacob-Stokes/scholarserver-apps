@@ -1,6 +1,17 @@
-# Not ready for catalog publication
+# Logseq beta acceptance and production gates
 
-Do not publish Logseq until all of these have evidence:
+7 September 2026: the user requested a clearly labelled beta catalog release
+before physical-device and final public OAuth acceptance. Those two gates remain
+open; they are not requirements waived for a stable release. The package warns
+users to start with a disposable Logseq 2 database notebook.
+
+Distribution preparation now records exact runtime and packaging source revisions,
+preserves upstream notices, and supplies source archives alongside the release.
+Final public multi-architecture images are pinned in `package/`. See
+`BETA_RELEASE.md` for the final verification record. The checklist below remains
+the historical candidate record and the baseline for production acceptance.
+
+Do not call Logseq production-ready until all of these have evidence:
 
 - Same graph in browser editor, headless replica and a real device, bidirectionally.
 - Logseq sign-in and encrypted graph setup work from the private dashboard without

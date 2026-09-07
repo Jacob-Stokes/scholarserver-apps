@@ -18,8 +18,17 @@ if [ -e "$proof_data" ]; then
 fi
 sudo install -d -m 700 -o 1000 -g 1000 "$proof_data/graph" "$proof_data/runtime"
 
-docker build --build-arg TARGETARCH="$architecture" -f apps/logseq/helper/Dockerfile -t "$LOGSEQ_PROOF_HELPER_IMAGE" .
-docker build -f apps/logseq/mcp/Dockerfile -t "$LOGSEQ_PROOF_MCP_IMAGE" .
+if [ "${LOGSEQ_PROOF_PULL_ONLY:-0}" = 1 ]; then
+  for image in "$LOGSEQ_PROOF_HELPER_IMAGE" "$LOGSEQ_PROOF_MCP_IMAGE"; do
+    case "$image" in
+      ghcr.io/jacob-stokes/scholarserver-logseq-*@sha256:*) docker pull "$image" ;;
+      *) echo "Release verification requires an immutable published image" >&2; exit 1 ;;
+    esac
+  done
+else
+  docker build --build-arg TARGETARCH="$architecture" -f apps/logseq/helper/Dockerfile -t "$LOGSEQ_PROOF_HELPER_IMAGE" .
+  docker build -f apps/logseq/mcp/Dockerfile -t "$LOGSEQ_PROOF_MCP_IMAGE" .
+fi
 for image in "$LOGSEQ_PROOF_HELPER_IMAGE" "$LOGSEQ_PROOF_MCP_IMAGE"; do
   actual=$(docker image inspect "$image" --format '{{.Architecture}}')
   if [ "$actual" != "$architecture" ]; then

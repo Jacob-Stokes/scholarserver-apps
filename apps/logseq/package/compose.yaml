@@ -1,0 +1,136 @@
+services:
+  helper:
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:484f86f884af813f8d891633a9cbaaf01c5a7cf97cc7084c5025087e3d053cb8
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 1536m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    networks:
+      - instance
+      - egress
+      - edge
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 18
+    environment:
+      SCHOLARSERVER_VARIANT: ${SCHOLARSERVER_VARIANT}
+    expose:
+      - "8081"
+    volumes:
+      - ${SCHOLARSERVER_DATA_GRAPH}:/home/node/logseq
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+      - ${SCHOLARSERVER_DATA_SYNC_CONFIG}:/sync-config
+  mcp:
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:a530dcb8944813f09fb07cae90d5cffd01518a10d43a75443daa914940425c8d
+    user: 1000:1000
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    networks:
+      instance:
+        aliases:
+          - logseq-mcp
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:7013/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 18
+    expose:
+      - "7013"
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
+  sync:
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:46a51cf9720d91f9ed7031f281030de08eb160521ed31d54733fdda0b7b97425
+    user: 65532:65532
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    networks:
+      - instance
+      - egress
+    healthcheck:
+      test:
+        - CMD
+        - /nodejs/bin/node
+        - -e
+        - fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 18
+    expose:
+      - "8787"
+    volumes:
+      - ${SCHOLARSERVER_DATA_SYNC}:/app/data
+      - ${SCHOLARSERVER_DATA_SYNC_CONFIG}:/sync-config:ro
+  editor:
+    image: ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d
+    user: 101:101
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    networks:
+      - instance
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - --spider
+        - http://127.0.0.1:8080/
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 18
+    expose:
+      - "8080"
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false
+  edge:
+    name: scholarserver-edge
+    external: true
