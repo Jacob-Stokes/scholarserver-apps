@@ -82,6 +82,24 @@ and temporary build credentials were removed. No paid test server was created.
 The published package remains available in the catalog. Public AI attachment and
 complete managed recovery still need a compatible Gateway deployment test.
 
+## Gateway follow-up, 7 September 2026
+
+Core commit ac75f9e aligns the development Compose identity and managed paths
+with the executor's existing installation-scoped discovery rules. Freelove was
+migrated without reinstalling or changing existing application data. A fresh
+disposable installation attached automatically, exposing a second issue:
+FreshRSS's bare tool names were rejected by the Gateway namespace allowlist.
+Direct SDK tests had not exercised that allowlist. Package 0.1.0-beta.3 (catalog
+v0.2.29) prefixes all six tools with freshrss_; source and native tests now assert
+that contract explicitly. Both native architectures passed again.
+
+The public package updated through the normal Manager API. The running Gateway
+reported all six tools available alongside the existing integrations. A subsequent
+managed application backup and restore completed with a committed, done journal;
+an authenticated feed request from the Gateway container succeeded afterward.
+This supersedes the earlier layout-blocked recovery result, but does not establish
+public OAuth/AI-client or cross-host disaster-recovery coverage.
+
 ## References
 
 - https://github.com/FreshRSS/FreshRSS/tree/1.29.1/Docker
