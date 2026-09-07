@@ -1,0 +1,37 @@
+# Deliberately invalid images: review topology only. DO NOT RUN.
+# Native hardening, secret-file settings and health checks remain release gates.
+services:
+  paperless:
+    image: "UNRESOLVED_PAPERLESS_IMAGE_DIGEST_DO_NOT_RUN"
+    networks: [internal]
+    environment:
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_REDIS: redis://broker:6379
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - consume:/usr/src/paperless/consume
+      - export:/usr/src/paperless/export
+  db:
+    image: "UNRESOLVED_POSTGRES_IMAGE_DIGEST_DO_NOT_RUN"
+    networks: [internal]
+    volumes: ["database:/var/lib/postgresql"]
+  broker:
+    image: "UNRESOLVED_VALKEY_IMAGE_DIGEST_DO_NOT_RUN"
+    networks: [internal]
+    volumes: ["broker:/data"]
+  integration:
+    image: "UNRESOLVED_INTEGRATION_IMAGE_DIGEST_DO_NOT_RUN"
+    networks: [internal]
+    volumes: ["runtime:/runtime:ro"]
+networks:
+  internal: { internal: true }
+volumes:
+  data: {}
+  media: {}
+  consume: {}
+  export: {}
+  database: {}
+  broker: {}
+  runtime: {}

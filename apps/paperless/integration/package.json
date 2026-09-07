@@ -1,0 +1,14 @@
+{
+  "name": "@scholarserver/paperless-integration",
+  "version": "0.0.0-draft.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "mcp-common": "file:../../../packages/mcp-common",
+    "zod": "3.25.76"
+  }
+}
