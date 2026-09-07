@@ -45,7 +45,11 @@ try {
   const readerHtml = await readerPage.text();
   assert.match(readerHtml, /FreshRSS/, "reader login page loads through the proxy");
   if (process.env.SCHOLARSERVER_INSTANCE_ID) {
-    assert.match(readerHtml, /\/apps\/freshrss-proof\/endpoints\/reader\/i\//, "login links retain the managed subpath");
+    assert.match(
+      readerHtml,
+      /\/apps\/freshrss-proof\/endpoints\/reader\/i\//,
+      "login links retain the managed subpath"
+    );
     assert.doesNotMatch(readerHtml, /href="\/i\//, "login links never escape to the dashboard root");
   }
   const api = new FreshRssClient("http://freshrss:8080", "/runtime/account.json");
