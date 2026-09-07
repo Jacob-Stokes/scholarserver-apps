@@ -1,5 +1,10 @@
 export const fontOptions = [
   {
+    id: "source",
+    name: "Source Sans 3 (default)",
+    family: '"Source Sans 3", ui-sans-serif, system-ui, sans-serif'
+  },
+  {
     id: "system",
     name: "System default",
     family: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
@@ -14,10 +19,10 @@ export const fontOptions = [
 export type FontChoice = (typeof fontOptions)[number]["id"];
 const storageKey = "scholarserver.font.v1";
 const changeEvent = "scholarserver:font";
-let selectedFont: FontChoice = "system";
+let selectedFont: FontChoice = "source";
 
 export function parseFont(value: string | null): FontChoice {
-  return fontOptions.find((font) => font.id === value)?.id ?? "system";
+  return fontOptions.find((font) => font.id === value)?.id ?? "source";
 }
 
 export function readFont(): FontChoice {

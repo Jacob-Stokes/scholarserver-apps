@@ -212,6 +212,7 @@ try {
   for (const app of apps) {
     const name = app[0].toUpperCase() + app.slice(1);
     for (const [font, family] of [
+      ["source", "Source Sans 3"],
       ["computer-modern", "Computer Modern Sans"],
       ["nebula", "Nebula Sans"]
     ]) {
@@ -237,6 +238,17 @@ try {
         );
       }, family);
       assert.ok(fontReady, `${app}: ${family} actually loads from its own assets`);
+      assert.ok(
+        await page.getByRole("heading", { name, exact: true }).evaluate(async (element) => {
+          const faces = await document.fonts.load('400 32px "Source Serif 4"');
+          return (
+            faces.length > 0 &&
+            faces.every((face) => face.status === "loaded") &&
+            getComputedStyle(element).fontFamily.includes("Source Serif 4")
+          );
+        }),
+        `${app}: shared Source headings load`
+      );
     }
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
