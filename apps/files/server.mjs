@@ -39,9 +39,9 @@ async function serviceToken(directory) {
   }
 }
 
-export async function startFiles({ roots, runtime, port = 7014, host = "0.0.0.0" }) {
+export async function startFiles({ roots, runtime, port = 7014, host = "0.0.0.0", onFailure }) {
   const token = await serviceToken(runtime);
-  const backend = await connectFilesystem(roots);
+  const backend = await connectFilesystem(roots, onFailure);
   const transports = new Set();
   let active = 0;
   const http = createServer(async (request, response) => {
@@ -136,6 +136,12 @@ export async function startFiles({ roots, runtime, port = 7014, host = "0.0.0.0"
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.umask(0o077);
-  const app = await startFiles({ roots: ["/shared/read-only", "/shared/read-write"], runtime: "/runtime" });
+  const app = await startFiles({
+    roots: ["/shared/read-only", "/shared/read-write"],
+    runtime: "/runtime",
+    // Docker restarts the whole service after a worker failure. Persistent data
+    // and credentials survive; requests with unknown outcomes are never replayed.
+    onFailure: () => setTimeout(() => process.exit(1), 100)
+  });
   for (const signal of ["SIGTERM", "SIGINT"]) process.once(signal, () => void app.close().then(() => process.exit(0)));
 }

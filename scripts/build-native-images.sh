@@ -25,6 +25,7 @@ build() {
   python3 scripts/check-image-contents.py "$target"
   if [ "$image" = files ]; then
     bash apps/files/test-container.sh "$target"
+    bash apps/files/test-restart.sh "$target"
   fi
   docker push "$target"
   case "$image" in

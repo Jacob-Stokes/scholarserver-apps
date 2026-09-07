@@ -18,7 +18,7 @@ const supportedTools = new Set([
   "list_allowed_directories"
 ]);
 
-export async function connectFilesystem(roots) {
+export async function connectFilesystem(roots, onFailure = () => {}) {
   // Never advertise Roots: remote clients must not replace the server's allowlist.
   const client = new Client({ name: "scholarserver-files", version: "0.1.0" }, { capabilities: {} });
   const transport = new StdioClientTransport({
@@ -34,6 +34,11 @@ export async function connectFilesystem(roots) {
   const available = tools.filter((tool) => supportedTools.has(tool.name));
   let pending = 0;
   let unavailable = false;
+  let closing = false;
+  client.onclose = () => {
+    unavailable = true;
+    if (!closing) onFailure();
+  };
   let queue = Promise.resolve();
   return {
     tools: available.map((tool) => ({ ...tool, name: `files_${tool.name}` })),
@@ -69,6 +74,9 @@ export async function connectFilesystem(roots) {
       if (unavailable) throw new Error("Files worker is unavailable");
       await client.ping({ timeout: 5_000 });
     },
-    close: () => client.close()
+    close: async () => {
+      closing = true;
+      await client.close();
+    }
   };
 }
