@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 4
   integration:
-    image: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:3afa653e96f911e6d730148e1aa8b4449a7d759d1e6126f492692913f23ded5c
+    image: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:9b9e6000abfe44bf65e362e3667ceb05dbb2e6b10db2302a00fe9fbc6204a789
     restart: unless-stopped
     user: "1000:1000"
     read_only: true
