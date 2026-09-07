@@ -11,6 +11,7 @@ RUN npm run build && npm ci --omit=dev --ignore-scripts --no-audit --no-fund --i
 
 FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 WORKDIR /app
+COPY LICENSE apps/logseq/DISTRIBUTION.md /usr/share/doc/scholarserver-logseq/
 COPY --from=build /build/apps/logseq/mcp/node_modules ./node_modules
 COPY --from=build /build/apps/logseq/mcp/dist ./dist
 COPY apps/logseq/mcp/package.json ./
