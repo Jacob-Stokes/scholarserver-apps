@@ -3,6 +3,10 @@
 A private reading list for journal feeds, researchers and websites. No paid
 FreshRSS subscription or external account is needed.
 
+Beta requirement: use a current ScholarServer Manager build with native
+application-form support (core commit `d005b98` or later). Older development
+builds may display the reader but reject its sign-in form.
+
 After installation, choose a username and password, save a reader address, then
 open FreshRSS. Add subscriptions there or import an OPML file from another reader.
 The server checks feeds every 30 minutes. FreshRSS's own interface also refreshes

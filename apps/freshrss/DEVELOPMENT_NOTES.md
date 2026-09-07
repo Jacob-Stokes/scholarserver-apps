@@ -36,9 +36,28 @@ not retain its object type. Keep the input object schema explicit and validate
 the cross-field state choice in the handler. A regression checks every exported
 schema through the actual converter.
 
-Native ARM64, final digest publication and the Manager catalog browser flow are
-still in progress. Only disposable data is used; Resolution's real FreshRSS is
-unrelated and untouched.
+Native AMD64 and ARM64 passed the same recovery, six-tool MCP, restart and
+stopped-filesystem restore tests. Both final images are public and digest-pinned.
+The real Freelove browser flow passed catalog installation, account creation,
+private address selection, native login and subscription creation. All six MCP
+tools then used that browser-created feed; its read/star changes appeared in the
+reader. Only disposable data was used; existing FreshRSS installations were not
+touched.
+
+The real browser proof caught two issues missed by the initial container test:
+compressed responses must not retain compression headers after the outer proxy
+decodes them, and the upstream base URL must be inferred from our trusted proxy
+headers rather than hard-coded to an internal hostname. Native tests now cover
+encoding and subpath links. Manager also needed generic native-form forwarding
+and exact same-origin Fetch Metadata support for privacy-preserving forms;
+core commit d005b98 covers that without application-specific code.
+
+Outstanding: Freelove's older development Gateway uses a different Compose
+project from the production executor's discovery contract. Automatic Gateway
+attachment fails there for new apps, including this candidate. The authenticated
+FreshRSS MCP endpoint itself passed, but a public ChatGPT/Claude OAuth session
+was not verified. Public Cloudflare and the optional Authentik layer were not
+exercised in this pass. This is a beta, not a full release-readiness claim.
 
 ## References
 
