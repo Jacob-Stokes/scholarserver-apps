@@ -130,6 +130,14 @@ dark title contrast, mobile overflow, original-mode restoration and failed-save
 draft preservation/retry. It uses synthetic feeds and a test-only account.
 No real FreshRSS data or unrelated host services were changed.
 
+Published as package 0.1.0-beta.4 in catalog v0.2.30, with digest-pinned native
+images. Anonymous image-manifest access and the public bundle checksum passed;
+Freelove imported the package through its ordinary catalog refresh. Core commit
+e87c34b fixes removed-instance history pinning an obsolete catalog version and
+was deployed to the existing Manager without changing application versions or
+settings. This appearance pass used direct disposable reader containers, not a
+new full-platform installation or a new public OAuth acceptance test.
+
 ## References
 
 - https://github.com/FreshRSS/FreshRSS/tree/1.29.1/Docker
