@@ -86,6 +86,12 @@ edges; app rules and secrets do not move into shared UI or Manager.
 
 ## Package contract
 
+- Native web/desktop interfaces should declare `launchLabel` on their endpoint
+  when targeting a Manager that supports application-card shortcuts. Use the
+  shared endpoint-access picker in setup; never hardcode addresses. Do not label
+  MCP, databases, sync APIs or the setup UI as launchable. Publish new immutable
+  versions with compatible Manager requirements; see `docs/application-launch-links.md`.
+
 - Upcoming app releases can provide `presentation.details` for the catalog guide:
   plain-text description, tags, typed official/package/upstream/license links and
   an optional direct demo video. See core `docs/catalog-details.md` for the schema
