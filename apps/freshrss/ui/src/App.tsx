@@ -2,6 +2,7 @@ import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { type FormEvent, useEffect, useState } from "react";
 import { ReaderAccess } from "./ReaderAccess";
+import { ReaderAppearance } from "./ReaderAppearance";
 
 type Status = { phase: string; ready: boolean; username: string | null; error?: string; lastRefresh?: number };
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
@@ -83,6 +84,7 @@ export function App() {
           current={status?.ready ? "ready" : "account"}
         />
       ) : null}
+      {status?.ready && tab === "configuration" ? <ReaderAppearance base={base} /> : null}
       {status?.ready ? (
         <section className="ss-card ss-stack">
           <h2>Your reading list</h2>

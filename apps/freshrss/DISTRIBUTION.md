@@ -1,7 +1,7 @@
 # FreshRSS distribution
 
 FreshRSS is supplied by the FreshRSS project, not rebuilt by ScholarServer.
-Our reader image adds startup scripts on top of the official 1.29.1 image pinned
+Our reader image adds startup scripts and an optional appearance extension on top of the official 1.29.1 image pinned
 by SHA-256 digest, without modifying its software. FreshRSS is
 AGPL-3.0; its source and licence are available at:
 https://github.com/FreshRSS/FreshRSS/tree/1.29.1
@@ -10,6 +10,13 @@ ScholarServer distributes the separate setup/UI/MCP integration and its startup
 adapter under this repository's licence. The adapter invokes upstream PHP code
 on the user's server. Upstream notices remain in the unmodified upstream image.
 The separate integration image does not embed FreshRSS or access its database directly.
+
+The appearance extension uses FreshRSS's extension hooks and CSS variables;
+it does not modify FreshRSS source. Shared ScholarServer palette code is MIT.
+Bundled Source, Computer Modern and Nebula fonts retain their SIL Open Font
+License notices in `/usr/share/doc/scholarserver-freshrss/fonts/`.
+Choosing FreshRSS original disables the injected appearance assets without
+overwriting native display preferences.
 
 The reader stores subscription URLs, article text, reading state and credentials
 on the user's server. Feed providers receive requests from that server. Article

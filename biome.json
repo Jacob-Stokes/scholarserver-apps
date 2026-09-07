@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "files": {
-    "includes": ["**", "!**/dist/**", "!**/node_modules/**", "!vendor/**", "!**/*.css", "!apps/zotero/desktop/plugin/**"]
+    "includes": [
+      "**",
+      "!**/dist/**",
+      "!**/reader-dist/**",
+      "!**/node_modules/**",
+      "!vendor/**",
+      "!**/*.css",
+      "!apps/zotero/desktop/plugin/**"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -43,6 +43,7 @@ while (true) {
                 // Infer the browser origin and subpath from our proxy headers.
                 // A fixed internal URL breaks login links behind Manager.
                 command(['php', 'cli/reconfigure.php', '--base-url', '']);
+                command(['php', '/opt/scholarserver/appearance.php']);
                 $addressConfigured = true;
             }
             if (time() - $lastRefresh >= 1800 || is_file('/runtime/refresh-request')) {

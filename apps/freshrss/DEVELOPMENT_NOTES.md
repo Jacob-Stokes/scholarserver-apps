@@ -100,8 +100,39 @@ an authenticated feed request from the Gateway container succeeded afterward.
 This supersedes the earlier layout-blocked recovery result, but does not establish
 public OAuth/AI-client or cross-host disaster-recovery coverage.
 
+## Optional reader appearance, 7 September 2026
+
+The thin reader image now includes a normal FreshRSS system extension. It appends
+our built CSS/JS through `FreshrssInit`; upstream source and native display
+preferences are untouched. Configuration owns one persisted choice in runtime
+data: ScholarServer (default) or FreshRSS original. The latter appends no assets.
+Feeds, reading state, extensions and native logo configuration are not replaced.
+Runtime data is already included in the existing backup contract.
+
+Colours and fonts come from the shared UI build snapshot, not a second palette
+table. They follow this browser's preference when the reader shares the dashboard
+origin. An independently published hostname has separate browser storage and uses
+the default palette; this is not server-wide theme propagation. Native Origine
+is the supported base for matching. Arbitrary third-party FreshRSS themes are not
+promised to match; choose FreshRSS original to use them unchanged.
+
+Two integration details mattered: FreshRSS indexes enabled extensions by their
+metadata name, not their PHP entrypoint; and its base CSS has separate `--frss-`
+colour variables in addition to Origine's variables. A dark-mode screenshot
+caught black article titles; the browser proof now checks their contrast.
+Branding is DOM-only because mutating system configuration during rendering could
+otherwise be persisted by a later unrelated native settings save.
+
+Native AMD64/ARM64 tests cover default injection, original-mode removal, six MCP
+tools, interrupted setup, restart and stopped-filesystem recovery. The disposable
+browser proof covers native login, real font downloads, live palette changes,
+dark title contrast, mobile overflow, original-mode restoration and failed-save
+draft preservation/retry. It uses synthetic feeds and a test-only account.
+No real FreshRSS data or unrelated host services were changed.
+
 ## References
 
 - https://github.com/FreshRSS/FreshRSS/tree/1.29.1/Docker
 - https://github.com/FreshRSS/FreshRSS/blob/1.29.1/cli/create-user.php
 - https://freshrss.github.io/FreshRSS/en/developers/06_GoogleReader_API.html
+- https://freshrss.github.io/FreshRSS/en/admins/15_extensions.html

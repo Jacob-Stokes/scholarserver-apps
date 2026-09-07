@@ -60,7 +60,10 @@ function reader(request, response, suffix) {
       timeout: 30_000
     },
     (incoming) => {
-      const resultHeaders = { ...incoming.headers, "cache-control": "no-store" };
+      const resultHeaders = {
+        ...incoming.headers,
+        "cache-control": "no-store"
+      };
       const location = resultHeaders.location;
       if (location?.startsWith(upstream)) resultHeaders.location = `${prefix}${location.slice(upstream.length)}`;
       else if (location?.startsWith("/") && prefix && !location.startsWith(prefix))
@@ -75,7 +78,10 @@ function reader(request, response, suffix) {
   );
   outgoing.on("timeout", () => outgoing.destroy());
   outgoing.on("error", () => {
-    if (!response.headersSent) json(response, 502, { error: "The reader is starting. Try again shortly." });
+    if (!response.headersSent)
+      json(response, 502, {
+        error: "The reader is starting. Try again shortly."
+      });
     else response.end();
   });
   request.pipe(outgoing);
@@ -86,6 +92,25 @@ createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { healthy: true });
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await setup.status());
+    if (url.pathname === "/api/appearance") {
+      if (request.method === "GET") return json(response, 200, await setup.appearance());
+      if (request.method !== "PUT" || request.headers["content-type"] !== "application/json")
+        return json(response, 403, {
+          error: "Use the appearance setting in Configuration."
+        });
+      let data = "";
+      for await (const chunk of request) {
+        data += chunk;
+        if (data.length > 1024) return json(response, 413, { error: "The request is too large." });
+      }
+      try {
+        return json(response, 200, await setup.saveAppearance(JSON.parse(data)));
+      } catch {
+        return json(response, 400, {
+          error: "Could not save the appearance. Choose an option and try again."
+        });
+      }
+    }
     if (request.method === "POST" && url.pathname === "/api/connect") {
       if (request.headers["content-type"] !== "application/json")
         return json(response, 403, { error: "Use the setup form." });
@@ -103,21 +128,31 @@ createServer(async (request, response) => {
         });
       }
     }
-    if (request.method !== "GET") return json(response, 405, { error: "Use the ScholarServer setup action." });
+    if (request.method !== "GET")
+      return json(response, 405, {
+        error: "Use the ScholarServer setup action."
+      });
     const relative = url.pathname.replace(/^\/+/, "");
     const file = path.resolve(ui, relative);
     if (!file.startsWith(`${ui}/`) && file !== ui) return json(response, 404, { error: "Not found." });
     const isAsset = relative.startsWith("assets/");
     const target = isAsset ? file : path.join(ui, "index.html");
     if (!(await stat(target)).isFile()) return json(response, 404, { error: "Not found." });
-    const types = { ".js": "text/javascript", ".css": "text/css", ".woff2": "font/woff2", ".html": "text/html" };
+    const types = {
+      ".js": "text/javascript",
+      ".css": "text/css",
+      ".woff2": "font/woff2",
+      ".html": "text/html"
+    };
     response.writeHead(200, {
       "content-type": types[path.extname(target)] ?? "application/octet-stream",
       "x-content-type-options": "nosniff"
     });
     response.end(await readFile(target));
   } catch {
-    json(response, 500, { error: "FreshRSS is not ready. Retry shortly; your data has been kept." });
+    json(response, 500, {
+      error: "FreshRSS is not ready. Retry shortly; your data has been kept."
+    });
   }
 }).listen(Number(process.env.PORT ?? 8080), "0.0.0.0");
 

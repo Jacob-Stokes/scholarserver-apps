@@ -24,7 +24,10 @@ try {
   const response = await fetch(`${origin}/api/connect`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ username: "researcher", password: "Disposable-Reader-Only-2026" })
+    body: JSON.stringify({
+      username: "researcher",
+      password: "Disposable-Reader-Only-2026"
+    })
   });
   assert.equal(response.status, 202);
   let ready = false;
@@ -44,6 +47,25 @@ try {
   assert.equal(readerPage.headers.get("content-encoding"), null, "reader proxy supplies an uncompressed body");
   const readerHtml = await readerPage.text();
   assert.match(readerHtml, /FreshRSS/, "reader login page loads through the proxy");
+  assert.match(readerHtml, /themes\/ScholarServer\/theme\.css/, "upstream extension applies appearance by default");
+  assert.match(readerHtml, /themes\/ScholarServer\/theme\.js/, "reader loads its optional branding adapter");
+  const appearance = await fetch(`${origin}/api/appearance`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ style: "original" })
+  });
+  assert.equal(appearance.status, 200);
+  const originalHtml = await (await fetch("http://127.0.0.1:8082/i/")).text();
+  assert.doesNotMatch(
+    originalHtml,
+    /themes\/ScholarServer|ss-reader-brand/,
+    "original mode restores native markup with no injected styles"
+  );
+  await fetch(`${origin}/api/appearance`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ style: "scholarserver" })
+  });
   if (process.env.SCHOLARSERVER_INSTANCE_ID) {
     assert.match(
       readerHtml,
@@ -65,7 +87,10 @@ try {
   assert.equal(tools.tools.length, 6);
   for (const tool of tools.tools) assert.match(tool.name, /^freshrss_[a-z_]+$/);
   async function call(name, args = {}) {
-    const result = await mcp.callTool({ name: `freshrss_${name}`, arguments: args });
+    const result = await mcp.callTool({
+      name: `freshrss_${name}`,
+      arguments: args
+    });
     assert.ok(!result.isError, `${name} succeeds`);
     return JSON.parse(result.content[0].text);
   }

@@ -46,3 +46,17 @@ test("a stale worker cannot report ready", async (t) => {
   await writeFile(`${directory}/worker-status.json`, JSON.stringify({ ready: true, phase: "ready" }));
   assert.equal((await setup.status()).ready, false);
 });
+
+test("appearance defaults to ScholarServer and persists independently of account credentials", async (t) => {
+  const { directory, setup } = await fixture(t);
+  await setup.connect({ username: "researcher", password: "Synthetic-long-password" });
+  const account = await readFile(`${directory}/account.json`, "utf8");
+  assert.deepEqual(await setup.appearance(), { style: "scholarserver" });
+  await setup.saveAppearance({ style: "original" });
+  assert.deepEqual(await new Setup(directory).appearance(), { style: "original" });
+  await assert.rejects(setup.saveAppearance({ style: "custom", css: "untrusted" }));
+  assert.deepEqual(await setup.appearance(), { style: "original" });
+  await setup.saveAppearance({ style: "scholarserver" });
+  assert.equal(await readFile(`${directory}/account.json`, "utf8"), account);
+  assert.equal((await stat(`${directory}/appearance.json`)).mode & 0o777, 0o600);
+});

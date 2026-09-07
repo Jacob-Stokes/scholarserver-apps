@@ -54,6 +54,17 @@ export class Setup {
     }
     return { ...worker, username: account?.username ?? null };
   }
+  async appearance() {
+    return readJson(`${this.runtime}/appearance.json`, { style: "scholarserver" });
+  }
+  async saveAppearance(input) {
+    const settings = z
+      .object({ style: z.enum(["scholarserver", "original"]) })
+      .strict()
+      .parse(input);
+    await atomicJson(`${this.runtime}/appearance.json`, settings);
+    return settings;
+  }
   connect(input) {
     const operation = this.pending.then(() => this.saveAccount(input));
     this.pending = operation.catch(() => {});

@@ -95,6 +95,10 @@ release checklist or proof that a particular application is ready.
   namespace in definitions, then verify actual Gateway discovery and authenticated
   calls separately. Include duplicate-instance ownership checks: tool names,
   network aliases and credentials must not collide between copies.
+- Native application theming should use upstream extension hooks and shared UI
+  tokens, not source patches or a second palette table. Make it reversible without
+  changing native preferences. Browser-local preferences only cross pages on the
+  same origin; do not promise automatic inheritance at a different hostname.
 
 Record a short observation, why it matters, the decision or fix, and its evidence.
 Link to app notes/tests instead of duplicating detailed version matrices here.

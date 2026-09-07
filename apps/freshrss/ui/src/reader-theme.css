@@ -1,0 +1,142 @@
+/* Origine's public colour variables, followed by small layout-independent rules.
+   Do not recolour feed images or hide FreshRSS controls. */
+:root.ss-reader {
+  --frss-font-color-dark: var(--ss-reader-foreground);
+  --frss-font-color-grey-dark: var(--ss-reader-muted-foreground);
+  --frss-font-color-grey-light: var(--ss-reader-muted-foreground);
+  --frss-background-color: var(--ss-reader-card);
+  --frss-background-color-middle: var(--ss-reader-secondary);
+  --frss-background-color-dark: var(--ss-reader-muted);
+  --frss-border-color: var(--ss-reader-border);
+  --background-color-light-gradient1: var(--ss-reader-card);
+  --background-color-light-gradient2: var(--ss-reader-card);
+  --background-color-light: var(--ss-reader-card);
+  --background-color-light-shadowed: var(--ss-reader-page);
+  --background-color-light-shadowed-transparent: var(--ss-reader-page);
+  --background-color-grey: var(--ss-reader-page);
+  --background-color-hover: var(--ss-reader-secondary);
+  --unread-article-background-color: var(--ss-reader-secondary);
+  --unread-article-background-color-hover: var(--ss-reader-accent);
+  --unread-article-border-color: var(--ss-reader-primary);
+  --favorite-article-background-color: var(--ss-reader-accent);
+  --favorite-article-background-color-hover: var(--ss-reader-secondary);
+  --favorite-article-border-color: var(--ss-reader-theme-ornament);
+  --contrast-background-color: var(--ss-reader-primary);
+  --contrast-background-color-gradient: var(--ss-reader-primary);
+  --contrast-background-color-hover: var(--ss-reader-primary);
+  --contrast-background-color-active: var(--ss-reader-primary);
+  --contrast-border-color: var(--ss-reader-primary);
+  --contrast-border-color-active: var(--ss-reader-primary);
+  --contrast-background-font-color: var(--ss-reader-primary-foreground);
+  --font-color: var(--ss-reader-foreground);
+  --font-color-grey: var(--ss-reader-muted-foreground);
+  --font-color-light-shadowed: var(--ss-reader-muted-foreground);
+  --font-color-link: var(--ss-reader-primary);
+  --font-color-link-hover: var(--ss-reader-primary);
+  --border-color: var(--ss-reader-border);
+  --border-color-shadow-side: var(--ss-reader-border);
+  --form-element-font-color-focus: var(--ss-reader-primary);
+  --form-element-border-color-focus: var(--ss-reader-primary);
+  --form-element-focus-box-shadow-color-inset: var(--ss-reader-secondary);
+  --text-shadow-color: transparent;
+  --text-shadow-color-dark: transparent;
+  --notification-good-background-color: var(--ss-reader-secondary);
+  --notification-good-border-color: var(--ss-reader-border);
+  --notification-good-font-color: var(--ss-reader-foreground);
+}
+.ss-reader body,
+.ss-reader input,
+.ss-reader select,
+.ss-reader textarea,
+.ss-reader button {
+  font-family: var(--ss-font-sans, "Source Sans 3", system-ui, sans-serif);
+}
+.ss-reader body {
+  background: var(--ss-reader-page);
+  color: var(--ss-reader-foreground);
+}
+.ss-reader .header {
+  background: var(--ss-reader-card);
+  border-bottom: 1px solid var(--ss-reader-border);
+  box-shadow: none;
+}
+.ss-reader .aside {
+  background: var(--ss-reader-sidebar);
+}
+.ss-reader .btn {
+  border-radius: 6px;
+  text-shadow: none;
+  box-shadow: none;
+}
+.ss-reader .btn-important {
+  background: var(--ss-reader-primary);
+  color: var(--ss-reader-primary-foreground);
+}
+.ss-reader input,
+.ss-reader select,
+.ss-reader textarea {
+  background-color: var(--ss-reader-card);
+  color: var(--ss-reader-foreground);
+}
+.ss-reader :focus-visible {
+  outline: 2px solid var(--ss-reader-primary);
+  outline-offset: 3px;
+}
+.ss-reader .box,
+.ss-reader .dropdown-menu {
+  background-color: var(--ss-reader-card);
+  color: var(--ss-reader-foreground);
+  border-color: var(--ss-reader-border);
+}
+.ss-reader .flux .flux_header {
+  background-color: var(--ss-reader-card);
+  color: var(--ss-reader-foreground);
+}
+.ss-reader .flux.not_read .flux_header {
+  background-color: var(--ss-reader-secondary);
+}
+.ss-reader .flux .content {
+  background-color: var(--ss-reader-card);
+  color: var(--ss-reader-foreground);
+}
+.ss-reader .flux .content h1,
+.ss-reader .flux .content h2,
+.ss-reader .flux .content h3 {
+  font-family: "Source Serif 4", Georgia, serif;
+  letter-spacing: normal;
+}
+.ss-reader[data-mode="dark"] .icon {
+  filter: brightness(0) invert(0.85);
+}
+.ss-reader .prompt.alert {
+  background: var(--ss-reader-secondary);
+  color: var(--ss-reader-foreground);
+  border-color: var(--ss-reader-border);
+}
+.ss-reader-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font:
+    600 16px/1.1 "Source Sans 3",
+    sans-serif;
+  color: var(--ss-reader-foreground, #18211d);
+  text-align: left;
+}
+.ss-reader-brand small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 3px;
+  color: var(--ss-reader-muted-foreground, #4b554f);
+}
+.ss-reader-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--ss-reader-primary, #194c32);
+  color: var(--ss-reader-primary-foreground, white);
+  font-size: 21px;
+}

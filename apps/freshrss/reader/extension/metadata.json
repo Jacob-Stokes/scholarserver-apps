@@ -1,0 +1,8 @@
+{
+  "name": "ScholarServer appearance",
+  "author": "ScholarServer",
+  "description": "Optional ScholarServer colours and branding. Change this in ScholarServer Configuration.",
+  "version": "0.1.0",
+  "entrypoint": "ScholarServerAppearance",
+  "type": "system"
+}
