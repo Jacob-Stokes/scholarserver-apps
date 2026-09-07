@@ -53,6 +53,11 @@ or YAML inheritance to eliminate small, understandable differences between apps.
 - Build only for the native host architecture locally.
 - Never add QEMU, Rosetta, or another emulation path to release workflows.
 - Never commit credentials, enrollment requests, generated service tokens, or vault data.
+- Use existing development resources for ordinary work. Create paid disposable
+  servers only for necessary full production-like end-to-end tests, record their
+  exact IDs, then delete them and verify deletion after testing. Never retain a
+  paid test server for a UI preview. Adventure is excluded from cleanup; never
+  reinstall Freelove or Resolution for tests.
 - Images referenced by released package manifests must use immutable SHA-256 digests.
 
 ## Package contract
