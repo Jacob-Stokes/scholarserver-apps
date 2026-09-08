@@ -6,6 +6,9 @@ to do and what happens next. Assume the researcher is capable.
 
 - Describe concrete actions. Prefer “Convert existing PDFs” to “Backfill” and
   “Check attachment access” to “Resolve an attachment”.
+- Address the reader directly: “Press Enter to open”, not “Enter opens it”.
+  Avoid making buttons or links perform the reader's action. Keep factual status
+  descriptions such as “The download failed”; this is not a ban on inanimate subjects.
 - Remove repeated encouragement, vague reassurance and internal implementation
   terms that do not help the user act.
 - Preserve prerequisites, permissions, costs, licensing notices, data-loss

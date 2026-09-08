@@ -645,8 +645,7 @@ export function App() {
             >
               <div className="ss-callout ss-stack">
                 <div>
-                  <strong>One confirmation remains.</strong> ScholarServer opens the private Zotero desktop in a new
-                  tab. Approve the request shown inside Zotero.
+                  Open the private Zotero desktop in a new tab, then approve the request inside Zotero.
                 </div>
                 <div className="ss-form-actions">
                   {desktopAccessSelection?.url ? (

@@ -65,7 +65,7 @@ export function EndpointAccessSelector({
             <strong>Require ScholarServer sign-in</strong>
             <small>
               {selected.authentication.available
-                ? "People must sign in before this application interface opens. This does not affect private connections between containers."
+                ? "Sign in to use this application interface. Private connections between containers are unaffected."
                 : "Finish setting up ScholarServer sign-in in Access before enabling this layer."}
             </small>
           </span>
