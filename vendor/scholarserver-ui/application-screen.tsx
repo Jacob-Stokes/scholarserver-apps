@@ -1,4 +1,5 @@
 import React from "react";
+import { ScholarServerLogo } from "./logo.tsx";
 import { MotionSurface } from "./motion.tsx";
 
 export interface ApplicationTab<T extends string> {
@@ -37,7 +38,7 @@ export function ApplicationScreen<T extends string>({
       <header className="ss-app-header">
         <div className="ss-app-header-inner">
           <div className="ss-brand">
-            <div className="ss-brand-mark">S</div>
+            <ScholarServerLogo className="ss-brand-mark" />
             <div className="ss-brand-copy">
               <p className="ss-brand-title">ScholarServer</p>
               <p className="ss-brand-context">{name}</p>

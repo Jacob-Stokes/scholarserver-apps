@@ -146,9 +146,7 @@ input, select, textarea {
   height: 2.25rem;
   place-items: center;
   border-radius: 0.65rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 700;
+  object-fit: contain;
 }
 .ss-brand-title {
   margin: 0;
