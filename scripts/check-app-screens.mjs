@@ -540,6 +540,30 @@ try {
   console.log("Obsidian: completed installation supersedes old polling without replacing the folder draft");
   obsidianStatus = null;
 
+  let zoteroReads = 0;
+  let releaseZoteroStatus;
+  await page.route("**/apps/zotero/api/status", async (route) => {
+    const read = ++zoteroReads;
+    if (read === 2)
+      await new Promise((resolve) => {
+        releaseZoteroStatus = resolve;
+      });
+    await route
+      .fulfill({ json: { ...zoteroStatus(true), username: read > 2 ? "New account" : "Old account" } })
+      .catch(() => {});
+  });
+  await page.goto(`${origin}/apps/zotero/overview`);
+  await page.getByText("Old account", { exact: true }).waitFor();
+  await page.waitForTimeout(5500);
+  assert.equal(zoteroReads, 2);
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByText("New account", { exact: true }).waitFor();
+  releaseZoteroStatus();
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("New account", { exact: true }).isVisible(), true);
+  await page.unroute("**/apps/zotero/api/status");
+  console.log("Zotero: explicit refresh supersedes an older in-flight poll");
+
   // Online library: account -> attachment choice -> failed save -> ready -> reload.
   status = zoteroStatus(true);
   const onlineCalls = calls.length;

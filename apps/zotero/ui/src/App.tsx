@@ -124,12 +124,18 @@ export function App() {
   const [setupStage, setSetupStage] = useState<SetupStage>("account");
   const setupInitialized = useRef(false);
   const settingsInitialized = useRef(false);
+  const statusRequest = useRef<AbortController | null>(null);
   const connectionMode = status?.connectionMode;
   const online = connectionMode === "online-library";
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (poll = false) => {
+    if (poll && statusRequest.current) return;
+    statusRequest.current?.abort();
+    const controller = new AbortController();
+    statusRequest.current = controller;
     try {
-      const next = await request<Status>("status");
+      const next = await request<Status>("status", { signal: controller.signal });
+      if (controller.signal.aborted) return;
       setStatus(next);
       // Polling updates health, not the choices the researcher is editing.
       if (!settingsInitialized.current) {
@@ -155,14 +161,21 @@ export function App() {
       }
       setStatusError(null);
     } catch (caught) {
+      if (controller.signal.aborted) return;
       setStatusError(caught instanceof Error ? caught.message : "Could not inspect Zotero");
+    } finally {
+      if (statusRequest.current === controller) statusRequest.current = null;
     }
   }, []);
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 5000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void refresh(true), 5000);
+    return () => {
+      window.clearInterval(timer);
+      statusRequest.current?.abort();
+      statusRequest.current = null;
+    };
   }, [refresh]);
   useEffect(() => {
     if (!status || setupInitialized.current) return;
@@ -207,13 +220,19 @@ export function App() {
   useEffect(() => {
     if (!checkingAccount) return;
     let cancelled = false;
+    let timer: number;
     const check = async () => {
+      if (cancelled) return;
       try {
         const result = await request<Status>("account/complete", { method: "POST" });
         if (cancelled) return;
-        if (result.state === "account-authorization-pending") return void window.setTimeout(check, 2500);
+        if (result.state === "account-authorization-pending") {
+          timer = window.setTimeout(check, 2500);
+          return;
+        }
         setCheckingAccount(false);
         setAuthorizationUrl(null);
+        statusRequest.current?.abort();
         setStatus(result);
         setNotice("Your Zotero account is connected.");
       } catch (caught) {
@@ -223,7 +242,7 @@ export function App() {
         }
       }
     };
-    const timer = window.setTimeout(check, 1500);
+    timer = window.setTimeout(check, 1500);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -644,9 +663,7 @@ export function App() {
               busy={busy}
             >
               <div className="ss-callout ss-stack">
-                <div>
-                  Open the private Zotero desktop in a new tab, then approve the request inside Zotero.
-                </div>
+                <div>Open the private Zotero desktop in a new tab, then approve the request inside Zotero.</div>
                 <div className="ss-form-actions">
                   {desktopAccessSelection?.url ? (
                     <a
