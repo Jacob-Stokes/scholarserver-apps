@@ -61,6 +61,10 @@ release checklist or proof that a particular application is ready.
 
 ## Test the artifact we actually ship
 
+- Package discovery must reject incomplete package directories, not silently skip
+  a missing manifest or Compose file. Validate duplicate declarations before
+  creating lookup sets/maps, which otherwise erase the evidence. The shared
+  `tests/package-contract.test.mjs` covers both cases for future catalog additions.
 - Source tests and compilation do not prove a container can start. Exercise the
   final image's entry point, installed dependencies, non-root permissions and
   read-only filesystem on each supported native architecture.

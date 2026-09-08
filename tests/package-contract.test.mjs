@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -10,20 +11,22 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const applicationsRoot = path.join(repositoryRoot, "apps");
 const iconLock = JSON.parse(await readFile(path.join(repositoryRoot, "icons.lock.json"), "utf8"));
 
-async function packages() {
-  const entries = await readdir(applicationsRoot, { withFileTypes: true });
+async function packages(root = applicationsRoot) {
+  const entries = await readdir(root, { withFileTypes: true });
   const result = [];
   for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
-    const packageRoot = path.join(applicationsRoot, entry.name, "package");
+    const packageRoot = path.join(root, entry.name, "package");
     try {
-      const [manifestText, composeText] = await Promise.all([
-        readFile(path.join(packageRoot, "scholarserver-app.yaml"), "utf8"),
-        readFile(path.join(packageRoot, "compose.yaml"), "utf8")
-      ]);
-      result.push({ directory: entry.name, manifest: parse(manifestText), compose: parse(composeText) });
+      await lstat(packageRoot);
     } catch (error) {
       if (error?.code !== "ENOENT") throw error;
+      continue; // Source-only app directories do not declare a package yet.
     }
+    const [manifestText, composeText] = await Promise.all([
+      readFile(path.join(packageRoot, "scholarserver-app.yaml"), "utf8"),
+      readFile(path.join(packageRoot, "compose.yaml"), "utf8")
+    ]);
+    result.push({ directory: entry.name, manifest: parse(manifestText), compose: parse(composeText) });
   }
   return result;
 }
@@ -31,6 +34,36 @@ async function packages() {
 function unique(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be unique`);
 }
+
+function checkDeclaredIds(manifest, label) {
+  for (const field of ["data", "endpoints", "images"]) {
+    const key = field === "images" ? "service" : "id";
+    unique((manifest[field] ?? []).map((entry) => entry[key]), `${label}: ${field} ${key}s`);
+  }
+}
+
+test("package discovery rejects incomplete packages but allows source-only directories", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "scholarserver-package-contract-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, "source-only"));
+  assert.deepEqual(await packages(root), []);
+  const packageRoot = path.join(root, "candidate", "package");
+  await mkdir(packageRoot, { recursive: true });
+  await assert.rejects(packages(root), { code: "ENOENT" });
+  await writeFile(path.join(packageRoot, "scholarserver-app.yaml"), "id: candidate\n");
+  await assert.rejects(packages(root), { code: "ENOENT" });
+  await writeFile(path.join(packageRoot, "compose.yaml"), "services: {}\n");
+  assert.equal((await packages(root)).length, 1);
+});
+
+test("duplicate declarations are rejected before building lookup sets and maps", () => {
+  for (const field of ["data", "endpoints", "images"]) {
+    const key = field === "images" ? "service" : "id";
+    assert.throws(() => checkDeclaredIds({ [field]: [{ [key]: "same" }, { [key]: "same" }] }, "candidate"),
+      /must be unique/);
+    checkDeclaredIds({ [field]: [{ [key]: "one" }, { [key]: "two" }] }, "candidate");
+  }
+});
 
 test("app-owned main screens reuse shared presentation instead of copying the platform frame", async () => {
   const entries = await readdir(applicationsRoot, { withFileTypes: true });
@@ -62,6 +95,7 @@ test("every first-party package satisfies the reusable package boundary", async 
 
   for (const { directory, manifest, compose } of discovered) {
     const label = `${directory} (${manifest.id})`;
+    checkDeclaredIds(manifest, label);
     const services = new Set(Object.keys(compose.services ?? {}));
     const data = new Set((manifest.data ?? []).map((entry) => entry.id));
     const endpoints = new Map((manifest.endpoints ?? []).map((entry) => [entry.id, entry]));
@@ -69,9 +103,6 @@ test("every first-party package satisfies the reusable package boundary", async 
     assert.equal(manifest.support.tier, "official", `${label}: first-party support tier`);
     assert.ok(manifest.support.architectures.includes("amd64"), `${label}: amd64 support`);
     assert.ok(manifest.support.architectures.includes("arm64"), `${label}: arm64 support`);
-    unique([...services], `${label}: compose service names`);
-    unique([...data], `${label}: data ids`);
-    unique([...endpoints.keys()], `${label}: endpoint ids`);
 
     assert.ok(manifest.presentation?.icon, `${label}: packaged application icon`);
     const lockedIcon = iconLock.icons[directory];
