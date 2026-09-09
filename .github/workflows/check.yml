@@ -1,9 +1,8 @@
 name: Check
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  # Routine source checks run in the private Gitea build copy on Resolution.
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -1,33 +1,8 @@
 name: Native multi-architecture images
 
 on:
+  # Paid hosted builds are opt-in. Routine checks run on Resolution.
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "apps/files/**"
-      - "apps/freshrss/**"
-      - "apps/obsidian/api/**"
-      - "apps/obsidian/mcp/**"
-      - "apps/obsidian/sync/**"
-      - "apps/obsidian/livesync-worker/**"
-      - "apps/obsidian/livesync-couchdb/**"
-      - "apps/obsidian/ui/**"
-      - "apps/zotero/controller/**"
-      - "apps/zotero/local-api-bridge/**"
-      - "apps/zotero/automations/**"
-      - "apps/zotero/desktop/**"
-      - "apps/zotero/mcp/**"
-      - "apps/zotero/ui/**"
-      - "apps/docling/controller/**"
-      - "apps/docling/ui/**"
-      - "packages/mcp-common/**"
-      - "packages/controller-runtime/**"
-      - "vendor/scholarserver-ui/**"
-      - "scripts/build-native-images.sh"
-      - "scripts/check-image-contents.py"
-      - "scripts/check-obsidian-packaging.py"
-      - ".github/workflows/images.yml"
 
 permissions:
   contents: read
