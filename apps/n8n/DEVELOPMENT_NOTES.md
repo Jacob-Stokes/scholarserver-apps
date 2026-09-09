@@ -13,8 +13,10 @@ settings, schedules and history have not been changed or migrated.
 
 The app-owned client uses the public `/api/v1` API and an installation-specific
 API key. It must be called behind authenticated platform/application routes,
-never directly from a browser with a service key. This routing and setup UI are
-not implemented yet. No browser-supplied destination may select its base URL.
+never directly from a browser with a service key. The app-owned setup UI and
+controller now support connection, template installation, activation and runs.
+Authenticated Manager routing still needs package acceptance. No browser-supplied
+destination may select the controller's base URL.
 
 Workflow creation writes a receipt before contacting n8n. Duplicate calls return
 the receipt. Uncertain outcomes are reconciled by inventory, never automatically
@@ -22,7 +24,10 @@ replayed. The journal has one controller-process owner, not cross-process locks.
 A matching operation marker is not an authentication boundary. API access must
 be scoped to the intended installation. Direct n8n edits need a review step;
 fingerprints detect changes but are not atomic upstream compare-and-swap locks.
-User-editable settings, updates and migration are not wired up yet.
+User-editable settings, updates and migration are not wired up yet. Upstream's
+2.38.1 public update controller explicitly uses `forceSave: true`; a preflight
+fingerprint does not protect a concurrent edit. Activation selects the inspected
+version instead of implicitly publishing the newest draft.
 
 ## Package and data
 
@@ -39,12 +44,12 @@ webhook access or gateway MCP is enabled. No Docker socket, host directory or
 cross-application network is mounted. Outbound networking remains broad in the
 platform's current network model; it is not destination-level isolation.
 
-This upstream-image candidate uses upstream configuration defaults. Desired
-telemetry, community-node and execution-retention defaults are NOT enforced:
-the platform correctly rejects arbitrary environment settings in package
-Compose. Do not weaken that policy. A reviewed configuration/controller or
-maintained image layer is a release prerequisite. Generated external URLs and
-proxy settings also require actual isolated-origin acceptance before release.
+The candidate manifest still references the upstream image. The new maintained
+image layer disables diagnostics, personalization, community packages, environment
+access from nodes and command/local-file nodes, and bounds execution retention.
+These settings were verified in a native AMD64 container but must be connected to
+published immutable package images. Compose's environment allowlist is unchanged.
+Generated external URLs and proxy settings need isolated-origin acceptance.
 
 The n8n API key must stay in protected application/platform state, not this
 journal. Workflow credentials belong only in n8n; UI retains IDs and connection
@@ -70,6 +75,25 @@ material, and a real restore must prove credential decryption before release.
 - Native ARM startup, encrypted backup/restore, actual Manager installation,
   protected credential setup, UI, migration, publication and
   deployment remain outstanding.
+
+### Subsequent integration acceptance
+
+- Manager source checks and production build pass with capability-based Automations
+  navigation, missing-platform installation guidance and preservation of legacy tabs.
+- Real Chrome acceptance on a fresh native AMD64 n8n instance passed connection,
+  template installation, enable/disable, page reload, execution listing, mobile
+  width and missing request-header rejection. Personalization is disabled, so the
+  owner setup test waits for navigation rather than the optional survey screen.
+- Restarting both containers preserved the saved API connection and installation.
+  Connection and receipt files are mode 0600, owned by UID/GID 1000.
+- An encrypted restic snapshot restored to a separate directory preserved those
+  files and successfully decrypted a synthetic n8n credential using the restored
+  encryption key. This is container-level recovery, not Manager restore acceptance.
+- Idle observation: n8n approximately 332 MiB; integration approximately 37 MiB.
+  This is one idle sample, not a workflow-load benchmark.
+- Native ARM integration image builds locally. The upstream ARM n8n pull encountered
+  Docker Hub's unauthenticated rate limit; native CI verification is being added.
+- User trial containers and data were not changed. No paid server was created.
 
 ## Focused platform secret review
 

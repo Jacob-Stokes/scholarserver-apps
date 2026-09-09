@@ -96,8 +96,14 @@ export class N8nClient {
     return this.request(`workflows/${encodeURIComponent(id)}`, { method: "PUT", body: workflow });
   }
 
-  setEnabled(id, enabled) {
+  setEnabled(id, enabled, versionId) {
     if (typeof enabled !== "boolean") throw new Error("Enabled must be a boolean");
+    if (enabled && versionId) {
+      return this.request(`workflows/${encodeURIComponent(id)}/publish`, {
+        method: "POST",
+        body: { versionId }
+      });
+    }
     const operation = enabled ? "activate" : "deactivate";
     return this.request(`workflows/${encodeURIComponent(id)}/${operation}`, { method: "POST" });
   }

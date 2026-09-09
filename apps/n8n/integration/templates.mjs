@@ -102,8 +102,14 @@ export function workflowFingerprint(workflow) {
     .digest("hex");
 }
 
+export class WorkflowEditConflict extends Error {
+  constructor() {
+    super("This workflow changed in n8n. Open n8n to review and enable it there.");
+  }
+}
+
 export function assertWorkflowUnchanged(workflow, savedFingerprint) {
   if (!savedFingerprint || workflowFingerprint(workflow) !== savedFingerprint) {
-    throw new Error("This workflow changed in n8n. Review it before replacing its configuration.");
+    throw new WorkflowEditConflict();
   }
 }

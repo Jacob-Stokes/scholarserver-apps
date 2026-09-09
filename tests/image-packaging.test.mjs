@@ -17,7 +17,7 @@ async function recipes(directory) {
 
 test("every distributed custom image pins its base and cannot install official Headless", async () => {
   const files = await recipes("apps");
-  assert.equal(files.length, 17, "Existing application recipes plus FreshRSS reader wrapper and integration");
+  assert.equal(files.length, 19, "Existing application recipes plus n8n wrapper and integration");
   for (const file of files) {
     const source = await readFile(file, "utf8");
     for (const line of source.split("\n").filter((line) => line.startsWith("FROM ")))

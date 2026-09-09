@@ -1,0 +1,38 @@
+name: n8n native candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/beginner-acceptance]
+    paths: ["apps/n8n/**", ".github/workflows/n8n-candidate.yml"]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build, test and publish native candidate images
+        env:
+          N8N_IMAGE: ghcr.io/jacob-stokes/scholarserver-n8n:sha-${{ github.sha }}-${{ matrix.arch }}
+          INTEGRATION_IMAGE: ghcr.io/jacob-stokes/scholarserver-n8n-app:sha-${{ github.sha }}-${{ matrix.arch }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          docker build -f apps/n8n/Dockerfile -t "$N8N_IMAGE" .
+          docker build -f apps/n8n/integration/Dockerfile -t "$INTEGRATION_IMAGE" .
+          test "$(docker image inspect "$N8N_IMAGE" --format '{{.Architecture}}')" = "$EXPECTED_ARCH"
+          test "$(docker image inspect "$INTEGRATION_IMAGE" --format '{{.Architecture}}')" = "$EXPECTED_ARCH"
+          bash apps/n8n/test-container.sh
+          docker push "$N8N_IMAGE"
+          docker push "$INTEGRATION_IMAGE"
