@@ -1,9 +1,6 @@
 name: n8n native candidate
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/beginner-acceptance]
-    paths: ["apps/n8n/**", ".github/workflows/n8n-candidate.yml"]
 permissions:
   contents: read
   packages: write

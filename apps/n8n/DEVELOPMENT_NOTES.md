@@ -92,8 +92,18 @@ material, and a real restore must prove credential decryption before release.
 - Idle observation: n8n approximately 332 MiB; integration approximately 37 MiB.
   This is one idle sample, not a workflow-load benchmark.
 - Native ARM integration image builds locally. The upstream ARM n8n pull encountered
-  Docker Hub's unauthenticated rate limit; native CI verification is being added.
+  Docker Hub's unauthenticated rate limit. CI run 34343597454 hit the same upstream
+  limit on both native architectures before building. No images were published.
+- The updated AMD64 controller passed explicit-version publication, invalid boolean
+  rejection and a real direct-edit conflict test (HTTP 409, workflow left disabled).
+  Check scripts operate only on the separate disposable acceptance installation.
 - User trial containers and data were not changed. No paid server was created.
+
+The native image workflow is manual to avoid repeatedly hitting the known pull
+limit. Publication needs authenticated upstream pulls or the rate limit to clear.
+The initial owner/API-key setup still opens n8n once. Template settings, credential
+onboarding from Manager and explicit migration remain implementation work; they
+are not counted as completed by these lifecycle tests.
 
 ## Focused platform secret review
 
