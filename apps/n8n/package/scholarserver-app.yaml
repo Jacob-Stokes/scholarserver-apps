@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.n8n
 name: n8n (Beta)
-packageVersion: 0.1.0-beta.1
+packageVersion: 0.1.0-beta.2
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
 support: { tier: official, architectures: [amd64, arm64] }
@@ -77,6 +77,14 @@ lifecycle: { supportsDisable: true, removeDataDefault: false, rollback: backup-r
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Open n8n privately and create your owner account
+    - Set your n8n password in ScholarServer to finish installation
     - Keep workflow credentials in n8n, not in workflow parameters
     - Back up the complete application data, including its encryption key
+  actions:
+    - id: setup
+      data: runtime
+      timeoutSeconds: 90
+      fields:
+        - { id: password, type: string, secret: true, required: true }
+        - { id: email, type: string, secret: false, required: false }
+        - { id: mfaCode, type: string, secret: true, required: false }

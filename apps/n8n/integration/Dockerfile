@@ -19,6 +19,7 @@ COPY --from=build /source/apps/n8n/ui/dist ./ui
 COPY apps/n8n/integration/client.mjs apps/n8n/integration/templates.mjs apps/n8n/integration/workflows.mjs apps/n8n/integration/setup.mjs apps/n8n/integration/server.mjs apps/n8n/integration/package.json ./
 COPY apps/n8n/templates ../templates
 COPY apps/n8n/integration/configuration.mjs ./
+COPY apps/n8n/integration/bootstrap-client.mjs apps/n8n/integration/password-setup.mjs apps/n8n/integration/setup-actions.mjs ./
 USER 1000:1000
 EXPOSE 8080
 CMD ["node", "server.mjs"]

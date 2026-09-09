@@ -10,17 +10,23 @@ This candidate is available only in the development catalog. Automatic private
 editor access is not yet implemented; see the [release gate](../RELEASE_BLOCKED.md).
 
 1. Install n8n from the development application catalog.
-2. Open its separately provisioned private editor address.
-3. Create your n8n owner account. In **Settings → n8n API**, create an API key
-   with custom scopes: `workflow:create`, `workflow:list`, `workflow:read`,
-   `workflow:update`, `workflow:activate`, `workflow:deactivate`, `execution:list`
-   and `credential:create`. Full instance-administration access is not required.
-4. Return to ScholarServer's n8n screen, paste the key and select **Save connection**.
+2. Open Automations in ScholarServer and choose a password.
+3. Select **Finish installation**. ScholarServer creates the local n8n owner
+   account and its restricted automation connection automatically.
 
-This initial setup requires opening n8n once. The saved key stays in protected
+You do not need to open n8n or copy an API key. If you use the optional native
+editor later, sign in as `owner@scholarserver.invalid` with your chosen password.
+This account name is local to the installation; it is not an email inbox.
+An existing connected installation shows **n8n is ready** without changing its
+owner or workflows. Reconnecting an existing installation requires its existing
+owner email and password, plus a two-factor code if enabled.
+
+The generated, non-expiring key stays in protected
 application storage on the server. Workflow credentials stay in n8n's encrypted
 credential store. Do not put secrets directly in workflow parameters or YAML.
-Choose a key expiration and replace the saved connection before it expires.
+Previously connected installations keep their existing key and expiration.
+If a connection expires, enter the existing owner's credentials to reconnect;
+ScholarServer creates its own restricted key without deleting unrelated keys.
 
 ## Current limits
 

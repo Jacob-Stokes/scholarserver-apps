@@ -1,6 +1,6 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
-import { SetupPanel } from "@scholarserver/ui/setup-pipeline";
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
 import { InstallAutomation, type Schedule } from "./InstallAutomation";
 
 type Receipt = { state: string; workflowId: string | null; operationId: string };
@@ -30,16 +30,16 @@ async function request<T>(route: string, body?: unknown): Promise<T> {
 
 export function App() {
   const [tab, setTab] = useState("automations");
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [apiKey, setApiKey] = useState("");
+  const [connection, setConnection] = useState<ConnectionStatus | null>(null);
+  const connected = connection?.connected;
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [runs, setRuns] = useState<{ templateId: string; values: Run[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const status = await request<{ connected: boolean }>("status");
-    setConnected(status.connected);
+    const status = await request<ConnectionStatus>("status");
+    setConnection(status);
     if (status.connected) {
       setInventory(await request<Inventory>("automations"));
     } else {
@@ -48,10 +48,16 @@ export function App() {
   }
   useEffect(() => {
     void refresh().catch(() => {
-      setConnected(false);
       setError("Could not check the saved n8n connection.");
     });
   }, []);
+  useEffect(() => {
+    if (connection?.phase !== "setting-up") return;
+    const timer = window.setInterval(() => {
+      void refresh().catch(() => setError("Could not check setup progress. Check status before continuing."));
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [connection?.phase]);
 
   async function act(operation: () => Promise<unknown>, refreshAfter = true) {
     setBusy(true);
@@ -59,17 +65,37 @@ export function App() {
     try {
       await operation();
       if (refreshAfter) await refresh();
+      return true;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not complete the request");
+      return false;
     } finally {
       setBusy(false);
     }
   }
-  function connect(event: FormEvent) {
-    event.preventDefault();
-    void act(async () => {
-      await request("connect", { apiKey });
-      setApiKey("");
+  async function finishSetup(input: { password: string; email?: string; mfaCode?: string }) {
+    return act(async () => {
+      const instanceId = window.location.pathname.match(/^\/apps\/([^/]+)/)?.[1];
+      if (!instanceId) throw new Error("Open this application through ScholarServer to finish installation.");
+      const overviewResponse = await fetch("/api/v1/overview");
+      if (!overviewResponse.ok) throw new Error("Could not locate this installation. Check status and try again.");
+      const overview = await overviewResponse.json();
+      const instance = overview.instances.find(
+        (candidate: { id: string; packageId: string }) =>
+          candidate.id === instanceId && candidate.packageId === "org.scholarserver.n8n"
+      );
+      if (!instance) throw new Error("This n8n installation is no longer available.");
+      const endpoint = `/api/v1/instances/${encodeURIComponent(instance.workspaceId)}/${encodeURIComponent(instanceId)}/actions/setup`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-scholarserver-request": "1" },
+        body: JSON.stringify(input)
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.detail ?? "Setup could not be confirmed. Check status before continuing.");
+      setConnection(result);
+      setTab("automations");
     });
   }
   const managedIds = new Set(Object.values(inventory?.installations ?? {}).map((receipt) => receipt.workflowId));
@@ -82,40 +108,33 @@ export function App() {
       tabs={tabs}
       currentTab={tab}
       onNavigate={setTab}
-      loading={connected === null}
+      loading={connection === null && !error}
       error={error}
     >
-      {connected === false || tab === "configuration" ? (
-        <SetupPanel
-          title="Connect n8n"
-          stage={1}
-          total={1}
-          description="Allow ScholarServer to manage workflows in this installation."
-        >
-          <p>
-            Open n8n from its application shortcut and create your owner account. In Settings → n8n API, create a key
-            with workflow and credential permissions.
-          </p>
-          <p>
-            The key is stored on your server. Workflow credentials stay in n8n. This initial connection currently
-            requires opening n8n once.
-          </p>
-          <form onSubmit={connect} className="ss-stack">
-            <label htmlFor="n8n-api-key">n8n API key</label>
-            <input
-              id="n8n-api-key"
-              className="ss-input"
-              type="password"
-              autoComplete="off"
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-              required
-            />
-            <button className="ss-button" disabled={busy || !apiKey.trim()}>
-              {busy ? "Checking…" : "Save connection"}
-            </button>
-          </form>
-        </SetupPanel>
+      {connection && !connected ? (
+        <ConnectionSetup
+          status={connection}
+          busy={busy}
+          onSetup={finishSetup}
+          onRefresh={() => void act(refresh, false)}
+        />
+      ) : null}
+      {connected && tab === "configuration" ? (
+        <section className="ss-card ss-stack">
+          <h2>n8n is ready</h2>
+          <p>ScholarServer is connected. Manage your workflows in Automations; workflow credentials stay in n8n.</p>
+          <button className="ss-button" onClick={() => setTab("automations")}>
+            View automations
+          </button>
+          <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => void act(refresh, false)}>
+            Check connection
+          </button>
+        </section>
+      ) : null}
+      {!connection && error ? (
+        <button className="ss-button" disabled={busy} onClick={() => void act(refresh, false)}>
+          Check status
+        </button>
       ) : null}
       {connected && tab === "automations" ? (
         <div className="ss-stack">

@@ -2,13 +2,18 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { SetupError } from "./bootstrap-client.mjs";
 import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
+import { PasswordSetup } from "./password-setup.mjs";
 import { N8nSetup } from "./setup.mjs";
+import { startSetupActions } from "./setup-actions.mjs";
 import { assertWorkflowUnchanged, readTemplate, WorkflowEditConflict } from "./templates.mjs";
 import { WorkflowInstallations } from "./workflows.mjs";
 
 const runtime = process.env.N8N_INTEGRATION_STATE ?? "/runtime";
 const setup = new N8nSetup({ directory: runtime, baseUrl: "http://n8n:5678" });
+const passwordSetup = new PasswordSetup({ directory: runtime, setup, baseUrl: "http://n8n:5678" });
+await startSetupActions(runtime, passwordSetup);
 const template = readTemplate(await readFile(new URL("../templates/connection-check.yaml", import.meta.url), "utf8"));
 const ui = fileURLToPath(new URL("./ui/", import.meta.url));
 // Keep a single journal owner across HTTP requests, even when the key is rotated.
@@ -67,9 +72,8 @@ createServer(async (request, response) => {
       ) {
         return json(response, 403, { error: "Use the application setup form" });
       }
-      if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await setup.status());
-      if (request.method === "POST" && url.pathname === "/api/connect")
-        return json(response, 200, await setup.connect(await body(request)));
+      if (request.method === "GET" && url.pathname === "/api/status")
+        return json(response, 200, await passwordSetup.status());
       if (request.method === "GET" && url.pathname === "/api/automations") {
         const state = await installations.read();
         const inventory = await (await requiredClient()).listWorkflows();
@@ -162,6 +166,7 @@ createServer(async (request, response) => {
     // No upstream message, body or submitted credential may enter the response.
     if (response.headersSent) return response.end();
     if (error instanceof AutomationConfigurationError) return json(response, 400, { error: error.message });
+    if (error instanceof SetupError) return json(response, 409, { error: error.message });
     if (error instanceof WorkflowEditConflict) return json(response, 409, { error: error.message });
     const unconfirmed = error.outcome === "unconfirmed";
     json(response, 502, {

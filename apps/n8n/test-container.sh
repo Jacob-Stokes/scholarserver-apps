@@ -3,8 +3,8 @@ set -euo pipefail
 : "${N8N_IMAGE:?Provide the native n8n image}"
 : "${INTEGRATION_IMAGE:?Provide the native integration image}"
 prefix="scholarserver-n8n-ci-$$"
-n8n_ports=()
-integration_ports=()
+n8n_ports=(--expose 5678)
+integration_ports=(--expose 8080)
 if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
   n8n_ports=(-p 127.0.0.1:18230:5678)
   integration_ports=(-p 127.0.0.1:18231:8080)
@@ -39,13 +39,22 @@ if [ "$ready" != true ]; then docker logs "$prefix-app"; exit 1; fi
 docker exec "$prefix-integration" node --input-type=module -e '
   import assert from "node:assert/strict";
   const status = await (await fetch("http://localhost:8080/api/status")).json();
-  assert.deepEqual(status, { connected: false });
+  assert.equal(status.phase, "password-required");
   const html = await (await fetch("http://localhost:8080/")).text();
   assert.match(html, /assets/);
 '
+docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-password-setup.mjs
 docker restart "$prefix-integration" >/dev/null
+for attempt in $(seq 1 30); do
+  if docker exec "$prefix-integration" node -e 'fetch("http://localhost:8080/api/status").then(async r => { if (!(await r.json()).connected) process.exit(1); }).catch(() => process.exit(1));'; then break; fi
+  sleep 1
+done
+docker exec "$prefix-integration" node --input-type=module -e '
+  import assert from "node:assert/strict";
+  assert.deepEqual(await (await fetch("http://localhost:8080/api/status")).json(), { connected: true, phase: "ready" });
+'
 if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
-  SCHOLARSERVER_CHECK_INTEGRATION=1 node apps/n8n/integration/check-public-api.mjs
+  node apps/n8n/integration/check-app-ui.mjs
   docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-managed.mjs
 fi
 echo "Native read-only n8n and integration startup passed."

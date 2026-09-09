@@ -75,7 +75,7 @@ material, and a real restore must prove credential decryption before release.
 - A separate fresh test database passed public-API workflow create/read/list,
   enable/disable, execution listing, credential create/delete and workflow cleanup.
   The test creates an owner through the browser and observes the key issued by
-  its normal settings UI; production code does not call private account APIs.
+  its normal settings UI. This historical check predates the password-only adapter below.
   An initial test read the redacted UI key and received 401. Reading the issued
   raw key in memory fixed the test; credentials are not written to its output.
 - Later native, recovery and deployed Manager evidence is recorded below. This
@@ -170,9 +170,9 @@ was submitted or credential read by that initial check. This manually provisione
 development identity is not yet created, backed up or removed by app lifecycle
 operations. Preserve its state until lifecycle management is implemented. The
 official release still requires automatic lifecycle integration.
-The initial owner/API-key setup still opens n8n once. Post-install settings, credential
-onboarding from Manager and explicit migration remain implementation work; they
-are not counted as completed by these lifecycle tests.
+That initial deployment used manual owner/API-key setup, superseded by the
+password-only adapter below. Post-install settings, workflow credential onboarding
+from Manager and explicit migration remain implementation work.
 
 ### Deployed owner, connection and workflow acceptance
 
@@ -250,6 +250,41 @@ public controller and credential schemas at the `n8n@2.38.1` GitHub tag. Managed
 hosting licensing is a separate future decision; preserve upstream licensing.
 
 ## Next acceptance sequence
+
+### Password-only setup candidate (beta.2)
+
+The normal form now asks only for a password and confirmation. A declared secret
+onboarding action passes it through Manager and the narrow executor file queue to
+the app controller. There is no browser API-key input or direct HTTP password
+endpoint. The controller removes the short-lived request before contacting n8n;
+only n8n's password hash and a protected API connection remain. Lost browser
+connections do not own the controller's operation. Orphan responses expire.
+
+`bootstrap-client.mjs` isolates n8n 2.38.1's private `/rest` owner/sign-in/key
+contract. Workflow operations continue using the public API. The normal owner
+setup endpoint rejects existing accounts. Environment-managed owner setup was
+explicitly rejected because its loader can overwrite an existing owner.
+The account is `owner@scholarserver.invalid`; no external email account is required.
+The generated key has eight narrowly selected scopes, no expiration and an
+upstream-compatible 50-character random ownership label.
+
+The controller journals ownership before mutation, reauthenticates an interrupted
+owner claim, and locates/rotates only its own key after a lost key response. It
+does not recreate a missing database after a recorded attempt. That ambiguous
+case requires recovery; a timeout is not permission to reset user state. Existing
+valid connections return Ready without an account write or key rotation. Legacy
+expiring keys keep their expiry until an owner-authorized reconnect.
+
+Source tests cover redaction, bounded responses, preservation, stale keys with
+missing databases, interrupted owner/key replies, duplicate submissions, stale
+queue requests and secret-file cleanup. The native ARM64 disposable test passes
+password-only action setup, sign-in with the chosen password, scoped key creation,
+credential creation, rejection of owner replacement and controller restart.
+An initial artifact test caught the upstream 50-character key-label limit; the
+shorter ownership label has a regression assertion. Deployment and additional
+browser/platform acceptance are recorded separately after completion.
+
+### Remaining gates
 
 1. Implement catalog-managed private hostname provisioning, recovery and removal
    without weakening cookie isolation or replacing existing host access.
