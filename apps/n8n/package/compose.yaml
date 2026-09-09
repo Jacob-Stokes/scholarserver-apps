@@ -1,0 +1,30 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1
+    mem_limit: 1g
+    pids_limit: 128
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777"]
+    volumes:
+      - ${SCHOLARSERVER_DATA_STATE}:/home/node/.n8n
+      - ${SCHOLARSERVER_DATA_CACHE}:/home/node/.cache
+    expose: ["5678"]
+    networks: [instance, egress]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5678/healthz/readiness').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
+networks:
+  instance:
+    name: ${SCHOLARSERVER_INSTANCE_NETWORK}
+    internal: true
+  egress:
+    name: ${SCHOLARSERVER_EGRESS_NETWORK}
+    internal: false

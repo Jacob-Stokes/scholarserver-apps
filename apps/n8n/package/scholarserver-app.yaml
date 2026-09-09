@@ -1,0 +1,67 @@
+schemaVersion: 1
+id: org.scholarserver.n8n
+name: n8n (Beta)
+packageVersion: 0.1.0-beta.1
+compatibility: { platform: ">=0.1.0", schema: 1 }
+upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
+support: { tier: official, architectures: [amd64, arm64] }
+delivery: { class: headless-service, management: managed }
+tenancy: { mode: per-workspace }
+capabilities:
+  provides: [automations.workflows]
+  requires: []
+  conflicts: []
+resources:
+  minimum: { cpu: 0.5, memory: 1GiB, disk: 2GiB }
+  recommended: { cpu: 1, memory: 2GiB, disk: 5GiB }
+permissions:
+  networkEgress: [workflow-destinations]
+  hostMounts: []
+  devices: []
+hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
+images:
+  - service: n8n
+    reference: docker.n8n.io/n8nio/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
+data:
+  - id: state
+    mountPath: /home/node/.n8n
+    owner: n8n
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+  - id: cache
+    mountPath: /home/node/.cache
+    owner: n8n
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: reproducible
+    retention: preserve
+endpoints:
+  - id: editor
+    service: n8n
+    port: 5678
+    protocol: http
+    exposure: human-optional
+    auth: none-private
+    launchLabel: Open n8n
+    remoteAccess:
+      routing: origin
+      private: true
+      public: false
+      authentik: unsupported
+      defaultAuthentik: false
+presentation:
+  icon:
+    path: assets/icons/n8n.webp
+    mediaType: image/webp
+    attribution:
+      name: selfh.st/icons
+      url: https://selfh.st/icons/
+      license: CC-BY-4.0
+      licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
+lifecycle: { supportsDisable: true, removeDataDefault: false, rollback: backup-required }
+onboarding:
+  readyWhen: compose-health
+  checklist:
+    - Open n8n privately and create your owner account
+    - Keep workflow credentials in n8n, not in workflow parameters
+    - Back up the complete application data, including its encryption key

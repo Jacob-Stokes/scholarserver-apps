@@ -1,0 +1,49 @@
+schemaVersion: 1
+id: connection-check
+version: 1
+name: Check automation execution
+description: Record a test result every hour. This does not read research data or call an external service.
+workflow:
+  nodes:
+    - id: manual-trigger
+      name: Run test
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 160]
+      parameters: {}
+    - id: hourly-trigger
+      name: Every hour
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - field: hours
+              hoursInterval: 1
+    - id: test-result
+      name: Record test result
+      type: n8n-nodes-base.set
+      typeVersion: 3.4
+      position: [240, 0]
+      parameters:
+        assignments:
+          assignments:
+            - id: result-status
+              name: status
+              value: Automation execution is working
+              type: string
+        options: {}
+  connections:
+    Run test:
+      main:
+        - - node: Record test result
+            type: main
+            index: 0
+    Every hour:
+      main:
+        - - node: Record test result
+            type: main
+            index: 0
+  settings:
+    executionOrder: v1

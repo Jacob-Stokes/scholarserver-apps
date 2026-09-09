@@ -7,6 +7,11 @@
     "licenseUrl": "https://github.com/selfhst/icons/blob/main/LICENSE"
   },
   "icons": {
+    "n8n": {
+      "reference": "n8n",
+      "path": "apps/n8n/package/assets/icons/n8n.webp",
+      "sha256": "e3350b887165601fc3dbccaafc12feb83361865d7b7bcc34b2eef196d258232e"
+    },
     "freshrss": {
       "reference": "freshrss",
       "path": "apps/freshrss/package/assets/icons/freshrss.webp",
