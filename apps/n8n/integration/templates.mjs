@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
+import { scheduleConfiguration } from "./configuration.mjs";
 
 // Templates are reviewed package assets, not uploaded scripts or a second engine.
 // n8n remains responsible for interpreting its native node definitions.
@@ -64,6 +65,7 @@ export function readTemplate(source) {
       }
     }
   }
+  scheduleConfiguration(template);
   return template;
 }
 

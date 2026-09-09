@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
+import { configureWorkflow } from "./configuration.mjs";
 import { workflowFingerprint, workflowFromTemplate } from "./templates.mjs";
 
 // One controller process owns this journal. n8n owns workflow content; the journal
@@ -45,14 +46,20 @@ export class WorkflowInstallations {
     return result;
   }
 
-  install(templateId) {
+  install(templateId, settings = {}, retryOperationId = null) {
     return this.serialise(async () => {
       const template = this.templates.find((candidate) => candidate.id === templateId);
       if (!template) throw new Error("Unknown automation template");
       const state = await this.read();
       // One installed copy per template in this first version.
       const existing = state.installations[templateId];
-      if (existing) return existing;
+      if (existing) {
+        const explicitRejectedRetry = existing.state === "rejected" && retryOperationId === existing.operationId;
+        if (!explicitRejectedRetry) return existing;
+      } else if (retryOperationId !== null) {
+        throw new Error("The rejected installation no longer exists");
+      }
+      const workflow = configureWorkflow(template, workflowFromTemplate(template), settings);
       const receipt = {
         templateId,
         templateVersion: template.version,
@@ -61,7 +68,6 @@ export class WorkflowInstallations {
         workflowId: null,
         fingerprint: null
       };
-      const workflow = workflowFromTemplate(template);
       // The marker permits read-only reconciliation after a lost create response.
       receipt.workflowName = `${template.name} [ScholarServer:${receipt.operationId}]`;
       workflow.name = receipt.workflowName;

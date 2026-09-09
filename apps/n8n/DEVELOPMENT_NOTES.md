@@ -24,7 +24,8 @@ replayed. The journal has one controller-process owner, not cross-process locks.
 A matching operation marker is not an authentication boundary. API access must
 be scoped to the intended installation. Direct n8n edits need a review step;
 fingerprints detect changes but are not atomic upstream compare-and-swap locks.
-User-editable settings, updates and migration are not wired up yet. Upstream's
+The initial interval is configurable before installation; existing workflow
+replacement and migration are not wired up yet. Upstream's
 2.38.1 public update controller explicitly uses `forceSave: true`; a preflight
 fingerprint does not protect a concurrent edit. Activation selects the inspected
 version instead of implicitly publishing the newest draft.
@@ -101,9 +102,34 @@ material, and a real restore must prove credential decryption before release.
 
 The native image workflow is manual to avoid repeatedly hitting the known pull
 limit. Publication needs authenticated upstream pulls or the rate limit to clear.
-The initial owner/API-key setup still opens n8n once. Template settings, credential
+The initial owner/API-key setup still opens n8n once. Post-install settings, credential
 onboarding from Manager and explicit migration remain implementation work; they
 are not counted as completed by these lifecycle tests.
+
+### Configured installation and rejected-request recovery
+
+Reviewed YAML can identify a native hourly schedule node. The install form accepts
+an interval from 1 to 168 whole hours, applies it to a cloned native workflow and
+leaves activation off. There is no arbitrary parameter-path language, expression
+input or secret field. Configuration lives in n8n after creation; the journal
+continues to hold only receipts and fingerprints. Existing workflows are not
+overwritten, and direct-editor changes keep their existing protection.
+
+A definitive rejection now offers an explicit retry tied to the rejected operation
+ID. Concurrent or stale retry requests cannot create extra copies. Unconfirmed
+requests remain reconciliation-only, including after restart. Invalid settings
+fail before writing a receipt or contacting n8n.
+
+Source tests cover these transitions. A mocked Chrome check covers custom interval
+submission, failed-save draft preservation, refresh preservation and mobile width.
+This is not a new native n8n acceptance or a deployed feature. Credential onboarding
+and migration are still outstanding; no user credentials or existing automations
+were changed in this pass.
+
+The full apps test suite passes with 21 focused n8n tests. The independent UI build
+and cached native ARM integration image build/startup pass. This verifies the
+controller image, not native ARM n8n or Manager installation. Test containers and
+the local browser preview are closed; no paid resources were created.
 
 ## Focused platform secret review
 

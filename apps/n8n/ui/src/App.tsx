@@ -1,12 +1,13 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel } from "@scholarserver/ui/setup-pipeline";
 import { type FormEvent, useEffect, useState } from "react";
+import { InstallAutomation, type Schedule } from "./InstallAutomation";
 
-type Receipt = { state: string; workflowId: string | null };
+type Receipt = { state: string; workflowId: string | null; operationId: string };
 type Inventory = {
-  templates: { id: string; name: string; description: string }[];
+  templates: { id: string; name: string; description: string; schedule: Schedule | null }[];
   installations: Record<string, Receipt>;
-  workflows: { id: string; name: string; active: boolean }[];
+  workflows: { id: string; name: string; active: boolean; hoursInterval: number | null }[];
   moreAvailable: boolean;
 };
 type Run = { id: string; status: string; startedAt: string; stoppedAt: string | null };
@@ -131,18 +132,28 @@ export function App() {
               <section className="ss-card ss-stack" key={template.id}>
                 <h3>{template.name}</h3>
                 <p>{template.description}</p>
-                {!receipt ? (
-                  <button
-                    className="ss-button"
-                    disabled={busy}
-                    onClick={() => void act(() => request("install", { templateId: template.id }))}
-                  >
-                    Add automation
-                  </button>
+                {!receipt || receipt.state === "rejected" ? (
+                  <InstallAutomation
+                    schedule={template.schedule}
+                    retry={receipt?.state === "rejected"}
+                    busy={busy}
+                    onInstall={(settings) =>
+                      void act(() =>
+                        request("install", {
+                          templateId: template.id,
+                          settings,
+                          retryOperationId: receipt?.operationId
+                        })
+                      )
+                    }
+                  />
                 ) : null}
                 {receipt?.state === "installed" ? (
                   <>
                     <p>{workflow?.active ? "Scheduled" : "Not scheduled"}</p>
+                    {typeof workflow?.hoursInterval === "number" ? (
+                      <p>Runs every {workflow.hoursInterval} hours when enabled.</p>
+                    ) : null}
                     <button
                       className="ss-button"
                       disabled={busy || !workflow}
@@ -173,7 +184,7 @@ export function App() {
                     ) : null}
                   </>
                 ) : null}
-                {receipt && receipt.state !== "installed" ? (
+                {receipt && receipt.state !== "installed" && receipt.state !== "rejected" ? (
                   <>
                     <p>Installation status: {receipt.state}. Do not add another copy until this is resolved.</p>
                     <button

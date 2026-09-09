@@ -70,3 +70,43 @@ test("corrupt state fails closed rather than forgetting installed workflows", as
   await assert.rejects(service.install(template.id));
   assert.equal(creates, 0);
 });
+
+test("explicit rejected retry creates once and stale retry buttons cannot duplicate it", async (t) => {
+  let creates = 0;
+  const { service } = await fixture(t, {
+    createWorkflow: async (workflow) => {
+      creates++;
+      if (creates === 1) throw Object.assign(new Error("Rejected"), { outcome: "rejected" });
+      assert.equal(workflow.nodes[1].parameters.rule.interval[0].hoursInterval, 6);
+      return { ...workflow, id: "retried-workflow" };
+    }
+  });
+  const rejected = await service.install(template.id);
+  assert.equal((await service.install(template.id)).state, "rejected");
+  const [first, second] = await Promise.all([
+    service.install(template.id, { hoursInterval: 6 }, rejected.operationId),
+    service.install(template.id, { hoursInterval: 6 }, rejected.operationId)
+  ]);
+  assert.equal(first.state, "installed");
+  assert.deepEqual(first, second);
+  assert.equal(creates, 2);
+});
+
+test("uncertain writes cannot be retried even with their operation ID", async (t) => {
+  let creates = 0;
+  const { service } = await fixture(t, {
+    createWorkflow: async () => {
+      creates++;
+      throw new Error("Lost response");
+    }
+  });
+  const uncertain = await service.install(template.id);
+  await service.install(template.id, { hoursInterval: 2 }, uncertain.operationId);
+  assert.equal(creates, 1);
+});
+
+test("invalid settings fail before writing an installation receipt or contacting n8n", async (t) => {
+  const { service } = await fixture(t, { createWorkflow: async () => assert.fail("Must not call n8n") });
+  await assert.rejects(service.install(template.id, { hoursInterval: -1 }));
+  assert.deepEqual((await service.read()).installations, {});
+});

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
 import { N8nSetup } from "./setup.mjs";
 import { assertWorkflowUnchanged, readTemplate, WorkflowEditConflict } from "./templates.mjs";
 import { WorkflowInstallations } from "./workflows.mjs";
@@ -73,12 +74,23 @@ createServer(async (request, response) => {
         const state = await installations.read();
         const inventory = await (await requiredClient()).listWorkflows();
         return json(response, 200, {
-          templates: [{ id: template.id, name: template.name, description: template.description }],
+          templates: [
+            {
+              id: template.id,
+              name: template.name,
+              description: template.description,
+              schedule: scheduleConfiguration(template)
+            }
+          ],
           installations: state.installations,
           workflows: inventory.data.map((workflow) => ({
             id: workflow.id,
             name: workflow.name,
-            active: workflow.active
+            active: workflow.active,
+            hoursInterval:
+              workflow.id === state.installations[template.id]?.workflowId
+                ? workflowScheduleHours(template, workflow)
+                : null
           })),
           moreAvailable: Boolean(inventory.nextCursor)
         });
@@ -86,7 +98,11 @@ createServer(async (request, response) => {
       if (request.method === "POST" && url.pathname === "/api/install") {
         const input = await body(request);
         await requiredClient();
-        return json(response, 200, await installations.install(input.templateId));
+        return json(
+          response,
+          200,
+          await installations.install(input.templateId, input.settings, input.retryOperationId)
+        );
       }
       if (request.method === "POST" && url.pathname === "/api/reconcile") {
         const input = await body(request);
@@ -145,6 +161,7 @@ createServer(async (request, response) => {
   } catch (error) {
     // No upstream message, body or submitted credential may enter the response.
     if (response.headersSent) return response.end();
+    if (error instanceof AutomationConfigurationError) return json(response, 400, { error: error.message });
     if (error instanceof WorkflowEditConflict) return json(response, 409, { error: error.message });
     const unconfirmed = error.outcome === "unconfirmed";
     json(response, 502, {

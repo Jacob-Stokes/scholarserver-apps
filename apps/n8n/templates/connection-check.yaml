@@ -2,7 +2,9 @@ schemaVersion: 1
 id: connection-check
 version: 1
 name: Check automation execution
-description: Record a test result every hour. This does not read research data or call an external service.
+description: Record a test result on a schedule you choose. This does not read research data or call an external service.
+configuration:
+  scheduleNode: hourly-trigger
 workflow:
   nodes:
     - id: manual-trigger

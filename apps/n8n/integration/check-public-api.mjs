@@ -54,6 +54,7 @@ try {
     await page.goto("http://localhost:18231");
     await page.getByLabel("n8n API key", { exact: true }).fill(apiKey);
     await page.getByRole("button", { name: "Save connection", exact: true }).click();
+    await page.getByLabel("Run every (hours)").fill("6");
     await page.getByRole("button", { name: "Add automation", exact: true }).click();
     await page.getByRole("button", { name: "Enable schedule", exact: true }).click();
     await page.getByRole("button", { name: "Disable schedule", exact: true }).waitFor();
@@ -74,6 +75,12 @@ try {
     assert.equal(missingHeader.status, 403);
     const status = await (await fetch("http://localhost:18231/api/status")).json();
     assert.deepEqual(status, { connected: true });
+    const inventory = await (await fetch("http://localhost:18231/api/automations")).json();
+    const configured = await client.getWorkflow(inventory.installations[template.id].workflowId);
+    assert.equal(
+      configured.nodes.find((node) => node.id === "hourly-trigger").parameters.rule.interval[0].hoursInterval,
+      6
+    );
     console.log("App UI: connection, install, enable/disable, reload, runs, mobile width and request boundary passed.");
   }
   await client.request(`credentials/${encodeURIComponent(credential.id)}`, { method: "DELETE" });
