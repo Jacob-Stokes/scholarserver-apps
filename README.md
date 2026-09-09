@@ -39,10 +39,13 @@ in `THIRD_PARTY_NOTICES.md`.
 ## Local checks
 
 ```sh
-npm ci
-npm ci --prefix apps/obsidian/sync --ignore-scripts
-npm test
+sh scripts/check-source.sh
 ```
+
+This installs locked dependencies and runs the source suite. The same command
+is used by application CI and the platform release candidate. With dependencies
+already installed, use `npm test` during development. Explicit app build and test
+lists belong here; they do not require application branches in Manager.
 
 ## Security model
 
