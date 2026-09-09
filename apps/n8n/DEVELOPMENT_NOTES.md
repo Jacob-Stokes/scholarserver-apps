@@ -1,5 +1,26 @@
 # n8n integration — development record
 
+## 9 September 2026 — scoped Manager service identity
+
+The source candidate is now `0.1.0-beta.3`. Its package declares the exact Zotero,
+Obsidian and Docling actions used by reviewed workflow templates. The password-only
+setup action also requests a platform-issued service identity. The executor passes
+that credential only in its protected, short-lived action file; the integration
+stores it mode 0600 after n8n setup succeeds. It rejects caller-selected service
+addresses and malformed tokens.
+
+Research discovery and action calls now use only `/api/v1/service/*` with the
+bearer identity. The integration no longer calls Manager overview or catalog
+routes and cannot reach browser, lifecycle, access, backup or executor APIs. Core
+owns authentication and grant enforcement without any n8n-specific production
+code. The integration reloads the credential for each request so reconnect does
+not require a process restart.
+
+The complete apps suite passes, including 46 focused n8n tests and one Linux-only
+skip. Core schema validation accepts beta.3. This is source and synthetic service
+API evidence. Beta.3 has not been published or deployed, and no live
+workflow-to-app execution has yet exercised the new identity.
+
 Status: public candidate images; installed in Freelove's local development catalog
 through Manager. A separately approved development identity provides private
 editor access. Owner setup, sign-in and Manager workflow operations pass on that

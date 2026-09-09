@@ -5,7 +5,7 @@ import { SetupError } from "./bootstrap-client.mjs";
 
 // The executor supplies short-lived, owner-only input files. The controller is
 // the sole owner of setup state, including when the browser disconnects.
-export async function startSetupActions(directory, setup) {
+export async function startSetupActions(directory, setup, managerConnection) {
   const requests = path.join(directory, "requests");
   const responses = path.join(directory, "responses");
   await mkdir(requests, { recursive: true, mode: 0o700 });
@@ -34,7 +34,10 @@ export async function startSetupActions(directory, setup) {
           const request = JSON.parse(await readFile(file, "utf8"));
           await rm(file, { force: true });
           if (request.action !== "setup") throw new SetupError("Unknown setup action.");
-          result = { ok: true, result: await setup.finish(request.input) };
+          const { scholarserverService, ...setupInput } = request.input;
+          const setupResult = await setup.finish(setupInput);
+          await managerConnection.configure(scholarserverService);
+          result = { ok: true, result: setupResult };
         } catch (error) {
           result = {
             ok: false,

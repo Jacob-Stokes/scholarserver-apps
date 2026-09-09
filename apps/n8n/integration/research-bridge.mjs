@@ -1,17 +1,18 @@
 // Only these reviewed operations cross the application boundary. The workflow
 // cannot supply a URL, action name, workspace, application ID or output root.
 export class ResearchBridge {
-  constructor({ managerUrl = "http://manager:8080", fetchImplementation = fetch }) {
-    this.managerUrl = managerUrl;
+  constructor({ managerConnection, fetchImplementation = fetch }) {
+    this.managerConnection = managerConnection;
     this.fetch = fetchImplementation;
   }
 
   async request(route, input) {
-    const response = await this.fetch(`${this.managerUrl}${route}`, {
+    const connection = await this.managerConnection.read();
+    const response = await this.fetch(`${connection.url}${route}`, {
       method: input === undefined ? "GET" : "POST",
       redirect: "error",
       signal: AbortSignal.timeout(120000),
-      headers: { "content-type": "application/json", origin: this.managerUrl },
+      headers: { "content-type": "application/json", authorization: `Bearer ${connection.token}` },
       body: input === undefined ? undefined : JSON.stringify(input)
     });
     if (!response.ok) {
@@ -36,21 +37,8 @@ export class ResearchBridge {
   }
 
   async applications() {
-    const [overview, catalog] = await Promise.all([this.request("/api/v1/overview"), this.request("/api/v1/catalog")]);
-    return overview.instances
-      .filter(
-        (instance) =>
-          instance.desiredState === "enabled" &&
-          instance.observedState === "healthy" &&
-          ["org.scholarserver.zotero", "org.scholarserver.obsidian", "org.scholarserver.docling"].includes(
-            instance.packageId
-          )
-      )
-      .map(({ id, workspaceId, packageId, packageVersion }) => {
-        const declaration = catalog.applications.find((app) => app.id === packageId && app.version === packageVersion);
-        const actions = declaration?.onboarding?.actions?.map((action) => action.id) ?? [];
-        return { id, workspaceId, packageId, packageVersion, actions };
-      });
+    const inventory = await this.request("/actions");
+    return inventory.applications.map(({ actionIds, ...application }) => ({ ...application, actions: actionIds }));
   }
 
   async validateScope(scope) {
@@ -81,7 +69,7 @@ export class ResearchBridge {
   action(scope, app, action, input) {
     const workspace = encodeURIComponent(scope.workspaceId);
     const instance = encodeURIComponent(scope[app]);
-    return this.request(`/api/v1/instances/${workspace}/${instance}/actions/${action}`, input);
+    return this.request(`/instances/${workspace}/${instance}/actions/${action}`, input);
   }
 
   sourcePath(scope, value) {

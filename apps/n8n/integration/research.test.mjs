@@ -97,6 +97,46 @@ test("invalid research configuration fails before a receipt or n8n request exist
   assert.deepEqual((await installations.read()).installations, {});
 });
 
+test("research discovery uses only the scoped Manager service API", async () => {
+  const requests = [];
+  const bridge = new ResearchBridge({
+    managerConnection: {
+      read: async () => ({
+        url: "http://scholarserver-manager:8080/api/v1/service",
+        token: "a".repeat(43)
+      })
+    },
+    fetchImplementation: async (url, options) => {
+      requests.push({ url, options });
+      return new Response(
+        JSON.stringify({
+          applications: [
+            {
+              id: "zotero",
+              workspaceId: "personal",
+              packageId: "org.scholarserver.zotero",
+              packageVersion: "1.0.0",
+              actionIds: ["research-items"]
+            }
+          ]
+        })
+      );
+    }
+  });
+  assert.deepEqual(await bridge.applications(), [
+    {
+      id: "zotero",
+      workspaceId: "personal",
+      packageId: "org.scholarserver.zotero",
+      packageVersion: "1.0.0",
+      actions: ["research-items"]
+    }
+  ]);
+  assert.equal(requests[0].url, "http://scholarserver-manager:8080/api/v1/service/actions");
+  assert.equal(requests[0].options.headers.authorization, `Bearer ${"a".repeat(43)}`);
+  assert.equal(requests[0].options.headers.origin, undefined);
+});
+
 test("PDF grant rejects unrelated operations, paths and caller-supplied output attachments", async () => {
   const bridge = new ResearchBridge({});
   bridge.validateScope = async () => {};

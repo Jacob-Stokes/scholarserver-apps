@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.n8n
 name: n8n (Beta)
-packageVersion: 0.1.0-beta.2
+packageVersion: 0.1.0-beta.3
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
 support: { tier: official, architectures: [amd64, arm64] }
@@ -18,6 +18,13 @@ permissions:
   networkEgress: [workflow-destinations]
   hostMounts: []
   devices: []
+  applicationActions:
+    - packageId: org.scholarserver.zotero
+      actionIds: [research-items, match-attachment, attach-docling-result]
+    - packageId: org.scholarserver.obsidian
+      actionIds: [create-research-note]
+    - packageId: org.scholarserver.docling
+      actionIds: [discover, enqueue, job-status]
 hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
 images:
   - service: n8n
@@ -84,6 +91,7 @@ onboarding:
     - id: setup
       data: runtime
       timeoutSeconds: 90
+      provisionServiceAccess: true
       fields:
         - { id: password, type: string, secret: true, required: true }
         - { id: email, type: string, secret: false, required: false }

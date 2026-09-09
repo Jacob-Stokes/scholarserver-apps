@@ -13,13 +13,17 @@ test("action consumes its secret file before setup and returns only a sanitized 
   const name = `${"a".repeat(32)}.json`;
   const request = path.join(directory, "requests", name);
   const response = path.join(directory, "responses", name);
-  const stop = await startSetupActions(directory, {
-    async finish(input) {
-      assert.equal(input.password, "private-test-input");
-      await assert.rejects(readFile(request), { code: "ENOENT" });
-      throw new Error("private-test-input in upstream failure");
-    }
-  });
+  const stop = await startSetupActions(
+    directory,
+    {
+      async finish(input) {
+        assert.equal(input.password, "private-test-input");
+        await assert.rejects(readFile(request), { code: "ENOENT" });
+        throw new Error("private-test-input in upstream failure");
+      }
+    },
+    { configure: () => assert.fail("failed n8n setup must not save the Manager credential") }
+  );
   t.after(stop);
   await atomicJson(request, { action: "setup", input: { password: "private-test-input" } });
   let result;
@@ -37,11 +41,15 @@ test("expired and symbolic-link requests never execute; old orphan responses are
   const directory = await mkdtemp(path.join(os.tmpdir(), "n8n-action-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   let calls = 0;
-  const stop = await startSetupActions(directory, {
-    finish: async () => {
-      calls++;
-    }
-  });
+  const stop = await startSetupActions(
+    directory,
+    {
+      finish: async () => {
+        calls++;
+      }
+    },
+    { configure: () => assert.fail("invalid requests must not save the Manager credential") }
+  );
   t.after(stop);
   const expired = path.join(directory, "requests", `${"b".repeat(32)}.json`);
   const linked = path.join(directory, "requests", `${"c".repeat(32)}.json`);

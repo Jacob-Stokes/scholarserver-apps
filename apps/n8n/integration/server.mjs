@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { SetupError } from "./bootstrap-client.mjs";
 import { readCatalog } from "./catalog.mjs";
 import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
+import { ManagerConnection } from "./manager-connection.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
 import { ResearchAccess } from "./research-access.mjs";
 import { ResearchBridge } from "./research-bridge.mjs";
@@ -16,7 +17,8 @@ import { WorkflowInstallations } from "./workflows.mjs";
 const runtime = process.env.N8N_INTEGRATION_STATE ?? "/runtime";
 const setup = new N8nSetup({ directory: runtime, baseUrl: "http://n8n:5678" });
 const passwordSetup = new PasswordSetup({ directory: runtime, setup, baseUrl: "http://n8n:5678" });
-await startSetupActions(runtime, passwordSetup);
+const managerConnection = new ManagerConnection(runtime);
+await startSetupActions(runtime, passwordSetup, managerConnection);
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
 const ui = fileURLToPath(new URL("./ui/", import.meta.url));
 // Keep a single journal owner across HTTP requests, even when the key is rotated.
@@ -35,7 +37,7 @@ const client = {
   }
 };
 const researchAccess = new ResearchAccess({ directory: path.join(runtime, "research-access"), client });
-const researchBridge = new ResearchBridge({});
+const researchBridge = new ResearchBridge({ managerConnection });
 const installations = new WorkflowInstallations({
   statePath: path.join(runtime, "installations.json"),
   client,

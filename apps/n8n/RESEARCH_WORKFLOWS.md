@@ -5,10 +5,10 @@ execution, schedules, credentials and editable workflow content. They do not use
 an AI provider. Add a workflow from the Manager Automations screen, choose its
 applications and folder, then review it before enabling its schedule.
 
-**Development candidate, not deployed:** native fixture execution passes, but
-live Manager rejects the current internal service address. A supported scoped
-Manager service API is required before these workflows can run across live apps.
-The instructions below describe the candidate interface, not current availability.
+**Development candidate, not deployed:** core source now provides the scoped
+Manager service API and the n8n source package provisions its service identity
+through setup. Source and synthetic HTTP tests pass. New immutable app packages
+and a live workflow-to-app acceptance test are still required before release.
 
 | Workflow | Behaviour | Prerequisites |
 | --- | --- | --- |
@@ -33,12 +33,11 @@ listener accepts only the operations allowed for that workflow kind, checks the
 installed app capabilities, and forwards explicit action inputs through Manager.
 It never passes a Manager or app-wide service token into a workflow.
 
-The bridge currently targets the private Manager address used in the legacy
-Zotero worker's source, but a live probe returned 403. It is **not** a working
-platform-wide scoped Manager API or Gateway grant implementation. The trusted
-integration already joins the Manager edge network;
-n8n itself remains on its own instance and egress networks. This is not hostile
-tenant isolation or outbound destination filtering.
+The bridge uses its platform-issued bearer only with the dedicated Manager service
+API. The package grants exact actions; Manager also checks source and target health,
+workspace identity and the target's current declarations. The trusted integration
+joins the Manager edge network; n8n itself remains on its own instance and egress
+networks. This is not hostile tenant isolation or outbound destination filtering.
 
 Disconnect research access to reject subsequent bridge requests. This does not
 delete the workflow, stop an already accepted operation, or remove notes.
