@@ -1,6 +1,7 @@
 # n8n integration — development record
 
-Status: candidate source only. Not in the catalog, published or installed through Manager.
+Status: public candidate images; installed in Freelove's local development catalog
+through Manager. Not published in the official catalog; editor access is blocked.
 Updated: 9 September 2026.
 
 ## Ownership and intended interface
@@ -45,12 +46,12 @@ webhook access or gateway MCP is enabled. No Docker socket, host directory or
 cross-application network is mounted. Outbound networking remains broad in the
 platform's current network model; it is not destination-level isolation.
 
-The candidate manifest still references the upstream image. The new maintained
+The candidate manifest now references published multi-architecture images. The maintained
 image layer disables diagnostics, personalization, community packages, environment
 access from nodes and command/local-file nodes, and bounds execution retention.
-These settings were verified in a native ARM64 container but must be connected to
-published immutable package images. Compose's environment allowlist is unchanged.
-Generated external URLs and proxy settings need isolated-origin acceptance.
+These settings and read-only startup were verified on native ARM64 and AMD64.
+Compose's environment allowlist is unchanged. Generated external URLs, cookies
+and proxy settings still need native-editor access acceptance.
 
 The n8n API key must stay in protected application/platform state, not this
 journal. Workflow credentials belong only in n8n; UI retains IDs and connection
@@ -121,7 +122,32 @@ The native wrapper build used a named build context pointing to that verified
 local image, preserving the pinned Dockerfile without another registry pull.
 Both integration and wrapper images are being published as architecture-specific
 `sha-5200aebcfc1137f789ac0309a8de363c16486ccc` candidates. GitHub package visibility
-is public. Multi-architecture digest assembly and Manager acceptance remain gates.
+is public. The runtime index is `sha256:4076ee8130e3cc0bf480cfcdb10c53ce1d8e58cacbd980d658976474c8249d32`;
+the integration index is `sha256:cb5ade32accdb1a95211a6f9d836904320af258295dff98421b7a5a62910dcd2`.
+Anonymous registry reads verified both indexes and their native architecture entries.
+
+### Manager installation and remaining editor boundary
+
+Core source `5eea193` passed `pnpm check`, the Manager image build and executor Go
+tests. Freelove's Manager and executor were updated with their configuration and
+application data preserved. A protected rollback snapshot and prior executor are
+retained at `/opt/scholarserver/pre-5eea193.HAIdXz`. The old executor rejected
+`launchLabel`; the updated version accepts the package without weakening its schema.
+
+The candidate was staged only in the local development catalog. Manager operation
+`4df9f365-4293-4329-b41c-95926c20704e` installed instance `n8n` with both services
+healthy and no warnings. The Automations tab discovers it and its app-owned setup
+endpoint responds through `/apps/n8n/api/status` with `connected: false`. No owner
+or API key has been created in this instance. The separate user trials remain intact.
+
+Editor access fails because `application_origins.go` only inspects container-managed
+Tailscale, while Freelove's working connection is host-managed. Further source
+inspection found that its Caddy route strips all Cookie and Set-Cookie headers.
+The pinned n8n image's `dist/auth/auth.service.js` reads and sets `n8n-auth`, so
+the current proxy is incompatible with native login. Separate ports do not isolate
+cookies. Keep the editor closed pending a separate private hostname and cookie
+boundary acceptance; do not remove the stripping policy as a shortcut. This is
+why the official catalog release remains blocked despite healthy containers.
 The initial owner/API-key setup still opens n8n once. Post-install settings, credential
 onboarding from Manager and explicit migration remain implementation work; they
 are not counted as completed by these lifecycle tests.

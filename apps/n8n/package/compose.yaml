@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
+    image: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:4076ee8130e3cc0bf480cfcdb10c53ce1d8e58cacbd980d658976474c8249d32
     restart: unless-stopped
     user: "1000:1000"
     read_only: true
@@ -21,6 +21,26 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 4
+  integration:
+    image: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:cb5ade32accdb1a95211a6f9d836904320af258295dff98421b7a5a62910dcd2
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 192m
+    pids_limit: 64
+    volumes:
+      - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
+    expose: ["8080"]
+    networks: [instance, edge]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 4
 networks:
   instance:
     name: ${SCHOLARSERVER_INSTANCE_NETWORK}
@@ -28,3 +48,6 @@ networks:
   egress:
     name: ${SCHOLARSERVER_EGRESS_NETWORK}
     internal: false
+  edge:
+    name: scholarserver-edge
+    external: true

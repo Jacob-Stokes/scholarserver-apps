@@ -1,12 +1,21 @@
 # n8n release acceptance
 
-This candidate is not ready for catalog publication. Do not include it in a
-release until immutable integration images, native architecture startup,
-authenticated Manager routing, and credential backup/restore are verified.
+This candidate is not ready for catalog publication. Native ARM64 and AMD64
+container/browser/API checks pass. Public immutable multi-architecture images are
+published and wired into the manifest. Manager installation on Freelove completed
+successfully and the app-owned setup API is reachable through Manager.
 
-The package currently describes the upstream service only. The app-owned
-integration UI is under acceptance testing and must be wired into the manifest.
+The remaining release blocker is the native editor's access boundary:
 
-Native CI run 34343597454 failed before building on both architectures because
-the upstream registry returned HTTP 429 for unauthenticated pulls. Do not retry
-continuously or publish the upstream-only candidate as the completed app.
+- Freelove uses host-managed Tailscale. The existing isolated-origin executor
+  route only supports container-managed Tailscale and rejects this installation.
+- That route strips Cookie and Set-Cookie. n8n 2.38.1's auth service requires its
+  `n8n-auth` cookie, so removing the transport rejection would not make login work.
+- Different ports on one hostname are separate web origins but not separate
+  cookie hosts. Do not fix this by forwarding all cookies, proxying the native
+  editor through Manager, or disabling n8n authentication. Establish a separate
+  private hostname and verify sign-in, reload, logout and cookie separation first.
+
+The newly installed `n8n` instance has no owner or saved API key yet. Existing
+trial instances were not modified. No public editor route was created. Earlier
+encrypted credential restore evidence is container-level, not a Manager restore.

@@ -21,7 +21,9 @@ permissions:
 hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
 images:
   - service: n8n
-    reference: docker.n8n.io/n8nio/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
+    reference: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:4076ee8130e3cc0bf480cfcdb10c53ce1d8e58cacbd980d658976474c8249d32
+  - service: integration
+    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:cb5ade32accdb1a95211a6f9d836904320af258295dff98421b7a5a62910dcd2
 data:
   - id: state
     mountPath: /home/node/.n8n
@@ -35,7 +37,19 @@ data:
     filesystem: { uid: 1000, gid: 1000, mode: "0700" }
     backup: reproducible
     retention: preserve
+  - id: runtime
+    mountPath: /runtime
+    owner: n8n
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
 endpoints:
+  - id: app-ui
+    service: integration
+    port: 8080
+    protocol: http
+    exposure: human-optional
+    auth: platform-session
   - id: editor
     service: n8n
     port: 5678
@@ -49,6 +63,7 @@ endpoints:
       public: false
       authentik: unsupported
       defaultAuthentik: false
+ui: { mode: standalone, endpoint: app-ui, defaultPath: / }
 presentation:
   icon:
     path: assets/icons/n8n.webp
