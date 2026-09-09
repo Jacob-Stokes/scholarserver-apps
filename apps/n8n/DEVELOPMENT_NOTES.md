@@ -29,10 +29,37 @@ controller actions are deliberately not advertised by old pinned package images.
 PDF conversion uses already-declared actions. The two note workflows remain
 capability-gated until compatible app updates ship. Legacy schedules are unchanged.
 
-Remaining acceptance: native AMD64/browser checks for this change; publication
-and development deployment; real Manager-to-app queues, Docling conversion and
-Obsidian sync propagation; candidate app image publication; grant restore and
-credential-create recovery UI. A native fixture pass does not close these gates.
+Native AMD64 build and execution also passed on Resolution. ARM64 browser checks
+passed app/folder selection, invalid paths, failed-save draft preservation,
+installation disabled, reload and mobile layout. A subsequent ARM64 run processed
+multiple papers, skipped an unmatched PDF, followed the pending-conversion loop
+and repeated every workflow without extra note files or duplicate attachments in
+the fixture. This still does not prove real Zotero attachment transactions.
+
+Source `753b026` produced a public multi-architecture integration candidate:
+`sha256:4c4a61ec5c23a72525495e047e97d6fc412f3283f43c77112de42cb20b1e404e`.
+**It is not pinned in a package or deployed.** The live private Manager probe from
+the existing n8n integration returned HTTP 403 for `http://manager:8080/api/v1/overview`.
+Core's `ManagerBrowserBoundary` accepts registered dashboard origins, not this
+internal service address. The legacy worker's URL is not evidence that this path
+is usable. The fixture did not simulate that production boundary.
+
+Do not fix this by forging localhost/forwarded headers or weakening the browser
+boundary. The next shared-infrastructure step is a supported authenticated
+service API with narrowly granted app actions, followed by wiring this app-owned
+bridge to that transport. The local verifier/grant here is not a substitute for
+Manager service authentication. No access configuration was changed.
+
+Manager backup `0132ce9f75538c40cd91954c` was verified before the deployment probe;
+this is not restore proof. The live app remains beta.2, connected, with its original
+disabled six-hour test workflow and receipt. No research automation was installed
+or enabled against user data. Disposable test containers/data were removed; no
+paid host was created.
+
+Remaining acceptance: supported Manager service transport; real Manager-to-app
+queues, Docling conversion and Obsidian sync propagation; compatible candidate
+app image publication; grant restore and credential-create recovery UI. A native
+fixture pass does not close these gates.
 
 ## Ownership and intended interface
 

@@ -71,7 +71,8 @@ if [ "${SCHOLARSERVER_CHECK_RESEARCH:-0}" = 1 ]; then
   docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-research-install.mjs
   workflow_ids=$(docker exec "$prefix-integration" node -e 'console.log(JSON.parse(require("fs").readFileSync("/runtime/research-test-ids.json")).join(" "))')
   for workflow_id in $workflow_ids; do
-    docker exec -e N8N_RUNNERS_BROKER_PORT=5680 "$prefix-app" n8n execute --id="$workflow_id"
+    node apps/n8n/integration/check-research-execute.mjs "$prefix-app" "$workflow_id"
+    node apps/n8n/integration/check-research-execute.mjs "$prefix-app" "$workflow_id"
   done
   docker exec "$prefix-integration" node -e 'fetch("http://manager:8080/verify").then(async r => { const result = await r.json(); if (!r.ok) throw Error(JSON.stringify(result)); console.log(result); }).catch(error => { console.error(error); process.exit(1); })'
 fi

@@ -5,6 +5,11 @@ execution, schedules, credentials and editable workflow content. They do not use
 an AI provider. Add a workflow from the Manager Automations screen, choose its
 applications and folder, then review it before enabling its schedule.
 
+**Development candidate, not deployed:** native fixture execution passes, but
+live Manager rejects the current internal service address. A supported scoped
+Manager service API is required before these workflows can run across live apps.
+The instructions below describe the candidate interface, not current availability.
+
 | Workflow | Behaviour | Prerequisites |
 | --- | --- | --- |
 | Zotero reading notes | Creates a scaffold for papers added in the last seven days; filenames use Zotero item keys. Existing files remain unchanged. | Zotero `research-items` and Obsidian `create-research-note` actions. These actions are source candidates, not in the currently pinned app packages. |
@@ -28,9 +33,10 @@ listener accepts only the operations allowed for that workflow kind, checks the
 installed app capabilities, and forwards explicit action inputs through Manager.
 It never passes a Manager or app-wide service token into a workflow.
 
-The bridge uses the existing private Manager network route, as the legacy Zotero
-worker does. It is **not** a platform-wide scoped Manager API or Gateway grant
-implementation. The trusted integration already joins the Manager edge network;
+The bridge currently targets the private Manager address used in the legacy
+Zotero worker's source, but a live probe returned 403. It is **not** a working
+platform-wide scoped Manager API or Gateway grant implementation. The trusted
+integration already joins the Manager edge network;
 n8n itself remains on its own instance and egress networks. This is not hostile
 tenant isolation or outbound destination filtering.
 

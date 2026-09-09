@@ -27,6 +27,7 @@ const job = {
   outputPath: ".scholarserver/docling/fixture/document.md"
 };
 const attached = new Set();
+let statusChecks = 0;
 const papers = [
   {
     key: "PAPER123",
@@ -35,6 +36,14 @@ const papers = [
     date: "2026",
     doi: "",
     zoteroUrl: "zotero://select/library/items/PAPER123"
+  },
+  {
+    key: "PAPER124",
+    title: "Second synthetic paper",
+    authors: [],
+    date: "2026",
+    doi: "",
+    zoteroUrl: "zotero://select/library/items/PAPER124"
   }
 ];
 
@@ -59,9 +68,9 @@ createServer(async (request, response) => {
       const notes = await readdir(`${vault}/Research`);
       assert.ok(notes.includes("zotero-PAPER123.md"));
       assert.ok(notes.some((name) => /^digest-\d{4}-\d{2}-\d{2}\.md$/.test(name)));
-      assert.equal(notes.length, 2);
+      assert.equal(notes.length, 3);
       assert.equal(attached.size, 1);
-      assert.ok(operations.includes("job-status"));
+      assert.ok(statusChecks >= 5, "The pending branch and repeat execution must check the conversion again");
       const note = await readFile(`${vault}/Research/zotero-PAPER123.md`, "utf8");
       assert.match(note, /zotero:\/\/select\/library\/items\/PAPER123/);
       assert.match(note, /## Key points/);
@@ -84,16 +93,25 @@ createServer(async (request, response) => {
           result = await createResearchNote(vault, input);
           break;
         case "discover":
-          result = { files: [{ path: "Papers/fixture.pdf", bytes: 100 }] };
+          result = {
+            files: [
+              { path: "Papers/fixture.pdf", bytes: 100 },
+              { path: "Papers/unmatched.pdf", bytes: 100 }
+            ]
+          };
           break;
         case "match-attachment":
           result = { state: "matched", sourcePath: input.sourcePath, attachmentKey: job.sourceAttachmentKey };
+          if (input.sourcePath === "Papers/unmatched.pdf")
+            result = { state: "not-found", sourcePath: input.sourcePath };
           break;
         case "enqueue":
           result = job;
           break;
         case "job-status":
+          statusChecks++;
           result = job;
+          if (statusChecks === 1) result = { ...job, state: "running", createdAt: new Date().toISOString() };
           break;
         case "attach-docling-result":
           attached.add(input.relativePath);
