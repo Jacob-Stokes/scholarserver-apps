@@ -377,9 +377,10 @@ connection remained Ready. No native editor address or copied API key was used.
 
 A first disposable instance name produced a 66-character container hostname.
 Docker DNS did not resolve it, although direct container-IP access worked. Core
-`application-endpoints.ts` bounds only the project prefix, not its service suffix.
-This is a deferred platform identifier-limit defect, not an n8n authentication
-failure; the shorter test name passed. The default `n8n` name is unaffected.
+now assigns a bounded, instance-specific edge-network alias and Manager uses that
+same generic naming contract. Source tests and TypeScript/Go conformance pass; the
+original disposable instance was removed, so this has not been reaccepted on that
+exact live instance. The shorter test name and default `n8n` name were unaffected.
 
 Beta.2 is deployed to Freelove's existing `n8n` instance through Manager's
 development lifecycle API. A Manager application backup
