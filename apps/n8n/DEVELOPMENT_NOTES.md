@@ -1,7 +1,9 @@
 # n8n integration — development record
 
 Status: public candidate images; installed in Freelove's local development catalog
-through Manager. Not published in the official catalog; editor access is blocked.
+through Manager. A separately approved development identity provides private
+editor access. Not published in the official catalog; automated access and login
+lifecycle acceptance remain incomplete.
 Updated: 9 September 2026.
 
 ## Ownership and intended interface
@@ -147,7 +149,24 @@ The pinned n8n image's `dist/auth/auth.service.js` reads and sets `n8n-auth`, so
 the current proxy is incompatible with native login. Separate ports do not isolate
 cookies. Keep the editor closed pending a separate private hostname and cookie
 boundary acceptance; do not remove the stripping policy as a shortcut. This is
-why the official catalog release remains blocked despite healthy containers.
+why automatic catalog access cannot use the existing isolated-port route.
+
+The user subsequently approved a dedicated Tailscale identity from their phone.
+Container `scholarserver-n8n-private` uses the platform's pinned Tailscale image,
+userspace networking, no host ports/devices/capabilities and persistent state at
+`/var/lib/scholarserver/access/n8n-private` (0700). Its deployment file is
+`/opt/scholarserver/n8n-private.compose.yaml`; it joins only n8n's application and
+egress networks, not the Manager edge network. Serve HTTPS 443 proxies to
+`http://n8n:5678`; no Funnel route is enabled. The existing host connection and
+user trial containers were not changed.
+
+`https://scholarserver-n8n.tailc56b3d.ts.net/` returned HTTP 200 and rendered owner
+setup in a 390-pixel-wide Chrome viewport. The first request timed out while
+Tailscale issued its certificate; the subsequent request succeeded. No account
+was submitted or credential read by this check. This manually provisioned
+development identity is not yet created, backed up or removed by app lifecycle
+operations. Preserve its state until lifecycle management is implemented. The
+official release still requires that integration and native login acceptance.
 The initial owner/API-key setup still opens n8n once. Post-install settings, credential
 onboarding from Manager and explicit migration remain implementation work; they
 are not counted as completed by these lifecycle tests.

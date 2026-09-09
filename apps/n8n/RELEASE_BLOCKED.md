@@ -19,3 +19,10 @@ The remaining release blocker is the native editor's access boundary:
 The newly installed `n8n` instance has no owner or saved API key yet. Existing
 trial instances were not modified. No public editor route was created. Earlier
 encrypted credential restore evidence is container-level, not a Manager restore.
+
+After explicit user approval, a separate persistent Tailscale identity now serves
+the editor at `https://scholarserver-n8n.tailc56b3d.ts.net/`. HTTPS and the initial
+owner setup page were verified in a mobile-width browser. This is a manually
+provisioned development connection, not a catalog-managed lifecycle feature.
+No owner account was submitted by the test. Sign-in, logout, saved API connection
+and automatic access provisioning/removal remain release acceptance work.
