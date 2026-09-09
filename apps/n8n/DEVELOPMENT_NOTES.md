@@ -48,7 +48,7 @@ platform's current network model; it is not destination-level isolation.
 The candidate manifest still references the upstream image. The new maintained
 image layer disables diagnostics, personalization, community packages, environment
 access from nodes and command/local-file nodes, and bounds execution retention.
-These settings were verified in a native AMD64 container but must be connected to
+These settings were verified in a native ARM64 container but must be connected to
 published immutable package images. Compose's environment allowlist is unchanged.
 Generated external URLs and proxy settings need isolated-origin acceptance.
 
@@ -81,7 +81,7 @@ material, and a real restore must prove credential decryption before release.
 
 - Manager source checks and production build pass with capability-based Automations
   navigation, missing-platform installation guidance and preservation of legacy tabs.
-- Real Chrome acceptance on a fresh native AMD64 n8n instance passed connection,
+- Real Chrome acceptance on a fresh native ARM64 n8n instance passed connection,
   template installation, enable/disable, page reload, execution listing, mobile
   width and missing request-header rejection. Personalization is disabled, so the
   owner setup test waits for navigation rather than the optional survey screen.
@@ -95,13 +95,33 @@ material, and a real restore must prove credential decryption before release.
 - Native ARM integration image builds locally. The upstream ARM n8n pull encountered
   Docker Hub's unauthenticated rate limit. CI run 34343597454 hit the same upstream
   limit on both native architectures before building. No images were published.
-- The updated AMD64 controller passed explicit-version publication, invalid boolean
+- The updated ARM64 controller passed explicit-version publication, invalid boolean
   rejection and a real direct-edit conflict test (HTTP 409, workflow left disabled).
   Check scripts operate only on the separate disposable acceptance installation.
 - User trial containers and data were not changed. No paid server was created.
 
 The native image workflow is manual to avoid repeatedly hitting the known pull
 limit. Publication needs authenticated upstream pulls or the rate limit to clear.
+
+Architecture correction: live `uname -m` and image inspection confirm Freelove is
+ARM64. Earlier AMD64 labels in this record were incorrect and have been corrected.
+The Mac passed the full configured-install browser/API checks on native ARM64.
+Resolution (`uname -m`: x86_64) subsequently passed native read-only startup and
+the same browser/public-API checks, including configured six-hour installation,
+enable/disable, reload, mobile width, execution listing, synthetic credential
+creation/deletion, exact-version publication and direct-edit conflict protection.
+Its temporary containers, volumes and network were removed after the checks.
+CI retry 34346459704 still hit the upstream rate limit; it is not AMD64 evidence.
+
+The pinned upstream AMD64 image was downloaded on the Mac without execution and
+transferred with `docker save`/`docker load` to Resolution. Its root filesystem
+layers and effective runtime configuration matched after transfer; legacy Docker
+and containerd inspect output differ in omitted empty fields and image IDs.
+The native wrapper build used a named build context pointing to that verified
+local image, preserving the pinned Dockerfile without another registry pull.
+Both integration and wrapper images are being published as architecture-specific
+`sha-5200aebcfc1137f789ac0309a8de363c16486ccc` candidates. GitHub package visibility
+is public. Multi-architecture digest assembly and Manager acceptance remain gates.
 The initial owner/API-key setup still opens n8n once. Post-install settings, credential
 onboarding from Manager and explicit migration remain implementation work; they
 are not counted as completed by these lifecycle tests.

@@ -3,6 +3,12 @@ set -euo pipefail
 : "${N8N_IMAGE:?Provide the native n8n image}"
 : "${INTEGRATION_IMAGE:?Provide the native integration image}"
 prefix="scholarserver-n8n-ci-$$"
+n8n_ports=()
+integration_ports=()
+if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
+  n8n_ports=(-p 127.0.0.1:18230:5678)
+  integration_ports=(-p 127.0.0.1:18231:8080)
+fi
 cleanup() {
   docker rm -f "$prefix-app" "$prefix-integration" >/dev/null 2>&1 || true
   docker volume rm "$prefix-state" "$prefix-cache" "$prefix-runtime" >/dev/null 2>&1 || true
@@ -17,10 +23,10 @@ docker run --rm --user 0 --entrypoint sh \
 docker run -d --name "$prefix-app" --network "$prefix" --network-alias n8n \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
   --tmpfs /tmp:rw,nosuid,nodev,size=128m -v "$prefix-state:/home/node/.n8n" \
-  -v "$prefix-cache:/home/node/.cache" "$N8N_IMAGE" >/dev/null
+  -v "$prefix-cache:/home/node/.cache" "${n8n_ports[@]}" "$N8N_IMAGE" >/dev/null
 docker run -d --name "$prefix-integration" --network "$prefix" \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
-  -v "$prefix-runtime:/runtime" "$INTEGRATION_IMAGE" >/dev/null
+  -v "$prefix-runtime:/runtime" "${integration_ports[@]}" "$INTEGRATION_IMAGE" >/dev/null
 ready=false
 for attempt in $(seq 1 90); do
   if docker exec "$prefix-integration" node -e 'fetch("http://n8n:5678/healthz/readiness").then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1));'; then
@@ -38,4 +44,8 @@ docker exec "$prefix-integration" node --input-type=module -e '
   assert.match(html, /assets/);
 '
 docker restart "$prefix-integration" >/dev/null
+if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
+  SCHOLARSERVER_CHECK_INTEGRATION=1 node apps/n8n/integration/check-public-api.mjs
+  docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-managed.mjs
+fi
 echo "Native read-only n8n and integration startup passed."
