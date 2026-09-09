@@ -6,15 +6,21 @@ enabling or disabling them, and viewing recent runs.
 
 ## Connect your installation
 
-1. Install n8n from the application catalog.
-2. Configure private access to its editor and select **Open n8n**.
+This candidate is available only in the development catalog. Automatic private
+editor access is not yet implemented; see the [release gate](../RELEASE_BLOCKED.md).
+
+1. Install n8n from the development application catalog.
+2. Open its separately provisioned private editor address.
 3. Create your n8n owner account. In **Settings → n8n API**, create an API key
-   with workflow and credential permissions.
+   with custom scopes: `workflow:create`, `workflow:list`, `workflow:read`,
+   `workflow:update`, `workflow:activate`, `workflow:deactivate`, `execution:list`
+   and `credential:create`. Full instance-administration access is not required.
 4. Return to ScholarServer's n8n screen, paste the key and select **Save connection**.
 
 This initial setup requires opening n8n once. The saved key stays in protected
 application storage on the server. Workflow credentials stay in n8n's encrypted
 credential store. Do not put secrets directly in workflow parameters or YAML.
+Choose a key expiration and replace the saved connection before it expires.
 
 ## Current limits
 

@@ -2,8 +2,9 @@
 
 Status: public candidate images; installed in Freelove's local development catalog
 through Manager. A separately approved development identity provides private
-editor access. Not published in the official catalog; automated access and login
-lifecycle acceptance remain incomplete.
+editor access. Owner setup, sign-in and Manager workflow operations pass on that
+development connection. Not published in the official catalog; automated access
+lifecycle and Manager restore acceptance remain incomplete.
 Updated: 9 September 2026.
 
 ## Ownership and intended interface
@@ -18,7 +19,7 @@ The app-owned client uses the public `/api/v1` API and an installation-specific
 API key. It must be called behind authenticated platform/application routes,
 never directly from a browser with a service key. The app-owned setup UI and
 controller now support connection, template installation, activation and runs.
-Authenticated Manager routing still needs package acceptance. No browser-supplied
+The deployed Manager path is verified below. No browser-supplied
 destination may select the controller's base URL.
 
 Workflow creation writes a receipt before contacting n8n. Duplicate calls return
@@ -52,8 +53,9 @@ The candidate manifest now references published multi-architecture images. The m
 image layer disables diagnostics, personalization, community packages, environment
 access from nodes and command/local-file nodes, and bounds execution retention.
 These settings and read-only startup were verified on native ARM64 and AMD64.
-Compose's environment allowlist is unchanged. Generated external URLs, cookies
-and proxy settings still need native-editor access acceptance.
+Compose's environment allowlist is unchanged. Native login works on the separate
+development hostname; generated external URLs and automatic proxy provisioning
+still require release acceptance.
 
 The n8n API key must stay in protected application/platform state, not this
 journal. Workflow credentials belong only in n8n; UI retains IDs and connection
@@ -76,9 +78,8 @@ material, and a real restore must prove credential decryption before release.
   its normal settings UI; production code does not call private account APIs.
   An initial test read the redacted UI key and received 401. Reading the issued
   raw key in memory fixed the test; credentials are not written to its output.
-- Native ARM startup, encrypted backup/restore, actual Manager installation,
-  protected credential setup, UI, migration, publication and
-  deployment remain outstanding.
+- Later native, recovery and deployed Manager evidence is recorded below. This
+  initial source/API pass did not establish those results.
 
 ### Subsequent integration acceptance
 
@@ -103,8 +104,9 @@ material, and a real restore must prove credential decryption before release.
   Check scripts operate only on the separate disposable acceptance installation.
 - User trial containers and data were not changed. No paid server was created.
 
-The native image workflow is manual to avoid repeatedly hitting the known pull
-limit. Publication needs authenticated upstream pulls or the rate limit to clear.
+The native image workflow is manual to avoid repeatedly hitting an upstream pull
+limit. The subsequently published candidates are recorded below; the earlier CI
+failures are not successful native-build evidence.
 
 Architecture correction: live `uname -m` and image inspection confirm Freelove is
 ARM64. Earlier AMD64 labels in this record were incorrect and have been corrected.
@@ -122,7 +124,7 @@ layers and effective runtime configuration matched after transfer; legacy Docker
 and containerd inspect output differ in omitted empty fields and image IDs.
 The native wrapper build used a named build context pointing to that verified
 local image, preserving the pinned Dockerfile without another registry pull.
-Both integration and wrapper images are being published as architecture-specific
+Both integration and wrapper images were published as architecture-specific
 `sha-5200aebcfc1137f789ac0309a8de363c16486ccc` candidates. GitHub package visibility
 is public. The runtime index is `sha256:4076ee8130e3cc0bf480cfcdb10c53ce1d8e58cacbd980d658976474c8249d32`;
 the integration index is `sha256:cb5ade32accdb1a95211a6f9d836904320af258295dff98421b7a5a62910dcd2`.
@@ -139,16 +141,17 @@ retained at `/opt/scholarserver/pre-5eea193.HAIdXz`. The old executor rejected
 The candidate was staged only in the local development catalog. Manager operation
 `4df9f365-4293-4329-b41c-95926c20704e` installed instance `n8n` with both services
 healthy and no warnings. The Automations tab discovers it and its app-owned setup
-endpoint responds through `/apps/n8n/api/status` with `connected: false`. No owner
-or API key has been created in this instance. The separate user trials remain intact.
+endpoint initially responded through `/apps/n8n/api/status` with `connected: false`.
+The owner and connection were subsequently configured as recorded below. The
+separate user trials remain intact.
 
-Editor access fails because `application_origins.go` only inspects container-managed
+Automatic editor access fails because `application_origins.go` only inspects container-managed
 Tailscale, while Freelove's working connection is host-managed. Further source
 inspection found that its Caddy route strips all Cookie and Set-Cookie headers.
 The pinned n8n image's `dist/auth/auth.service.js` reads and sets `n8n-auth`, so
 the current proxy is incompatible with native login. Separate ports do not isolate
-cookies. Keep the editor closed pending a separate private hostname and cookie
-boundary acceptance; do not remove the stripping policy as a shortcut. This is
+cookies. The development editor therefore uses a separate private hostname;
+do not remove the stripping policy as a shortcut. This is
 why automatic catalog access cannot use the existing isolated-port route.
 
 The user subsequently approved a dedicated Tailscale identity from their phone.
@@ -163,13 +166,50 @@ user trial containers were not changed.
 `https://scholarserver-n8n.tailc56b3d.ts.net/` returned HTTP 200 and rendered owner
 setup in a 390-pixel-wide Chrome viewport. The first request timed out while
 Tailscale issued its certificate; the subsequent request succeeded. No account
-was submitted or credential read by this check. This manually provisioned
+was submitted or credential read by that initial check. This manually provisioned
 development identity is not yet created, backed up or removed by app lifecycle
 operations. Preserve its state until lifecycle management is implemented. The
-official release still requires that integration and native login acceptance.
+official release still requires automatic lifecycle integration.
 The initial owner/API-key setup still opens n8n once. Post-install settings, credential
 onboarding from Manager and explicit migration remain implementation work; they
 are not counted as completed by these lifecycle tests.
+
+### Deployed owner, connection and workflow acceptance
+
+The owner was created through n8n's normal browser setup using user-supplied
+details. Optional assistant onboarding was skipped. A fresh page load retained
+the session, and explicit sign-out followed by sign-in succeeded on the separate
+private hostname. No authentication bypass or account database edit was used.
+
+A 30-day development API key has eight custom scopes: `workflow:create`,
+`workflow:list`, `workflow:read`, `workflow:update`, `workflow:activate`,
+`workflow:deactivate`, `execution:list` and `credential:create`. It expires on
+9 October 2026. n8n abbreviates the displayed key; use its Copy control, not
+the shortened display. The initially unused key was rotated during transfer
+diagnosis. No raw key or password is retained in this documentation.
+
+The first real setup write found that Manager dropped `x-requested-with` from
+its app-UI proxy. Core commit `4eaee8a` forwards only that additional marker and
+adds a route regression test for the JSON body, secret-header exclusion and
+cross-origin rejection. Full `pnpm check`, the Manager production build and
+native ARM image build passed. Freelove now runs
+`scholarserver-manager:4eaee8a-arm64` using an additional
+`/opt/scholarserver/manager-4eaee8a.override.yaml`; the prior image/configuration
+remain available for rollback. No executor change was required in this pass.
+
+Through the deployed Manager screen, the scoped connection succeeded, the YAML
+test template was installed once with a six-hour interval, and enabling then
+disabling succeeded. Native n8n listed the same single workflow. A manual test
+execution succeeded and appeared in Manager's recent runs. The test reads no
+research data and calls no external service; its schedule is left disabled.
+Connection and journal files are UID/GID 1000 and mode 0600. This proves the
+development-host path, not automatic fresh-host access provisioning or Manager
+backup restoration. Existing user trial containers were untouched.
+
+Restarting both installed n8n containers preserved the connection, single
+six-hour workflow, disabled schedule and successful execution history. A fresh
+Manager page verified them after both containers became healthy. This is a
+same-host restart check, not restoration from backup. No paid host was created.
 
 ### Configured installation and rejected-request recovery
 
@@ -187,7 +227,7 @@ fail before writing a receipt or contacting n8n.
 
 Source tests cover these transitions. A mocked Chrome check covers custom interval
 submission, failed-save draft preservation, refresh preservation and mobile width.
-This is not a new native n8n acceptance or a deployed feature. Credential onboarding
+At that stage this was not native acceptance; later deployed checks are above. Credential onboarding
 and migration are still outstanding; no user credentials or existing automations
 were changed in this pass.
 
@@ -211,11 +251,11 @@ hosting licensing is a separate future decision; preserve upstream licensing.
 
 ## Next acceptance sequence
 
-1. Add protected setup and authenticated app-owned controller routes; verify a
-   real n8n API key without reading or replacing the user's existing credentials.
-2. Wire install/list/enable/history into the automation interface; implement
-   declared template settings and explicit direct-edit conflict handling.
-3. Offer n8n installation when missing. Preserve old automation controls/history
-   until an explicit, verified migration disables old schedules.
-4. Exercise isolated-origin access, restart, credential backup/restore and both
-   native architectures; only then publish a new immutable catalog package.
+1. Implement catalog-managed private hostname provisioning, recovery and removal
+   without weakening cookie isolation or replacing existing host access.
+2. Verify a Manager-driven encrypted backup/restore, including workflow credential
+   decryption and the private access identity lifecycle.
+3. Implement reviewed post-install settings and workflow credential onboarding;
+   preserve direct edits and reconcile uncertain writes.
+4. Keep legacy automation controls/history until explicit migration is verified.
+   Publish a new immutable catalog package only after its release gates pass.

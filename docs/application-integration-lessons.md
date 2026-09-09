@@ -113,6 +113,11 @@ manifest schema or desktop abstraction is justified without a real consumer.
   namespace in definitions, then verify actual Gateway discovery and authenticated
   calls separately. Include duplicate-instance ownership checks: tool names,
   network aliases and credentials must not collide between copies.
+- Test setup writes through the deployed Manager proxy, not only directly against
+  an app container. The n8n controller correctly required `x-requested-with`, but
+  Manager's app-UI header allowlist dropped it. Forwarding that marker fixed the
+  integration without forwarding Manager cookies or authorization. Core's Manager
+  route regression test also verifies that cross-origin writes stay blocked.
 - Native application theming should use upstream extension hooks and shared UI
   tokens, not source patches or a second palette table. Make it reversible without
   changing native preferences. Browser-local preferences only cross pages on the
