@@ -36,3 +36,10 @@ restart. The development API key expires on 9 October 2026; replace it before th
 Automatic access provisioning/removal and identity recovery, Manager-driven
 credential backup restoration, post-install settings and workflow-credential
 onboarding remain work. No official catalog package has been published.
+
+Beta.2 replaces manual API-key setup with a password-only declared onboarding
+action. Native ARM64/AMD64 setup and the real Manager/executor mobile workflow
+pass on a disposable installation. This removes the native-editor dependency
+from ordinary Manager setup; it does not resolve the optional editor's separate
+hostname lifecycle. Existing working connections are preserved. Exact evidence
+and image digests are in DEVELOPMENT_NOTES.md.

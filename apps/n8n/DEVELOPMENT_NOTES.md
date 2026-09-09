@@ -282,7 +282,45 @@ password-only action setup, sign-in with the chosen password, scoped key creatio
 credential creation, rejection of owner replacement and controller restart.
 An initial artifact test caught the upstream 50-character key-label limit; the
 shorter ownership label has a regression assertion. Deployment and additional
-browser/platform acceptance are recorded separately after completion.
+browser/platform acceptance are recorded below.
+
+The native AMD64 test on Resolution also passes password-only action setup and
+controller restart. Images from source `2527afd` were published as an immutable
+multi-architecture integration index:
+`sha256:7f910fce3bab4daec4619e2505ecbfd1b01a674c8b0ec5c705ec0cd24f1e0927`.
+The runtime image is unchanged. Manifest and Compose both pin this index.
+The full apps suite passes, including 34 focused n8n tests.
+
+Native ARM64 Chrome acceptance passes configured template installation, schedule
+enable/disable, reload, runs, Ready configuration, mobile width, rejected writes
+without the required marker, removal of the old key route and direct-edit
+protection. The fresh Manager-installed disposable instance
+`n8n-setup-acceptance-a` passes the actual HTTPS Manager/executor action from the
+mobile-width password form, followed by template installation, enable/disable,
+reload and Ready configuration. Both containers restarted and the automatic
+connection remained Ready. No native editor address or copied API key was used.
+
+A first disposable instance name produced a 66-character container hostname.
+Docker DNS did not resolve it, although direct container-IP access worked. Core
+`application-endpoints.ts` bounds only the project prefix, not its service suffix.
+This is a deferred platform identifier-limit defect, not an n8n authentication
+failure; the shorter test name passed. The default `n8n` name is unaffected.
+
+Beta.2 is deployed to Freelove's existing `n8n` instance through Manager's
+development lifecycle API. A Manager application backup
+`d2eb7728102b4ff105d9847e` was verified before updating; this verifies the backup,
+not a restore. The account's existing connection was reused without creating
+an owner-setup journal. Workflow inventory, configured six-hour interval, disabled
+schedule and installation receipt exactly match the pre-update snapshot. A
+fresh 390-pixel Chrome page shows `n8n is ready` in Configuration with no password
+or API-key form. Both deployed services are healthy. No core changes were needed.
+
+Both disposable Manager instances were removed through lifecycle operations;
+their synthetic application data was deleted and absence verified. Native test
+containers/volumes/networks were removed by test traps, and the temporary
+Resolution build checkout was deleted. Existing trial installations and the
+private editor identity were preserved. No paid server was created. This remains
+a local-development catalog deployment, not official catalog publication.
 
 ### Remaining gates
 

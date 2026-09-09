@@ -23,7 +23,7 @@ images:
   - service: n8n
     reference: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:4076ee8130e3cc0bf480cfcdb10c53ce1d8e58cacbd980d658976474c8249d32
   - service: integration
-    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:cb5ade32accdb1a95211a6f9d836904320af258295dff98421b7a5a62910dcd2
+    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:7f910fce3bab4daec4619e2505ecbfd1b01a674c8b0ec5c705ec0cd24f1e0927
 data:
   - id: state
     mountPath: /home/node/.n8n
