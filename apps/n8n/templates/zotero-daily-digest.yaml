@@ -1,0 +1,82 @@
+schemaVersion: 1
+id: zotero-daily-digest
+version: 1
+name: Daily research digest
+description: Create an Obsidian list of papers added during the previous UTC day. Empty days create no note; existing digests are left unchanged. No AI service is used.
+research: research-digest
+configuration:
+  scheduleNode: schedule
+workflow:
+  nodes:
+    - id: manual
+      name: Run now
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 180]
+      parameters: {}
+    - id: schedule
+      name: Every day
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - {field: hours, hoursInterval: 24}
+    - id: papers
+      name: Read yesterday's Zotero papers
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/papers
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '{}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+    - id: format
+      name: Format the daily digest
+      type: n8n-nodes-base.code
+      typeVersion: 2
+      position: [480, 0]
+      parameters:
+        jsCode: |
+          const { items, date } = $input.first().json;
+          if (items.length === 0) return [];
+          function text(value) {
+            return String(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_{}\[\]<>#!|]/g, '\\$&');
+          }
+          const entries = items.map((paper) =>
+            `- [${text(paper.title)}](${paper.zoteroUrl}) — ${paper.authors.map(text).join(', ')}`
+          );
+          return [{ json: {
+            filename: `digest-${date}.md`,
+            content: [`# Research digest — ${date}`, '', 'Papers added during this UTC day.', '', ...entries, ''].join('\n')
+          } }];
+    - id: save
+      name: Create digest without overwriting
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [720, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/note
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '={{ $json }}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+  connections:
+    Run now:
+      main: [[{node: "Read yesterday's Zotero papers", type: main, index: 0}]]
+    Every day:
+      main: [[{node: "Read yesterday's Zotero papers", type: main, index: 0}]]
+    "Read yesterday's Zotero papers":
+      main: [[{node: Format the daily digest, type: main, index: 0}]]
+    Format the daily digest:
+      main: [[{node: Create digest without overwriting, type: main, index: 0}]]
+  settings: {executionOrder: v1, executionTimeout: 3600, saveDataSuccessExecution: none, saveDataErrorExecution: none}

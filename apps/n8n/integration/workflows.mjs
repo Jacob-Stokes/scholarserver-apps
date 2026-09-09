@@ -3,15 +3,18 @@ import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { configureWorkflow } from "./configuration.mjs";
+import { researchConfiguration } from "./research-access.mjs";
 import { workflowFingerprint, workflowFromTemplate } from "./templates.mjs";
 
 // One controller process owns this journal. n8n owns workflow content; the journal
 // holds only identities and receipts. A pending receipt is never replayed blindly.
 export class WorkflowInstallations {
-  constructor({ statePath, client, templates }) {
+  constructor({ statePath, client, templates, validateResearch, prepareResearch }) {
     this.statePath = statePath;
     this.client = client;
     this.templates = templates;
+    this.prepareResearch = prepareResearch;
+    this.validateResearch = validateResearch;
     this.pending = Promise.resolve();
   }
 
@@ -60,6 +63,9 @@ export class WorkflowInstallations {
         throw new Error("The rejected installation no longer exists");
       }
       const workflow = configureWorkflow(template, workflowFromTemplate(template), settings);
+      const research = researchConfiguration(template, settings);
+      if (research && !this.prepareResearch) throw new Error("Research connections are not available");
+      if (research && this.validateResearch) await this.validateResearch(research);
       const receipt = {
         templateId,
         templateVersion: template.version,
@@ -75,6 +81,7 @@ export class WorkflowInstallations {
       await this.save(state);
       let created;
       try {
+        if (research) await this.prepareResearch(workflow, receipt, research);
         created = await this.client.createWorkflow(workflow);
       } catch (error) {
         receipt.state = error.outcome === "rejected" ? "rejected" : "unconfirmed";

@@ -1,5 +1,25 @@
 # Obsidian development notes
 
+## Create-only research notes — 9 September 2026
+
+The controller has a candidate `create-research-note` action for the n8n research
+templates. It requires a connected vault, limits filenames to stable Zotero keys
+or dated digests, rejects hidden/parent paths, and writes at most 256 KiB. Linux
+directory descriptors and an exclusive hard-link publication prevent symlink
+redirection and overwriting existing notes, including concurrent creates.
+
+Native Linux tests pass for duplicate/concurrent writes and symlink rejection.
+Native n8n fixture execution created real notes through the same writer. This is
+not official Sync/LiveSync propagation or a published controller image. The
+currently pinned package deliberately does not advertise the action; add its
+declaration only with a new compatible image/version. Exact declaration and gates
+are in `apps/n8n/RESEARCH_WORKFLOWS.md`. Do not upgrade the live official-sync
+installation to unrelated development setup changes without compatibility checks.
+
+A crash can leave a hidden staging file; future cleanup should identify only
+owned stale staging files and never treat them as complete notes. Failed folder
+sync and queue interruption need additional live acceptance.
+
 ## Setup status ownership — 8 September 2026
 
 A delayed pre-install status poll could replace the status returned after client

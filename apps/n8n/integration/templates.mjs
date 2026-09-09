@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
 import { scheduleConfiguration } from "./configuration.mjs";
+import { researchKinds } from "./research-access.mjs";
 
 // Templates are reviewed package assets, not uploaded scripts or a second engine.
 // n8n remains responsible for interpreting its native node definitions.
@@ -66,6 +67,9 @@ export function readTemplate(source) {
     }
   }
   scheduleConfiguration(template);
+  if (template.research !== undefined && !researchKinds.includes(template.research)) {
+    throw new Error("Unknown research template kind");
+  }
   return template;
 }
 

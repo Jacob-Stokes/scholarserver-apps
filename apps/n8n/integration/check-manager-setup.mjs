@@ -29,8 +29,11 @@ try {
   const result = await actionResponse;
   assert.equal(result.ok(), true, "The real Manager/executor setup action must succeed");
   await page.getByRole("heading", { name: "Automation catalog", exact: true }).waitFor();
-  await page.getByLabel("Run every (hours)").fill("6");
-  await page.getByRole("button", { name: "Add automation", exact: true }).click();
+  const checkCard = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Check automation execution", exact: true }) });
+  await checkCard.getByLabel("Run every (hours)").fill("6");
+  await checkCard.getByRole("button", { name: "Add automation", exact: true }).click();
   await page.getByRole("button", { name: "Enable schedule", exact: true }).click();
   await page.getByRole("button", { name: "Disable schedule", exact: true }).click();
   await page.getByRole("button", { name: "Enable schedule", exact: true }).waitFor();

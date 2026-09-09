@@ -10,7 +10,7 @@ if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
   integration_ports=(-p 127.0.0.1:18231:8080)
 fi
 cleanup() {
-  docker rm -f "$prefix-app" "$prefix-integration" >/dev/null 2>&1 || true
+  docker rm -f "$prefix-app" "$prefix-integration" "$prefix-research-fixture" >/dev/null 2>&1 || true
   docker volume rm "$prefix-state" "$prefix-cache" "$prefix-runtime" >/dev/null 2>&1 || true
   docker network rm "$prefix" >/dev/null 2>&1 || true
 }
@@ -24,7 +24,7 @@ docker run -d --name "$prefix-app" --network "$prefix" --network-alias n8n \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
   --tmpfs /tmp:rw,nosuid,nodev,size=128m -v "$prefix-state:/home/node/.n8n" \
   -v "$prefix-cache:/home/node/.cache" "${n8n_ports[@]}" "$N8N_IMAGE" >/dev/null
-docker run -d --name "$prefix-integration" --network "$prefix" \
+docker run -d --name "$prefix-integration" --network "$prefix" --network-alias integration \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
   -v "$prefix-runtime:/runtime" "${integration_ports[@]}" "$INTEGRATION_IMAGE" >/dev/null
 ready=false
@@ -58,3 +58,20 @@ if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
   docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-managed.mjs
 fi
 echo "Native read-only n8n and integration startup passed."
+if [ "${SCHOLARSERVER_CHECK_RESEARCH:-0}" = 1 ]; then
+  docker run -d --name "$prefix-research-fixture" --network "$prefix" --network-alias manager \
+    --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
+    --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+    -v "$PWD/apps/n8n/integration/check-research-fixture.mjs:/fixture.mjs:ro" \
+    -v "$PWD/apps/obsidian/sync/research-note.mjs:/research-note.mjs:ro" \
+    --entrypoint node "$INTEGRATION_IMAGE" /fixture.mjs >/dev/null
+  if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
+    node apps/n8n/integration/check-research-ui.mjs
+  fi
+  docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-research-install.mjs
+  workflow_ids=$(docker exec "$prefix-integration" node -e 'console.log(JSON.parse(require("fs").readFileSync("/runtime/research-test-ids.json")).join(" "))')
+  for workflow_id in $workflow_ids; do
+    docker exec -e N8N_RUNNERS_BROKER_PORT=5680 "$prefix-app" n8n execute --id="$workflow_id"
+  done
+  docker exec "$prefix-integration" node -e 'fetch("http://manager:8080/verify").then(async r => { const result = await r.json(); if (!r.ok) throw Error(JSON.stringify(result)); console.log(result); }).catch(error => { console.error(error); process.exit(1); })'
+fi

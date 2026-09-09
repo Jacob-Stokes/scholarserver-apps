@@ -2,10 +2,17 @@ import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { useEffect, useState } from "react";
 import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
 import { InstallAutomation, type Schedule } from "./InstallAutomation";
+import type { ResearchKind } from "./ResearchSettings";
 
-type Receipt = { state: string; workflowId: string | null; operationId: string };
+type Receipt = { state: string; workflowId: string | null; operationId: string; researchAccess?: string };
 type Inventory = {
-  templates: { id: string; name: string; description: string; schedule: Schedule | null }[];
+  templates: {
+    id: string;
+    name: string;
+    description: string;
+    schedule: Schedule | null;
+    research?: ResearchKind | null;
+  }[];
   installations: Record<string, Receipt>;
   workflows: { id: string; name: string; active: boolean; hoursInterval: number | null }[];
   moreAvailable: boolean;
@@ -147,6 +154,7 @@ export function App() {
           {inventory?.templates.map((template) => {
             const receipt = inventory.installations[template.id];
             const workflow = inventory.workflows.find((value) => value.id === receipt?.workflowId);
+            const researchDisconnected = Boolean(template.research && receipt && receipt.researchAccess !== "ready");
             return (
               <section className="ss-card ss-stack" key={template.id}>
                 <h3>{template.name}</h3>
@@ -154,6 +162,7 @@ export function App() {
                 {!receipt || receipt.state === "rejected" ? (
                   <InstallAutomation
                     schedule={template.schedule}
+                    research={template.research}
                     retry={receipt?.state === "rejected"}
                     busy={busy}
                     onInstall={(settings) =>
@@ -175,7 +184,7 @@ export function App() {
                     ) : null}
                     <button
                       className="ss-button"
-                      disabled={busy || !workflow}
+                      disabled={busy || !workflow || (researchDisconnected && !workflow.active)}
                       onClick={() =>
                         void act(() => request("enabled", { templateId: template.id, enabled: !workflow?.active }))
                       }
@@ -202,6 +211,23 @@ export function App() {
                       </p>
                     ) : null}
                   </>
+                ) : null}
+                {template.research && receipt ? (
+                  <details>
+                    <summary>Research access</summary>
+                    <p>
+                      Disconnecting prevents future research requests, including manual runs. It does not delete the
+                      workflow or notes. Reconnection currently needs administrator review.
+                    </p>
+                    {researchDisconnected ? <p role="status">Research access is {receipt.researchAccess}.</p> : null}
+                    <button
+                      className="ss-button ss-button-secondary"
+                      disabled={busy || researchDisconnected}
+                      onClick={() => void act(() => request("revoke-research", { templateId: template.id }))}
+                    >
+                      Disconnect research access
+                    </button>
+                  </details>
                 ) : null}
                 {receipt && receipt.state !== "installed" && receipt.state !== "rejected" ? (
                   <>

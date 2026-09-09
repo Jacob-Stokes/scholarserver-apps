@@ -18,13 +18,14 @@ export function scheduleConfiguration(template) {
   ) {
     throw new Error("Template configuration requires one native hourly schedule");
   }
-  validateHours(intervals[0].hoursInterval);
-  return { hoursInterval: intervals[0].hoursInterval, minimum: 1, maximum: 168 };
+  const maximum = template.research === "research-digest" ? 24 : 168;
+  validateHours(intervals[0].hoursInterval, maximum);
+  return { hoursInterval: intervals[0].hoursInterval, minimum: 1, maximum };
 }
 
-function validateHours(value) {
-  if (!Number.isInteger(value) || value < 1 || value > 168) {
-    throw new AutomationConfigurationError("Choose a whole number of hours from 1 to 168");
+function validateHours(value, maximum = 168) {
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new AutomationConfigurationError(`Choose a whole number of hours from 1 to ${maximum}`);
   }
 }
 
@@ -34,11 +35,12 @@ export function configureWorkflow(template, workflow, settings = {}) {
   }
   const schedule = scheduleConfiguration(template);
   const allowed = schedule ? ["hoursInterval"] : [];
+  if (template.research) allowed.push("research");
   if (Object.keys(settings).some((key) => !allowed.includes(key)))
     throw new AutomationConfigurationError("Unknown automation setting");
   if (!schedule) return workflow;
   const hours = Object.hasOwn(settings, "hoursInterval") ? settings.hoursInterval : schedule.hoursInterval;
-  validateHours(hours);
+  validateHours(hours, schedule.maximum);
   const node = workflow.nodes.find((candidate) => candidate.id === template.configuration.scheduleNode);
   node.parameters.rule.interval[0].hoursInterval = hours;
   return workflow;

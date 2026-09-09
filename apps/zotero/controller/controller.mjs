@@ -8,6 +8,7 @@ import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 import { desktopWorkspaceStatus, onlineLibraryStatus, onlineStorageModes, storageModes } from "./status-model.mjs";
+import { researchItems } from "./research-items.mjs";
 
 const runtimePath = "/runtime";
 const requestsPath = path.join(runtimePath, "requests");
@@ -585,6 +586,14 @@ async function matchAttachment(input) {
 
 async function action(request) {
   switch (request.action) {
+    case "research-items": {
+      const config = await configuration();
+      if (!config?.userId) throw new Error("Connect a Zotero library first");
+      return researchItems(request.input ?? {}, {
+        userId: config.userId,
+        request: onlineLibrary ? onlineApi : api
+      });
+    }
     case "status":
       return currentStatus();
     case "account-start":

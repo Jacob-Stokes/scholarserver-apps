@@ -3,18 +3,21 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError } from "./bootstrap-client.mjs";
+import { readCatalog } from "./catalog.mjs";
 import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
+import { ResearchAccess } from "./research-access.mjs";
+import { ResearchBridge } from "./research-bridge.mjs";
 import { N8nSetup } from "./setup.mjs";
 import { startSetupActions } from "./setup-actions.mjs";
-import { assertWorkflowUnchanged, readTemplate, WorkflowEditConflict } from "./templates.mjs";
+import { assertWorkflowUnchanged, WorkflowEditConflict } from "./templates.mjs";
 import { WorkflowInstallations } from "./workflows.mjs";
 
 const runtime = process.env.N8N_INTEGRATION_STATE ?? "/runtime";
 const setup = new N8nSetup({ directory: runtime, baseUrl: "http://n8n:5678" });
 const passwordSetup = new PasswordSetup({ directory: runtime, setup, baseUrl: "http://n8n:5678" });
 await startSetupActions(runtime, passwordSetup);
-const template = readTemplate(await readFile(new URL("../templates/connection-check.yaml", import.meta.url), "utf8"));
+const templates = await readCatalog(new URL("../templates/", import.meta.url));
 const ui = fileURLToPath(new URL("./ui/", import.meta.url));
 // Keep a single journal owner across HTTP requests, even when the key is rotated.
 const client = {
@@ -26,12 +29,28 @@ const client = {
   },
   async getWorkflow(id) {
     return (await requiredClient()).getWorkflow(id);
+  },
+  async createCredential(credential) {
+    return (await requiredClient()).createCredential(credential);
   }
 };
+const researchAccess = new ResearchAccess({ directory: path.join(runtime, "research-access"), client });
+const researchBridge = new ResearchBridge({});
 const installations = new WorkflowInstallations({
   statePath: path.join(runtime, "installations.json"),
   client,
-  templates: [template]
+  templates,
+  validateResearch: (scope) => researchBridge.validateScope(scope),
+  async prepareResearch(workflow, receipt, scope) {
+    const grant = await researchAccess.provision(receipt.operationId, scope);
+    for (const node of workflow.nodes) {
+      if (node.type !== "n8n-nodes-base.httpRequest") continue;
+      if (!node.parameters.url.startsWith("http://integration:8081/research/")) {
+        throw new Error("Research templates may only call the local research connection");
+      }
+      node.credentials = { httpHeaderAuth: grant.credential };
+    }
+  }
 });
 
 async function requiredClient() {
@@ -54,7 +73,7 @@ async function body(request) {
   let length = 0;
   for await (const chunk of request) {
     length += chunk.length;
-    if (length > 16384) throw new Error("Request exceeds limit");
+    if (length > 300000) throw new Error("Request exceeds limit");
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
@@ -76,28 +95,43 @@ createServer(async (request, response) => {
         return json(response, 200, await passwordSetup.status());
       if (request.method === "GET" && url.pathname === "/api/automations") {
         const state = await installations.read();
+        for (const template of templates.filter((candidate) => candidate.research)) {
+          const receipt = state.installations[template.id];
+          if (!receipt) continue;
+          try {
+            receipt.researchAccess = (await researchAccess.read(receipt.operationId)).state;
+          } catch {
+            receipt.researchAccess = "unavailable";
+          }
+        }
         const inventory = await (await requiredClient()).listWorkflows();
         return json(response, 200, {
-          templates: [
-            {
-              id: template.id,
-              name: template.name,
-              description: template.description,
-              schedule: scheduleConfiguration(template)
-            }
-          ],
+          templates: templates.map((template) => ({
+            id: template.id,
+            name: template.name,
+            description: template.description,
+            research: template.research ?? null,
+            schedule: scheduleConfiguration(template)
+          })),
           installations: state.installations,
           workflows: inventory.data.map((workflow) => ({
             id: workflow.id,
             name: workflow.name,
             active: workflow.active,
-            hoursInterval:
-              workflow.id === state.installations[template.id]?.workflowId
-                ? workflowScheduleHours(template, workflow)
-                : null
+            hoursInterval: installedSchedule(workflow, state.installations)
           })),
           moreAvailable: Boolean(inventory.nextCursor)
         });
+      }
+      if (request.method === "GET" && url.pathname === "/api/research-applications") {
+        return json(response, 200, await researchBridge.applications());
+      }
+      if (request.method === "POST" && url.pathname === "/api/revoke-research") {
+        const input = await body(request);
+        const receipt = (await installations.read()).installations[input.templateId];
+        if (!receipt) return json(response, 404, { error: "Automation is not installed" });
+        await researchAccess.revoke(receipt.operationId);
+        return json(response, 200, { revoked: true });
       }
       if (request.method === "POST" && url.pathname === "/api/install") {
         const input = await body(request);
@@ -122,6 +156,12 @@ createServer(async (request, response) => {
         const upstream = await requiredClient();
         let versionId;
         if (input.enabled) {
+          const template = templates.find((candidate) => candidate.id === input.templateId);
+          if (template?.research && (await researchAccess.read(receipt.operationId)).state !== "ready") {
+            return json(response, 409, {
+              error: "Research access is disconnected. Review the connection before enabling this workflow."
+            });
+          }
           const workflow = await upstream.getWorkflow(receipt.workflowId);
           assertWorkflowUnchanged(workflow, receipt.fingerprint);
           versionId = workflow.versionId;
@@ -177,3 +217,26 @@ createServer(async (request, response) => {
     });
   }
 }).listen(8080, "0.0.0.0");
+
+function installedSchedule(workflow, receipts) {
+  const template = templates.find((candidate) => receipts[candidate.id]?.workflowId === workflow.id);
+  return template ? workflowScheduleHours(template, workflow) : null;
+}
+
+// Not an app-UI route: Manager does not forward workflow bearer credentials.
+// This listener has no host port or catalog endpoint and authorizes every call.
+createServer(async (request, response) => {
+  try {
+    const scope = await researchAccess.authorize(request.headers["x-scholarserver-workflow"]);
+    const url = new URL(request.url, "http://localhost");
+    const match = url.pathname.match(/^\/research\/([a-z-]+)$/);
+    if (request.method !== "POST" || !match || request.headers["content-type"] !== "application/json") {
+      return json(response, 404, { error: "Research operation not found" });
+    }
+    return json(response, 200, await researchBridge.execute(scope, match[1], await body(request)));
+  } catch {
+    return json(response, 403, {
+      error: "Research operation refused or unavailable. Check the connection, selected apps and folder."
+    });
+  }
+}).listen(8081, "0.0.0.0");

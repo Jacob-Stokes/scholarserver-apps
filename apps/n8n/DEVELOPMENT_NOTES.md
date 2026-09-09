@@ -7,6 +7,33 @@ development connection. Not published in the official catalog; automated access
 lifecycle and Manager restore acceptance remain incomplete.
 Updated: 9 September 2026.
 
+## Research workflow candidate — 9 September 2026
+
+The catalog now loads reviewed native YAML files with unique identities. Three
+research templates and an app-owned scoped bridge are implemented; see
+[research workflows](RESEARCH_WORKFLOWS.md) for exact behaviour and limitations.
+n8n owns the generated HTTP-header credentials. The integration persists only
+verifiers, scopes and credential references, and offers revocation. No app-wide
+credential, Docker socket or vault mount was added to n8n.
+
+All three workflows passed native ARM64 execution with synthetic app responses
+and real Linux create-only note writes. This is not live cross-app acceptance.
+The normal apps suite passes with 43 focused n8n tests. The Linux note test covers
+concurrent creation, duplicate preservation and symlink escape rejection.
+
+Live read-only checks show Obsidian 0.3.0 is using working official sync, and
+Zotero 0.4.2 is connected in linked-folder mode. Their current development
+packages include unrelated newer setup changes. Do not swap those packages just
+to expose the new actions without a compatibility/restore check. Candidate
+controller actions are deliberately not advertised by old pinned package images.
+PDF conversion uses already-declared actions. The two note workflows remain
+capability-gated until compatible app updates ship. Legacy schedules are unchanged.
+
+Remaining acceptance: native AMD64/browser checks for this change; publication
+and development deployment; real Manager-to-app queues, Docling conversion and
+Obsidian sync propagation; candidate app image publication; grant restore and
+credential-create recovery UI. A native fixture pass does not close these gates.
+
 ## Ownership and intended interface
 
 n8n owns workflow execution and workflow credentials. Reviewed YAML templates

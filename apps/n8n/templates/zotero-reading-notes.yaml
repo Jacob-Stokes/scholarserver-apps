@@ -1,0 +1,93 @@
+schemaVersion: 1
+id: zotero-reading-notes
+version: 1
+name: Zotero reading notes
+description: Create an Obsidian reading-note scaffold for papers added in the last seven days. Existing notes are left unchanged. No AI service is used.
+research: reading-notes
+configuration:
+  scheduleNode: schedule
+workflow:
+  nodes:
+    - id: manual
+      name: Run now
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 180]
+      parameters: {}
+    - id: schedule
+      name: Every six hours
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - {field: hours, hoursInterval: 6}
+    - id: papers
+      name: Read recent Zotero papers
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/papers
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '{}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+    - id: format
+      name: Make reading-note scaffolds
+      type: n8n-nodes-base.code
+      typeVersion: 2
+      position: [480, 0]
+      parameters:
+        jsCode: |
+          function text(value) {
+            return String(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_{}\[\]<>#!|]/g, '\\$&');
+          }
+          return $input.first().json.items.map((paper) => ({
+            json: {
+              filename: `zotero-${paper.key}.md`,
+              content: [
+                `# ${text(paper.title)}`,
+                '',
+                `Authors: ${paper.authors.map(text).join(', ')}`,
+                `Date: ${text(paper.date)}`,
+                `DOI: ${text(paper.doi)}`,
+                `[Open in Zotero](${paper.zoteroUrl})`,
+                '',
+                '## Why this matters',
+                '',
+                '## Key points',
+                '',
+                '## Questions',
+                ''
+              ].join('\n')
+            }
+          }));
+    - id: save
+      name: Create note without overwriting
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [720, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/note
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '={{ $json }}'
+        options: {timeout: 120000, batching: {batch: {batchSize: 1, batchInterval: 250}}, redirect: {redirect: {followRedirects: false}}}
+  connections:
+    Run now:
+      main: [[{node: Read recent Zotero papers, type: main, index: 0}]]
+    Every six hours:
+      main: [[{node: Read recent Zotero papers, type: main, index: 0}]]
+    Read recent Zotero papers:
+      main: [[{node: Make reading-note scaffolds, type: main, index: 0}]]
+    Make reading-note scaffolds:
+      main: [[{node: Create note without overwriting, type: main, index: 0}]]
+  settings: {executionOrder: v1, executionTimeout: 3600, saveDataSuccessExecution: none, saveDataErrorExecution: none}

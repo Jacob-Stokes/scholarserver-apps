@@ -13,6 +13,7 @@ import {
   provisionCouchDb
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
+import { createResearchNote } from "./research-note.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -421,6 +422,9 @@ async function statusWithPrivateOnboarding() {
 
 async function action(request) {
   switch (request.action) {
+    case "create-research-note":
+      if (state.state !== "ready") throw new Error("Finish connecting this vault before creating research notes");
+      return createResearchNote(vaultPath, request.input ?? {});
     case "status": {
       if (installingClient || mutationRunning) return statusWithPrivateOnboarding();
       if (state.profile === "official" && (await officialClient.status()).phase !== "installed") {
