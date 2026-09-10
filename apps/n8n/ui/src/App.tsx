@@ -1,26 +1,15 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { useEffect, useState } from "react";
+import { AutomationCatalog } from "./AutomationCatalog";
+import type { Application, Inventory, Run } from "./automation-types";
 import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
-import { InstallAutomation, type Schedule } from "./InstallAutomation";
-import type { ResearchKind } from "./ResearchSettings";
+import { InstallAutomation } from "./InstallAutomation";
+import { MyAutomations } from "./MyAutomations";
 
-type Receipt = { state: string; workflowId: string | null; operationId: string; researchAccess?: string };
-type Inventory = {
-  templates: {
-    id: string;
-    name: string;
-    description: string;
-    schedule: Schedule | null;
-    research?: ResearchKind | null;
-  }[];
-  installations: Record<string, Receipt>;
-  workflows: { id: string; name: string; active: boolean; hoursInterval: number | null }[];
-  moreAvailable: boolean;
-};
-type Run = { id: string; status: string; startedAt: string; stoppedAt: string | null };
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
 const tabs = [
-  { id: "automations", label: "Automations" },
+  { id: "automations", label: "My automations" },
+  { id: "catalog", label: "Catalog" },
   { id: "configuration", label: "Configuration" }
 ];
 
@@ -40,7 +29,9 @@ export function App() {
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
   const connected = connection?.connected;
   const [inventory, setInventory] = useState<Inventory | null>(null);
-  const [runs, setRuns] = useState<{ templateId: string; values: Run[] } | null>(null);
+  const [runs, setRuns] = useState<{ automationId: string; values: Run[] } | null>(null);
+  const [applications, setApplications] = useState<Application[] | null>(null);
+  const [icons, setIcons] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,11 +40,29 @@ export function App() {
     setConnection(status);
     if (status.connected) {
       setInventory(await request<Inventory>("automations"));
+      try {
+        setApplications(await request<Application[]>("research-applications"));
+      } catch {
+        setApplications(null);
+      }
     } else {
       setInventory(null);
     }
   }
   useEffect(() => {
+    // Display only packaged same-origin icons, never arbitrary remote image URLs.
+    void fetch("/api/v1/overview")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const overview = await response.json();
+        const available: Record<string, string> = {};
+        for (const app of overview.catalog ?? []) {
+          if (typeof app.icon?.url === "string" && app.icon.url.startsWith("/api/v1/catalog/"))
+            available[app.id] = app.icon.url;
+        }
+        setIcons(available);
+      })
+      .catch(() => undefined);
     void refresh().catch(() => {
       setError("Could not check the saved n8n connection.");
     });
@@ -105,13 +114,12 @@ export function App() {
       setTab("automations");
     });
   }
-  const managedIds = new Set(Object.values(inventory?.installations ?? {}).map((receipt) => receipt.workflowId));
-  const otherWorkflows = inventory?.workflows.filter((workflow) => !managedIds.has(workflow.id)) ?? [];
+  const diagnostics = inventory?.templates.filter((template) => !template.research) ?? [];
 
   return (
     <ApplicationScreen
       name="Automations"
-      description="Configure workflows with n8n."
+      description="Choose a research outcome, connect its apps and review runs."
       tabs={tabs}
       currentTab={tab}
       onNavigate={setTab}
@@ -126,149 +134,81 @@ export function App() {
           onRefresh={() => void act(refresh, false)}
         />
       ) : null}
-      {connected && tab === "configuration" ? (
-        <section className="ss-card ss-stack">
-          <h2>n8n is ready</h2>
-          <p>ScholarServer is connected. Manage your workflows in Automations; workflow credentials stay in n8n.</p>
-          <button className="ss-button" onClick={() => setTab("automations")}>
-            View automations
-          </button>
-          <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => void act(refresh, false)}>
-            Check connection
-          </button>
-        </section>
-      ) : null}
       {!connection && error ? (
         <button className="ss-button" disabled={busy} onClick={() => void act(refresh, false)}>
           Check status
         </button>
       ) : null}
-      {connected && tab === "automations" ? (
+      {connected ? (
         <div className="ss-stack">
           <div className="ss-section-heading">
-            <h2>Automation catalog</h2>
             <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => void act(refresh, false)}>
               Refresh status
             </button>
           </div>
-          {inventory?.templates.map((template) => {
-            const receipt = inventory.installations[template.id];
-            const workflow = inventory.workflows.find((value) => value.id === receipt?.workflowId);
-            const researchDisconnected = Boolean(template.research && receipt && receipt.researchAccess !== "ready");
-            return (
-              <section className="ss-card ss-stack" key={template.id}>
-                <h3>{template.name}</h3>
-                <p>{template.description}</p>
-                {!receipt || receipt.state === "rejected" ? (
-                  <InstallAutomation
-                    schedule={template.schedule}
-                    research={template.research}
-                    retry={receipt?.state === "rejected"}
-                    busy={busy}
-                    onInstall={(settings) =>
-                      void act(() =>
-                        request("install", {
-                          templateId: template.id,
-                          settings,
-                          retryOperationId: receipt?.operationId
-                        })
-                      )
-                    }
-                  />
-                ) : null}
-                {receipt?.state === "installed" ? (
-                  <>
-                    <p>{workflow?.active ? "Scheduled" : "Not scheduled"}</p>
-                    {typeof workflow?.hoursInterval === "number" ? (
-                      <p>Runs every {workflow.hoursInterval} hours when enabled.</p>
-                    ) : null}
-                    <button
-                      className="ss-button"
-                      disabled={busy || !workflow || (researchDisconnected && !workflow.active)}
-                      onClick={() =>
-                        void act(() => request("enabled", { templateId: template.id, enabled: !workflow?.active }))
+          {tab === "catalog" && inventory ? (
+            <AutomationCatalog
+              templates={inventory.templates.filter((template) => template.research)}
+              applications={applications}
+              icons={icons}
+              busy={busy}
+              onInstall={async (templateId, automationId, name, settings) => {
+                const succeeded = await act(() => request("install", { templateId, automationId, name, settings }));
+                if (succeeded) setTab("automations");
+                return succeeded;
+              }}
+            />
+          ) : null}
+          {tab === "automations" && inventory ? (
+            <MyAutomations
+              inventory={inventory}
+              icons={icons}
+              busy={busy}
+              runs={runs}
+              onCatalog={() => setTab("catalog")}
+              onAction={(route, input) => void act(() => request(route, input))}
+              onRuns={(automationId) =>
+                void act(async () => {
+                  const result = await request<{ runs: Run[] }>(
+                    `runs?automationId=${encodeURIComponent(automationId)}`
+                  );
+                  setRuns({ automationId, values: result.runs });
+                }, false)
+              }
+            />
+          ) : null}
+          {tab === "configuration" ? (
+            <section className="ss-card ss-stack">
+              <h2>Platform connection</h2>
+              <p>Connected to n8n. Credentials and workflow execution remain in n8n.</p>
+              <p>Use the n8n application shortcut in ScholarServer to open its editor.</p>
+              <details>
+                <summary>Execution diagnostic</summary>
+                <p>
+                  This synthetic workflow checks the engine, not your research app connections. It reads no research
+                  data.
+                </p>
+                {diagnostics.map((template) => {
+                  const receipt = Object.values(inventory?.installations ?? {}).find(
+                    (value) => value.templateId === template.id
+                  );
+                  if (receipt)
+                    return <p key={template.id}>An execution diagnostic already exists in My automations.</p>;
+                  return (
+                    <InstallAutomation
+                      key={template.id}
+                      schedule={template.schedule}
+                      retry={false}
+                      busy={busy}
+                      onInstall={(settings) =>
+                        void act(() => request("install", { templateId: template.id, settings }))
                       }
-                    >
-                      {workflow?.active ? "Disable schedule" : "Enable schedule"}
-                    </button>
-                    <button
-                      className="ss-button ss-button-secondary"
-                      disabled={busy}
-                      onClick={() =>
-                        void act(async () => {
-                          const result = await request<{ runs: Run[] }>(
-                            `runs?templateId=${encodeURIComponent(template.id)}`
-                          );
-                          setRuns({ templateId: template.id, values: result.runs });
-                        })
-                      }
-                    >
-                      Show recent runs
-                    </button>
-                    {!workflow ? (
-                      <p role="alert">
-                        The workflow is not in the current inventory. Check it in n8n before making changes.
-                      </p>
-                    ) : null}
-                  </>
-                ) : null}
-                {template.research && receipt ? (
-                  <details>
-                    <summary>Research access</summary>
-                    <p>
-                      Disconnecting prevents future research requests, including manual runs. It does not delete the
-                      workflow or notes. Reconnection currently needs administrator review.
-                    </p>
-                    {researchDisconnected ? <p role="status">Research access is {receipt.researchAccess}.</p> : null}
-                    <button
-                      className="ss-button ss-button-secondary"
-                      disabled={busy || researchDisconnected}
-                      onClick={() => void act(() => request("revoke-research", { templateId: template.id }))}
-                    >
-                      Disconnect research access
-                    </button>
-                  </details>
-                ) : null}
-                {receipt && receipt.state !== "installed" && receipt.state !== "rejected" ? (
-                  <>
-                    <p>Installation status: {receipt.state}. Do not add another copy until this is resolved.</p>
-                    <button
-                      className="ss-button"
-                      disabled={busy}
-                      onClick={() => void act(() => request("reconcile", { templateId: template.id }))}
-                    >
-                      Check installation
-                    </button>
-                  </>
-                ) : null}
-                {runs?.templateId === template.id ? (
-                  <ul>
-                    {runs.values.length ? (
-                      runs.values.map((run) => (
-                        <li key={run.id}>
-                          {run.status} · {new Date(run.startedAt).toLocaleString()}
-                        </li>
-                      ))
-                    ) : (
-                      <li>No recorded runs.</li>
-                    )}
-                  </ul>
-                ) : null}
-              </section>
-            );
-          })}
-          <section className="ss-card">
-            <h2>Other n8n workflows</h2>
-            <p>Workflows created directly in n8n are listed here without changing them. Open n8n to edit them.</p>
-            <ul>
-              {otherWorkflows.map((workflow) => (
-                <li key={workflow.id}>
-                  {workflow.name} — {workflow.active ? "Scheduled" : "Inactive"}
-                </li>
-              ))}
-            </ul>
-            {inventory?.moreAvailable ? <p>More workflows are available in n8n.</p> : null}
-          </section>
+                    />
+                  );
+                })}
+              </details>
+            </section>
+          ) : null}
         </div>
       ) : null}
     </ApplicationScreen>

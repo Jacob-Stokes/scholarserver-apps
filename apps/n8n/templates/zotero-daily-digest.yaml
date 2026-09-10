@@ -1,9 +1,25 @@
 schemaVersion: 1
 id: zotero-daily-digest
 version: 1
-name: Daily research digest
+name: Create a daily list of new papers
 description: Create an Obsidian list of papers added during the previous UTC day. Empty days create no note; existing digests are left unchanged. No AI service is used.
 research: research-digest
+presentation:
+  summary: "Collect the previous UTC day's new papers in one note. Empty days create no note."
+  maturity: preview
+  effects: "Creates notes; existing files are not replaced."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Read paper metadata"
+    actions: [research-items]
+  - binding: obsidian
+    packageId: org.scholarserver.obsidian
+    name: Obsidian
+    role: "Create notes"
+    actions: [create-research-note]
 configuration:
   scheduleNode: schedule
 workflow:

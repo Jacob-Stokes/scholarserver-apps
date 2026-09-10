@@ -178,7 +178,7 @@ test("disabled, wrong-workspace and missing-action applications cannot receive a
       actions: ["discover", "enqueue", "job-status"]
     }
   ];
-  await assert.rejects(bridge.validateScope(scope), /Update/);
+  await assert.rejects(bridge.validateScope(scope), /unavailable|actions/);
 });
 
 test("Zotero metadata is bounded and excludes private notes, file paths and attachments", async () => {

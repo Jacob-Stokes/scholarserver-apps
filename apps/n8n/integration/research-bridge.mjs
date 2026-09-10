@@ -1,3 +1,8 @@
+import { readCatalog } from "./catalog.mjs";
+import { assertRequiredApplications, requirementsForScope } from "./requirements.mjs";
+
+const templates = await readCatalog(new URL("../templates/", import.meta.url));
+
 // Only these reviewed operations cross the application boundary. The workflow
 // cannot supply a URL, action name, workspace, application ID or output root.
 export class ResearchBridge {
@@ -43,27 +48,7 @@ export class ResearchBridge {
 
   async validateScope(scope) {
     const applications = await this.applications();
-    const destination = scope.kind === "convert-pdfs" ? "docling" : "obsidian";
-    for (const app of ["zotero", destination]) {
-      const found = applications.find(
-        (instance) =>
-          instance.id === scope[app] &&
-          instance.workspaceId === scope.workspaceId &&
-          instance.packageId === `org.scholarserver.${app}`
-      );
-      if (!found) throw new Error("A selected research application is unavailable");
-      let required;
-      if (scope.kind === "convert-pdfs") {
-        required = ["discover", "enqueue", "job-status"];
-        if (app === "zotero") required = ["match-attachment", "attach-docling-result"];
-      } else {
-        required = ["create-research-note"];
-        if (app === "zotero") required = ["research-items"];
-      }
-      if (required.some((action) => !found.actions.includes(action))) {
-        throw new Error("Update the selected application before connecting this research automation");
-      }
-    }
+    assertRequiredApplications(requirementsForScope(templates, scope), scope, applications);
   }
 
   action(scope, app, action, input) {

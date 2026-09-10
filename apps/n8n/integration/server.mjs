@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { SetupError } from "./bootstrap-client.mjs";
 import { readCatalog } from "./catalog.mjs";
 import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
+import { completeWorkflowInventory, editingState } from "./inventory.mjs";
 import { ManagerConnection } from "./manager-connection.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
 import { ResearchAccess } from "./research-access.mjs";
@@ -97,32 +98,48 @@ createServer(async (request, response) => {
         return json(response, 200, await passwordSetup.status());
       if (request.method === "GET" && url.pathname === "/api/automations") {
         const state = await installations.read();
-        for (const template of templates.filter((candidate) => candidate.research)) {
-          const receipt = state.installations[template.id];
-          if (!receipt) continue;
+        const inventory = await completeWorkflowInventory(await requiredClient());
+        for (const [automationId, receipt] of Object.entries(state.installations)) {
+          receipt.automationId = automationId;
+          const template = templates.find((candidate) => candidate.id === receipt.templateId);
+          if (!template?.research) continue;
           try {
-            receipt.researchAccess = (await researchAccess.read(receipt.operationId)).state;
+            const grant = await researchAccess.read(receipt.operationId);
+            receipt.researchAccess = grant.state;
+            receipt.bindings = grant.scope;
           } catch {
             receipt.researchAccess = "unavailable";
           }
         }
-        const inventory = await (await requiredClient()).listWorkflows();
+        for (const receipt of Object.values(state.installations)) {
+          const listed = inventory.find((workflow) => workflow.id === receipt.workflowId);
+          receipt.editing = "unavailable";
+          if (!listed) continue;
+          try {
+            const current = await client.getWorkflow(listed.id);
+            receipt.editing = editingState(current, receipt);
+          } catch {
+            receipt.editing = "unknown";
+          }
+        }
         return json(response, 200, {
           templates: templates.map((template) => ({
             id: template.id,
             name: template.name,
             description: template.description,
             research: template.research ?? null,
+            requirements: template.requirements ?? [],
+            presentation: template.presentation ?? null,
             schedule: scheduleConfiguration(template)
           })),
           installations: state.installations,
-          workflows: inventory.data.map((workflow) => ({
+          workflows: inventory.map((workflow) => ({
             id: workflow.id,
             name: workflow.name,
             active: workflow.active,
             hoursInterval: installedSchedule(workflow, state.installations)
           })),
-          moreAvailable: Boolean(inventory.nextCursor)
+          moreAvailable: false
         });
       }
       if (request.method === "GET" && url.pathname === "/api/research-applications") {
@@ -130,7 +147,7 @@ createServer(async (request, response) => {
       }
       if (request.method === "POST" && url.pathname === "/api/revoke-research") {
         const input = await body(request);
-        const receipt = (await installations.read()).installations[input.templateId];
+        const receipt = (await installations.read()).installations[input.automationId ?? input.templateId];
         if (!receipt) return json(response, 404, { error: "Automation is not installed" });
         await researchAccess.revoke(receipt.operationId);
         return json(response, 200, { revoked: true });
@@ -141,28 +158,38 @@ createServer(async (request, response) => {
         return json(
           response,
           200,
-          await installations.install(input.templateId, input.settings, input.retryOperationId)
+          await installations.install(
+            input.templateId,
+            input.settings,
+            input.retryOperationId,
+            input.automationId,
+            input.name
+          )
         );
       }
       if (request.method === "POST" && url.pathname === "/api/reconcile") {
         const input = await body(request);
-        return json(response, 200, await installations.reconcile(input.templateId));
+        return json(response, 200, await installations.reconcile(input.automationId ?? input.templateId));
       }
       if (request.method === "POST" && url.pathname === "/api/enabled") {
         const input = await body(request);
         if (typeof input.enabled !== "boolean")
           return json(response, 400, { error: "Choose whether to enable the schedule" });
-        const receipt = (await installations.read()).installations[input.templateId];
+        const receipt = (await installations.read()).installations[input.automationId ?? input.templateId];
         if (receipt?.state !== "installed")
           return json(response, 409, { error: "Resolve the installation before changing its schedule" });
         const upstream = await requiredClient();
         let versionId;
         if (input.enabled) {
-          const template = templates.find((candidate) => candidate.id === input.templateId);
+          const template = templates.find((candidate) => candidate.id === receipt.templateId);
           if (template?.research && (await researchAccess.read(receipt.operationId)).state !== "ready") {
             return json(response, 409, {
               error: "Research access is disconnected. Review the connection before enabling this workflow."
             });
+          }
+          if (template?.research) {
+            const grant = await researchAccess.read(receipt.operationId);
+            await researchBridge.validateScope(grant.scope);
           }
           const workflow = await upstream.getWorkflow(receipt.workflowId);
           assertWorkflowUnchanged(workflow, receipt.fingerprint);
@@ -174,7 +201,8 @@ createServer(async (request, response) => {
         return json(response, 200, { enabled: (await upstream.getWorkflow(receipt.workflowId)).active });
       }
       if (request.method === "GET" && url.pathname === "/api/runs") {
-        const receipt = (await installations.read()).installations[url.searchParams.get("templateId")];
+        const identity = url.searchParams.get("automationId") ?? url.searchParams.get("templateId");
+        const receipt = (await installations.read()).installations[identity];
         if (receipt?.state !== "installed") return json(response, 409, { error: "Automation is not installed" });
         const result = await (await requiredClient()).listExecutions(receipt.workflowId);
         return json(response, 200, {
@@ -221,7 +249,8 @@ createServer(async (request, response) => {
 }).listen(8080, "0.0.0.0");
 
 function installedSchedule(workflow, receipts) {
-  const template = templates.find((candidate) => receipts[candidate.id]?.workflowId === workflow.id);
+  const receipt = Object.values(receipts).find((candidate) => candidate.workflowId === workflow.id);
+  const template = templates.find((candidate) => candidate.id === receipt?.templateId);
   return template ? workflowScheduleHours(template, workflow) : null;
 }
 

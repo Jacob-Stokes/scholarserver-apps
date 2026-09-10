@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -109,4 +110,60 @@ test("invalid settings fail before writing an installation receipt or contacting
   const { service } = await fixture(t, { createWorkflow: async () => assert.fail("Must not call n8n") });
   await assert.rejects(service.install(template.id, { hoursInterval: -1 }));
   assert.deepEqual((await service.read()).installations, {});
+});
+
+test("two copies of one template have independent identities, schedules and restart receipts", async (t) => {
+  let creates = 0;
+  const { service, options } = await fixture(t, {
+    createWorkflow: async (workflow) => ({ ...workflow, id: `copy-${++creates}` })
+  });
+  const firstId = randomUUID();
+  const secondId = randomUUID();
+  const first = await service.install(template.id, { hoursInterval: 2 }, null, firstId, "Morning check");
+  const second = await service.install(template.id, { hoursInterval: 6 }, null, secondId, "Evening check");
+  assert.notEqual(first.workflowId, second.workflowId);
+  assert.notEqual(first.operationId, second.operationId);
+  assert.equal(first.name, "Morning check");
+  const restarted = new WorkflowInstallations(options);
+  assert.deepEqual(await restarted.install(template.id, {}, null, firstId), first);
+  assert.equal(Object.keys((await restarted.read()).installations).length, 2);
+  assert.equal(creates, 2);
+});
+
+test("legacy receipts retain IDs and workflows while a new independent copy is added", async (t) => {
+  let creates = 0;
+  const { service, options } = await fixture(t, {
+    createWorkflow: async (workflow) => ({ ...workflow, id: `workflow-${++creates}` })
+  });
+  const legacy = {
+    templateId: template.id,
+    operationId: randomUUID(),
+    workflowId: "old",
+    templateVersion: 1,
+    state: "installed",
+    fingerprint: "unchanged"
+  };
+  await writeFile(options.statePath, JSON.stringify({ schemaVersion: 1, installations: { [template.id]: legacy } }));
+  await service.install(template.id, {}, null, randomUUID());
+  assert.deepEqual((await service.read()).installations[template.id], legacy);
+  assert.equal(creates, 1);
+});
+
+test("an unresolved create blocks another copy and an edited candidate is not adopted", async (t) => {
+  let created;
+  let creates = 0;
+  const { service } = await fixture(t, {
+    createWorkflow: async (workflow) => {
+      creates++;
+      created = { ...workflow, id: "uncertain" };
+      throw new Error("Lost response");
+    },
+    listWorkflows: async () => ({ data: [created] }),
+    getWorkflow: async () => ({ ...created, settings: { changed: true } })
+  });
+  const id = randomUUID();
+  await service.install(template.id, {}, null, id);
+  await assert.rejects(service.install(template.id, {}, null, randomUUID()), /Resolve/);
+  assert.equal((await service.reconcile(id)).state, "unconfirmed");
+  assert.equal(creates, 1);
 });

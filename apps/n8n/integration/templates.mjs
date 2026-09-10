@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
 import { scheduleConfiguration } from "./configuration.mjs";
+import { validateRequirements } from "./requirements.mjs";
 import { researchKinds } from "./research-access.mjs";
 
 // Templates are reviewed package assets, not uploaded scripts or a second engine.
@@ -70,6 +71,7 @@ export function readTemplate(source) {
   if (template.research !== undefined && !researchKinds.includes(template.research)) {
     throw new Error("Unknown research template kind");
   }
+  validateRequirements(template);
   return template;
 }
 

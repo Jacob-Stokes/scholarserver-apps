@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { createResearchNote } from "/research-note.mjs";
 
 const vault = await mkdtemp("/tmp/research-vault-");
+const serviceConnection = JSON.parse(await readFile("/runtime/manager-connection.json", "utf8"));
 const operations = [];
 const packages = [
   {
@@ -51,19 +52,16 @@ createServer(async (request, response) => {
   let status = 200;
   let result;
   try {
-    if (request.url === "/api/v1/overview") {
+    if (request.url === "/api/v1/service/actions") {
+      assert.equal(request.headers.authorization, `Bearer ${serviceConnection.token}`);
       result = {
-        instances: packages.map((app) => ({
+        applications: packages.map((app) => ({
           id: app.id.split(".").at(-1),
           packageId: app.id,
-          packageVersion: "test",
           workspaceId: "personal",
-          desiredState: "enabled",
-          observedState: "healthy"
+          actionIds: app.onboarding.actions.map((action) => action.id)
         }))
       };
-    } else if (request.url === "/api/v1/catalog") {
-      result = { applications: packages };
     } else if (request.url === "/verify") {
       const notes = await readdir(`${vault}/Research`);
       assert.ok(notes.includes("zotero-PAPER123.md"));
@@ -77,9 +75,10 @@ createServer(async (request, response) => {
       result = { checked: true, notes: notes.length, attachments: attached.size, operations };
     } else {
       const match = request.url.match(
-        /^\/api\/v1\/instances\/personal\/(zotero|obsidian|docling)\/actions\/([a-z-]+)$/
+        /^\/api\/v1\/service\/instances\/personal\/(zotero|obsidian|docling)\/actions\/([a-z-]+)$/
       );
       assert.ok(match, "Only known fixture actions may be requested");
+      assert.equal(request.headers.authorization, `Bearer ${serviceConnection.token}`);
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);
       const input = JSON.parse(Buffer.concat(chunks).toString("utf8"));

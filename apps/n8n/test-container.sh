@@ -16,7 +16,7 @@ done
 prefix="scholarserver-n8n-ci-$$"
 n8n_ports=(--expose 5678)
 integration_ports=(--expose 8080)
-if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
+if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ] || [ "${SCHOLARSERVER_EXPOSE_TEST_UI:-0}" = 1 ]; then
   n8n_ports=(-p 127.0.0.1:18230:5678)
   integration_ports=(-p 127.0.0.1:18231:8080)
 fi
@@ -80,16 +80,29 @@ if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
 fi
 echo "Native read-only n8n and integration startup passed."
 if [ "${SCHOLARSERVER_CHECK_RESEARCH:-0}" = 1 ]; then
-  docker run -d --name "$prefix-research-fixture" --network "$prefix" --network-alias manager \
+  docker run -d --name "$prefix-research-fixture" --network "$prefix" --network-alias manager --network-alias scholarserver-manager \
     --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
     --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+    -v "$prefix-runtime:/runtime:ro" \
     -v "$PWD/apps/n8n/integration/check-research-fixture.mjs:/fixture.mjs:ro" \
     -v "$PWD/apps/obsidian/sync/research-note.mjs:/research-note.mjs:ro" \
     --entrypoint node "$INTEGRATION_IMAGE" /fixture.mjs >/dev/null
   if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
-    node apps/n8n/integration/check-research-ui.mjs
+    node apps/n8n/ui/check-catalog-native.mjs
   fi
   docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-research-install.mjs
+  # Restart before execution so a success proves the saved connection and n8n
+  # credential material still work, rather than only surviving in memory.
+  docker restart "$prefix-app" "$prefix-integration" >/dev/null
+  restarted=false
+  for attempt in $(seq 1 90); do
+    if docker exec "$prefix-integration" node -e 'fetch("http://localhost:8080/api/automations", {signal:AbortSignal.timeout(5000)}).then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1));'; then
+      restarted=true
+      break
+    fi
+    sleep 2
+  done
+  if [ "$restarted" != true ]; then echo "Research inventory did not recover after restart." >&2; exit 1; fi
   workflow_ids=$(docker exec "$prefix-integration" node -e 'console.log(JSON.parse(require("fs").readFileSync("/runtime/research-test-ids.json")).join(" "))')
   for workflow_id in $workflow_ids; do
     node apps/n8n/integration/check-research-execute.mjs "$prefix-app" "$workflow_id"

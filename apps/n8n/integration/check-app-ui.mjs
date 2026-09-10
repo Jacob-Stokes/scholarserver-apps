@@ -8,11 +8,15 @@ const browser = await chromium.launch({ channel: "chrome", headless: true });
 try {
   const page = await browser.newPage();
   await page.goto("http://localhost:18231");
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByText("Execution diagnostic", { exact: true }).click();
+  await page.getByLabel("Run every (hours)").fill("6");
+  await page.getByRole("button", { name: "Add automation", exact: true }).click();
+  await page.getByText("An execution diagnostic already exists in My automations.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "My automations", exact: true }).click();
   const checkCard = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Check automation execution", exact: true }) });
-  await checkCard.getByLabel("Run every (hours)").fill("6");
-  await checkCard.getByRole("button", { name: "Add automation", exact: true }).click();
   await page.getByRole("button", { name: "Enable schedule", exact: true }).click();
   await page.getByRole("button", { name: "Disable schedule", exact: true }).click();
   await page.getByRole("button", { name: "Enable schedule", exact: true }).waitFor();
@@ -20,9 +24,9 @@ try {
   await page.getByRole("button", { name: "Enable schedule", exact: true }).waitFor();
   assert.equal(await checkCard.getByRole("button", { name: "Add automation", exact: true }).count(), 0);
   await page.getByRole("button", { name: "Show recent runs", exact: true }).click();
-  await page.getByText("No recorded runs.", { exact: true }).waitFor();
+  await page.getByText(/No recorded runs/).waitFor();
   await page.getByRole("button", { name: "Configuration", exact: true }).click();
-  await page.getByRole("heading", { name: "n8n is ready" }).waitFor();
+  await page.getByRole("heading", { name: "Platform connection" }).waitFor();
   assert.equal(await page.getByLabel("n8n API key").count(), 0);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));

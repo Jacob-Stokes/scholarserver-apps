@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AppRequirement } from "./automation-types";
 import { type ResearchBindings, type ResearchKind, ResearchSettings } from "./ResearchSettings";
 
 export type Schedule = { hoursInterval: number; minimum: number; maximum: number };
@@ -8,12 +9,16 @@ export function InstallAutomation({
   research,
   retry,
   busy,
+  requirements = [],
+  expanded = false,
   onInstall
 }: {
   schedule: Schedule | null;
   research?: ResearchKind | null;
   retry: boolean;
   busy: boolean;
+  requirements?: AppRequirement[];
+  expanded?: boolean;
   onInstall: (settings: { hoursInterval?: number; research?: ResearchBindings }) => void;
 }) {
   // Status refreshes must not replace this unsaved choice.
@@ -36,7 +41,9 @@ export function InstallAutomation({
         }
       }}
     >
-      {research ? <ResearchSettings kind={research} busy={busy} onChange={setBindings} /> : null}
+      {research ? (
+        <ResearchSettings kind={research} requirements={requirements} busy={busy} onChange={setBindings} />
+      ) : null}
       {schedule ? (
         <label>
           Run every (hours)
@@ -62,7 +69,7 @@ export function InstallAutomation({
       </button>
     </form>
   );
-  if (!research) return form;
+  if (!research || expanded) return form;
   return (
     <details>
       <summary>Choose apps and schedule</summary>

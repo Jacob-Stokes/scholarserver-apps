@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { type AppRequirement, availableForRole } from "./automation-types";
 
 export type ResearchKind = "reading-notes" | "research-digest" | "convert-pdfs";
 export type ResearchBindings = {
@@ -12,10 +13,12 @@ type Application = { id: string; workspaceId: string; packageId: string; actions
 
 export function ResearchSettings({
   kind,
+  requirements,
   busy,
   onChange
 }: {
   kind: ResearchKind;
+  requirements: AppRequirement[];
   busy: boolean;
   onChange: (bindings: ResearchBindings | null) => void;
 }) {
@@ -25,17 +28,12 @@ export function ResearchSettings({
   const [target, setTarget] = useState("");
   const [folder, setFolder] = useState(kind === "convert-pdfs" ? "" : "Research/Reading");
   const destination = kind === "convert-pdfs" ? "docling" : "obsidian";
-  const sources = applications.filter(
-    (app) =>
-      app.packageId === "org.scholarserver.zotero" &&
-      app.actions.includes(kind === "convert-pdfs" ? "match-attachment" : "research-items")
-  );
+  const sourceRole = requirements.find((requirement) => requirement.binding === "zotero");
+  const targetRole = requirements.find((requirement) => requirement.binding === destination);
+  const sources = applications.filter((app) => sourceRole && availableForRole(app, sourceRole));
   const selectedSource = sources.find((app) => `${app.workspaceId}/${app.id}` === source);
   const targets = applications.filter(
-    (app) =>
-      app.packageId === `org.scholarserver.${destination}` &&
-      app.workspaceId === selectedSource?.workspaceId &&
-      app.actions.includes(destination === "docling" ? "discover" : "create-research-note")
+    (app) => targetRole && availableForRole(app, targetRole) && app.workspaceId === selectedSource?.workspaceId
   );
   const selectedTarget = targets.find((app) => app.id === target);
 
@@ -120,12 +118,15 @@ export function ResearchSettings({
           : "Allows reading recent Zotero metadata and creating notes only in this folder. Existing notes are not replaced."}
       </p>
       {!error && sources.length === 0 ? (
-        <p>Install or update Zotero to a package that supports this automation.</p>
+        <p>
+          Zotero is not available to this platform with the required actions. Check installation, running state, package
+          version and access.
+        </p>
       ) : null}
       {selectedSource && targets.length === 0 ? (
         <p>
-          Install or update {destination === "docling" ? "Docling" : "Obsidian"} in the same workspace to use this
-          automation.
+          No compatible {destination === "docling" ? "Docling" : "Obsidian"} is available to this platform in the
+          selected workspace.
         </p>
       ) : null}
     </fieldset>

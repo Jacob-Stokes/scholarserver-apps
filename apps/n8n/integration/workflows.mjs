@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
-import { configureWorkflow } from "./configuration.mjs";
+import { AutomationConfigurationError, configureWorkflow } from "./configuration.mjs";
 import { researchConfiguration } from "./research-access.mjs";
 import { workflowFingerprint, workflowFromTemplate } from "./templates.mjs";
 
@@ -49,14 +49,31 @@ export class WorkflowInstallations {
     return result;
   }
 
-  install(templateId, settings = {}, retryOperationId = null) {
+  install(templateId, settings = {}, retryOperationId = null, automationId = templateId, name = null) {
     return this.serialise(async () => {
       const template = this.templates.find((candidate) => candidate.id === templateId);
       if (!template) throw new Error("Unknown automation template");
       const state = await this.read();
-      // One installed copy per template in this first version.
-      const existing = state.installations[templateId];
+      // Legacy template-keyed receipts remain addressable. New clients supply a
+      // UUID per configured copy, retained across failed requests and retries.
+      if (automationId !== templateId && !/^[a-f0-9-]{36}$/.test(automationId ?? "")) {
+        throw new AutomationConfigurationError("Invalid automation identity");
+      }
+      if (name !== null && (typeof name !== "string" || !name.trim() || name.length > 120)) {
+        throw new AutomationConfigurationError("Choose an automation name of up to 120 characters");
+      }
+      const existing = state.installations[automationId];
+      const unresolved = Object.values(state.installations).some(
+        (receipt) => receipt.templateId === templateId && receipt.state !== "installed" && receipt.state !== "rejected"
+      );
+      if (!existing && unresolved) {
+        throw new AutomationConfigurationError(
+          "Resolve the unconfirmed installation in My automations before adding another copy"
+        );
+      }
       if (existing) {
+        if (existing.templateId !== templateId)
+          throw new AutomationConfigurationError("Automation identity is already in use");
         const explicitRejectedRetry = existing.state === "rejected" && retryOperationId === existing.operationId;
         if (!explicitRejectedRetry) return existing;
       } else if (retryOperationId !== null) {
@@ -67,6 +84,8 @@ export class WorkflowInstallations {
       if (research && !this.prepareResearch) throw new Error("Research connections are not available");
       if (research && this.validateResearch) await this.validateResearch(research);
       const receipt = {
+        automationId,
+        name: name?.trim() ?? template.name,
         templateId,
         templateVersion: template.version,
         operationId: randomUUID(),
@@ -74,14 +93,18 @@ export class WorkflowInstallations {
         workflowId: null,
         fingerprint: null
       };
+      // Bindings are non-secret provenance, not a second editable workflow.
+      if (research) receipt.bindings = research;
       // The marker permits read-only reconciliation after a lost create response.
-      receipt.workflowName = `${template.name} [ScholarServer:${receipt.operationId}]`;
+      receipt.workflowName = `${receipt.name} [ScholarServer:${receipt.operationId}]`;
       workflow.name = receipt.workflowName;
-      state.installations[templateId] = receipt;
+      state.installations[automationId] = receipt;
       await this.save(state);
       let created;
       try {
         if (research) await this.prepareResearch(workflow, receipt, research);
+        receipt.submittedFingerprint = workflowFingerprint(workflow);
+        await this.save(state);
         created = await this.client.createWorkflow(workflow);
       } catch (error) {
         receipt.state = error.outcome === "rejected" ? "rejected" : "unconfirmed";
@@ -121,6 +144,12 @@ export class WorkflowInstallations {
       }
       if (matches.length === 1 && typeof matches[0].id === "string") {
         const workflow = await this.client.getWorkflow(matches[0].id);
+        if (receipt.submittedFingerprint && workflowFingerprint(workflow) !== receipt.submittedFingerprint) {
+          // Do not adopt an edited workflow as a newly trusted guided version.
+          receipt.state = "unconfirmed";
+          await this.save(state);
+          return receipt;
+        }
         receipt.workflowId = workflow.id;
         receipt.fingerprint = workflowFingerprint(workflow);
         receipt.state = "installed";

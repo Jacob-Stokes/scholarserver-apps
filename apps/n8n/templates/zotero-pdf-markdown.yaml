@@ -1,9 +1,25 @@
 schemaVersion: 1
 id: zotero-pdf-markdown
 version: 1
-name: Convert Zotero PDFs to Markdown
+name: Attach Markdown versions of PDFs
 description: Convert PDFs in a shared Zotero–Docling folder and attach Markdown to the matching paper. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
 research: convert-pdfs
+presentation:
+  summary: "Turn matching PDFs into Markdown attachments. Fewer than 100 PDFs per folder; OCR is off."
+  maturity: preview
+  effects: "Converts matching PDFs and attaches Markdown; existing results are reused."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Match papers and attach results"
+    actions: [match-attachment, attach-docling-result]
+  - binding: docling
+    packageId: org.scholarserver.docling
+    name: Docling
+    role: "Convert PDFs"
+    actions: [discover, enqueue, job-status]
 configuration:
   scheduleNode: schedule
 workflow:

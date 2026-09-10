@@ -25,6 +25,12 @@ the previous Zotero automation worker is not migrated or changed.
 
 ## Connection boundary
 
+The source candidate separates **Catalog** from **My automations**. Cards show
+required app roles before setup. Each configured copy has its own identity,
+connections and folder; old template-keyed receipts are preserved. Native edits
+are labelled Customised and are never overwritten. The execution diagnostic is
+under Configuration. See [catalog behaviour and remaining work](AUTOMATION_CATALOG.md).
+
 Each installation receives a separate n8n HTTP-header credential. n8n stores the
 secret encrypted. The integration stores only its verifier, credential ID and
 the selected workspace, apps, workflow kind and folder. Native HTTP nodes call

@@ -1,5 +1,12 @@
 # n8n release acceptance
 
+The newer outcome-led catalog source described in
+[AUTOMATION_CATALOG.md](AUTOMATION_CATALOG.md) is not in beta.4's published image.
+It has source, mocked browser, native AMD64 and native-browser candidate evidence.
+It still needs a new immutable package, final native-architecture acceptance and
+real-app service/credential recovery checks. Do not present a source push as an
+update to an installed beta.4 application.
+
 Beta.4 is not ready for official catalog publication. It replaces the incompatible
 beta.3 image pin with a new public, immutable AMD64/ARM64 integration candidate
 built from source `94b1da2`. Both native builds passed declared setup and controller

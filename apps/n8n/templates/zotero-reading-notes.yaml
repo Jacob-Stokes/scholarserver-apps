@@ -1,9 +1,25 @@
 schemaVersion: 1
 id: zotero-reading-notes
 version: 1
-name: Zotero reading notes
+name: Create reading-note starters
 description: Create an Obsidian reading-note scaffold for papers added in the last seven days. Existing notes are left unchanged. No AI service is used.
 research: reading-notes
+presentation:
+  summary: "Create a note starter for each paper added in the last seven days."
+  maturity: preview
+  effects: "Creates notes; existing files are not replaced."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Read paper metadata"
+    actions: [research-items]
+  - binding: obsidian
+    packageId: org.scholarserver.obsidian
+    name: Obsidian
+    role: "Create notes"
+    actions: [create-research-note]
 configuration:
   scheduleNode: schedule
 workflow:

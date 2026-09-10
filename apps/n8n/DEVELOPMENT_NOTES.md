@@ -1,5 +1,53 @@
 # n8n integration — development record
 
+## 10 September 2026 — outcome-led automation catalog candidate
+
+The app-owned screen now separates My automations, Catalog and Configuration.
+Reviewed YAML declares outcome summaries, effects and explicit app roles/actions.
+Cards and setup use those requirements; the server checks all required actions.
+Tests compare them with package grants and implemented bridge operations.
+Packaged icons come from Manager's authenticated local catalog, with named
+fallbacks. The execution diagnostic is no longer offered as a research outcome.
+
+Configured copies have independent UUID identities, names, native workflow IDs and
+scoped credentials. Existing template-keyed receipts remain intact and addressable;
+no workflow recreation or activation migration occurs. Unconfirmed creates block
+another copy until reconciled. A submitted fingerprint prevents adopting a changed
+candidate after response loss. Upstream normalisation may therefore require manual
+review rather than unsafe automatic reconciliation.
+
+Inventory traverses all pages with explicit bounds and rejects inconsistent
+results. Native edits appear as Customised; guided enablement checks the actual
+fingerprint and selects the inspected version. Refresh never overwrites graphs.
+See [catalog ownership and remaining work](AUTOMATION_CATALOG.md).
+
+Verification:
+
+- 58 focused n8n tests pass, including two-copy identity, old receipt preservation,
+  uncertain creation, requirement/grant agreement, pagination and native edits.
+- Full apps `npm test` and the n8n UI build pass on Resolution's resource-limited
+  rootless CI daemon. Local typecheck and scoped formatting checks pass.
+- Mocked Chrome checks pass packaged icons, roles, invalid paths, response-loss
+  draft/identity retention, two folders, enable/reload, discovered workflows,
+  customised enablement blocking and 390-pixel layout.
+- Native AMD64 setup, restart and execution pass. Three research templates plus
+  a second reading copy execute twice after both containers restart. The fixture
+  verifies three note files and one attachment, with repeat results reused. It
+  validates the synthetic service bearer on the current service API routes.
+- Chrome also creates a fifth workflow through the real candidate UI/controller
+  and n8n API, chooses its folder/interval, enables/disables, reloads and lists
+  runs. It remains disabled. Desktop/mobile screenshots are in the local apps
+  repository at `.dev/automation-catalog-review/`.
+
+The tested local image index is
+`sha256:e58a24a0d6c7d5dc5c19e5aebbf5b4ac99cff1b8d32f04e593716726ca3d4bc2`.
+It is not published or pinned in beta.4. These tests use synthetic app responses
+and real Linux create-only note writes, not a live research library, Docling
+conversion, Obsidian Sync or production Manager/executor queues. No user workflow,
+paid server or production installation changed. Both native runs' disposable
+containers, volumes and networks were removed and absence verified.
+Signed publication and real-app acceptance remain separate gates.
+
 ## 10 September 2026 — native beta.4 image publication
 
 Both architecture images were built from source `94b1da2`. AMD64 used Resolution's
