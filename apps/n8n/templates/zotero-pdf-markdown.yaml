@@ -1,11 +1,11 @@
 schemaVersion: 1
 id: zotero-pdf-markdown
-version: 1
-name: Attach Markdown versions of PDFs
-description: Convert PDFs in a shared Zotero–Docling folder and attach Markdown to the matching paper. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
+version: 2
+name: Automatically convert new Zotero PDFs
+description: Check the shared Zotero–Docling folder every minute and attach converted Markdown to the matching paper. Existing PDFs are also checked when enabled; completed results are reused. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
 research: convert-pdfs
 presentation:
-  summary: "Turn matching PDFs into Markdown attachments. Fewer than 100 PDFs per folder; OCR is off."
+  summary: "Watch a shared folder for Zotero PDFs and attach Markdown automatically. Checks every minute by default; OCR is off."
   maturity: preview
   effects: "Converts matching PDFs and attaches Markdown; existing results are reused."
   ai: none
@@ -31,18 +31,21 @@ workflow:
       position: [0, 180]
       parameters: {}
     - id: schedule
-      name: Every six hours
+      name: Check for new PDFs
       type: n8n-nodes-base.scheduleTrigger
       typeVersion: 1.2
       position: [0, 0]
       parameters:
         rule:
           interval:
-            - {field: hours, hoursInterval: 6}
+            - {field: minutes, minutesInterval: 1}
     - id: discover
       name: Find shared PDFs
       type: n8n-nodes-base.httpRequest
       typeVersion: 4.2
+      retryOnFail: true
+      maxTries: 3
+      waitBetweenTries: 3000
       position: [220, 0]
       parameters:
         method: POST
@@ -69,6 +72,9 @@ workflow:
       name: Match Zotero attachment
       type: n8n-nodes-base.httpRequest
       typeVersion: 4.2
+      retryOnFail: true
+      maxTries: 3
+      waitBetweenTries: 3000
       position: [880, 100]
       parameters:
         method: POST
@@ -95,6 +101,10 @@ workflow:
       name: Queue Docling conversion
       type: n8n-nodes-base.httpRequest
       typeVersion: 4.2
+      # Docling reuses its source-hash/profile job rather than creating duplicates.
+      retryOnFail: true
+      maxTries: 3
+      waitBetweenTries: 3000
       position: [1320, 0]
       parameters:
         method: POST
@@ -115,6 +125,9 @@ workflow:
       name: Check conversion status
       type: n8n-nodes-base.httpRequest
       typeVersion: 4.2
+      retryOnFail: true
+      maxTries: 3
+      waitBetweenTries: 3000
       position: [1760, 0]
       parameters:
         method: POST
@@ -159,6 +172,10 @@ workflow:
       name: Attach Markdown to original paper
       type: n8n-nodes-base.httpRequest
       typeVersion: 4.2
+      # Zotero serializes attachment imports and reuses the source-hash receipt.
+      retryOnFail: true
+      maxTries: 3
+      waitBetweenTries: 3000
       position: [2200, -100]
       parameters:
         method: POST
@@ -172,7 +189,7 @@ workflow:
   connections:
     Run now:
       main: [[{node: Find shared PDFs, type: main, index: 0}]]
-    Every six hours:
+    Check for new PDFs:
       main: [[{node: Find shared PDFs, type: main, index: 0}]]
     Find shared PDFs:
       main: [[{node: One item per PDF, type: main, index: 0}]]
@@ -185,7 +202,7 @@ workflow:
     'Matched exactly one attachment?':
       main: [[{node: Queue Docling conversion, type: main, index: 0}], [{node: One conversion at a time, type: main, index: 0}]]
     Queue Docling conversion:
-      main: [[{node: Wait before checking conversion, type: main, index: 0}]]
+      main: [[{node: Check conversion status, type: main, index: 0}]]
     Wait before checking conversion:
       main: [[{node: Check conversion status, type: main, index: 0}]]
     Check conversion status:

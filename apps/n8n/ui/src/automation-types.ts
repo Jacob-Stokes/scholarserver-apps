@@ -28,7 +28,13 @@ export type Receipt = {
   bindings?: ResearchBindings;
   editing?: "guided" | "customised" | "unavailable" | "unknown";
 };
-export type Workflow = { id: string; name: string; active: boolean; hoursInterval: number | null };
+export type Workflow = {
+  id: string;
+  name: string;
+  active: boolean;
+  hoursInterval: number | null;
+  minutesInterval?: number | null;
+};
 export type Inventory = {
   templates: Template[];
   installations: Record<string, Receipt>;

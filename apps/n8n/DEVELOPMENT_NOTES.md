@@ -1,5 +1,19 @@
 # n8n integration — development record
 
+## 10 September 2026 — automatic PDF watcher acceptance
+
+The PDF template now polls every minute by default, with minute settings exposed
+in the app-owned UI. Existing hourly workflow copies remain unchanged. Scanning,
+iteration, waits and three-attempt retries are native n8n nodes; no scheduler or
+retry queue was added to Manager or the integration. Completed jobs skip the wait.
+
+A PDF added after activation was converted by real Docling and attached to its
+Zotero parent. A forced overlap produced Manager busy responses; both n8n
+executions then succeeded with one conversion and one attachment. See
+[the exact candidate, chronology and evidence limits](PDF_WATCH_ACCEPTANCE.md).
+Full apps tests, native image build and mocked Chrome minute-configuration checks
+passed. This is not package publication or production deployment.
+
 ## 10 September 2026 — real reading-note workflow passed
 
 The reading-note candidate now has real Manager/executor, connected-library,

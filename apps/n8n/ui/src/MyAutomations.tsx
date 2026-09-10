@@ -65,6 +65,12 @@ export function MyAutomations({
                 {receipt.editing === "unknown" ? (
                   <p role="alert">Could not inspect this workflow. Refresh status before enabling it.</p>
                 ) : null}
+                {typeof workflow?.minutesInterval === "number" ? (
+                  <p>
+                    Checks every {workflow.minutesInterval} {workflow.minutesInterval === 1 ? "minute" : "minutes"} when
+                    enabled.
+                  </p>
+                ) : null}
                 {typeof workflow?.hoursInterval === "number" ? (
                   <p>Every {workflow.hoursInterval} hours when enabled.</p>
                 ) : null}

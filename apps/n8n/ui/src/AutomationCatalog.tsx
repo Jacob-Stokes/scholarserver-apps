@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { AppRoles } from "./AppRoles";
 import { type Application, availableForRole, type Template } from "./automation-types";
-import { InstallAutomation } from "./InstallAutomation";
-import type { ResearchBindings } from "./ResearchSettings";
+import { type AutomationSettings, InstallAutomation } from "./InstallAutomation";
 
 export function AutomationCatalog({
   templates,
@@ -15,12 +14,7 @@ export function AutomationCatalog({
   applications: Application[] | null;
   icons: Record<string, string>;
   busy: boolean;
-  onInstall: (
-    templateId: string,
-    automationId: string,
-    name: string,
-    settings: { hoursInterval?: number; research?: ResearchBindings }
-  ) => Promise<boolean>;
+  onInstall: (templateId: string, automationId: string, name: string, settings: AutomationSettings) => Promise<boolean>;
 }) {
   const [selected, setSelected] = useState<{ template: Template; id: string } | null>(null);
   const [name, setName] = useState("");

@@ -1,5 +1,17 @@
 # Docling development notes
 
+## n8n PDF watcher acceptance — 10 September 2026
+
+The installed Docling engine/controller images passed a real n8n-triggered PDF
+conversion in an isolated installation. Zotero and Docling shared one local
+rclone test storage location. The generated Markdown was imported by Zotero and
+its text verified. Repeated and deliberately overlapping n8n scans retained one
+conversion job with one attempt. Scheduling and retries remained in n8n; Docling
+owned conversion execution and its existing source-hash/profile deduplication.
+See [test chronology and limits](../n8n/PDF_WATCH_ACCEPTANCE.md). No production
+Docling installation or immutable package was changed. OCR was off; this does
+not establish scanned-PDF or complex-table fidelity.
+
 ## Setup read ownership — 7 September 2026
 
 The conversion-defaults form previously allowed saving its initial false value

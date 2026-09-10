@@ -22,10 +22,32 @@ test("catalog contains four unique native workflows with disabled-by-default cre
       assert.equal(node.credentials, undefined);
       if (node.type === "n8n-nodes-base.httpRequest") {
         assert.match(node.parameters.url, /^http:\/\/integration:8081\/research\/[a-z]+$/);
-        assert.equal(node.retryOnFail, undefined);
+        if (template.research === "convert-pdfs") {
+          assert.equal(node.retryOnFail, true);
+          assert.equal(node.maxTries, 3);
+          assert.equal(node.waitBetweenTries, 3000);
+        } else {
+          assert.equal(node.retryOnFail, undefined);
+        }
       }
     }
   }
+});
+
+test("PDF watcher polls every minute and checks cached conversion status before waiting", () => {
+  const template = templates.find((candidate) => candidate.research === "convert-pdfs");
+  const trigger = template.workflow.nodes.find((node) => node.id === "schedule");
+  assert.deepEqual(trigger.parameters.rule.interval, [{ field: "minutes", minutesInterval: 1 }]);
+  assert.equal(template.workflow.connections[trigger.name].main[0][0].node, "Find shared PDFs");
+  assert.equal(template.workflow.connections["Queue Docling conversion"].main[0][0].node, "Check conversion status");
+  assert.equal(
+    template.workflow.connections["Wait before checking conversion"].main[0][0].node,
+    "Check conversion status"
+  );
+  assert.equal(
+    template.workflow.connections["Attach Markdown to original paper"].main[0][0].node,
+    "One conversion at a time"
+  );
 });
 
 test("research scopes reject URLs, traversal, hidden folders and extra bindings", () => {

@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { AppRequirement } from "./automation-types";
 import { type ResearchBindings, type ResearchKind, ResearchSettings } from "./ResearchSettings";
 
-export type Schedule = { hoursInterval: number; minimum: number; maximum: number };
+export type Schedule = { hoursInterval?: number; minutesInterval?: number; minimum: number; maximum: number };
+export type AutomationSettings = { hoursInterval?: number; minutesInterval?: number; research?: ResearchBindings };
 
 export function InstallAutomation({
   schedule,
@@ -19,12 +20,13 @@ export function InstallAutomation({
   busy: boolean;
   requirements?: AppRequirement[];
   expanded?: boolean;
-  onInstall: (settings: { hoursInterval?: number; research?: ResearchBindings }) => void;
+  onInstall: (settings: AutomationSettings) => void;
 }) {
   // Status refreshes must not replace this unsaved choice.
-  const [hours, setHours] = useState(String(schedule?.hoursInterval ?? 1));
+  const minutes = schedule?.minutesInterval !== undefined;
+  const [interval, setInterval] = useState(String(schedule?.minutesInterval ?? schedule?.hoursInterval ?? 1));
   const [bindings, setBindings] = useState<ResearchBindings | null>(null);
-  const value = Number(hours);
+  const value = Number(interval);
   const validSchedule =
     !schedule || (Number.isInteger(value) && value >= schedule.minimum && value <= schedule.maximum);
   const valid = validSchedule && (!research || bindings !== null);
@@ -34,8 +36,9 @@ export function InstallAutomation({
       onSubmit={(event) => {
         event.preventDefault();
         if (valid) {
-          const settings: { hoursInterval?: number; research?: ResearchBindings } = {};
-          if (schedule) settings.hoursInterval = value;
+          const settings: AutomationSettings = {};
+          if (schedule && minutes) settings.minutesInterval = value;
+          else if (schedule) settings.hoursInterval = value;
           if (research && bindings) settings.research = bindings;
           onInstall(settings);
         }
@@ -46,15 +49,15 @@ export function InstallAutomation({
       ) : null}
       {schedule ? (
         <label>
-          Run every (hours)
+          {minutes ? "Check every (minutes)" : "Run every (hours)"}
           <input
             className="ss-input"
             type="number"
             min={schedule.minimum}
             max={schedule.maximum}
             step="1"
-            value={hours}
-            onChange={(event) => setHours(event.target.value)}
+            value={interval}
+            onChange={(event) => setInterval(event.target.value)}
             required
             disabled={busy}
           />

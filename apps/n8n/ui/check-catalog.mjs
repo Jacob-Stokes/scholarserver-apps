@@ -40,8 +40,24 @@ try {
   let attempts = 0;
   let firstIdentity;
   const applications = [
-    { id: "library", workspaceId: "personal", packageId: "org.scholarserver.zotero", actions: ["research-items"] },
-    { id: "notes", workspaceId: "personal", packageId: "org.scholarserver.obsidian", actions: ["create-research-note"] }
+    {
+      id: "library",
+      workspaceId: "personal",
+      packageId: "org.scholarserver.zotero",
+      actions: ["research-items", "match-attachment", "attach-docling-result"]
+    },
+    {
+      id: "notes",
+      workspaceId: "personal",
+      packageId: "org.scholarserver.obsidian",
+      actions: ["create-research-note"]
+    },
+    {
+      id: "converter",
+      workspaceId: "personal",
+      packageId: "org.scholarserver.docling",
+      actions: ["discover", "enqueue", "job-status"]
+    }
   ];
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -86,7 +102,13 @@ try {
         researchAccess: "ready",
         bindings: input.settings.research
       };
-      workflows.push({ id: workflowId, name: input.name, active: false, hoursInterval: input.settings.hoursInterval });
+      workflows.push({
+        id: workflowId,
+        name: input.name,
+        active: false,
+        hoursInterval: input.settings.hoursInterval,
+        minutesInterval: input.settings.minutesInterval
+      });
       data = installations[input.automationId];
     } else if (endpoint === "/api/enabled") {
       const input = route.request().postDataJSON();
@@ -146,6 +168,25 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: new URL("installed-mobile.png", output).pathname, fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByRole("button", { name: "Catalog", exact: true }).click();
+  const pdf = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Automatically convert new Zotero PDFs", exact: true }) });
+  await pdf.getByRole("button", { name: "Set up", exact: true }).click();
+  assert.equal(await page.getByLabel("Check every (minutes)").inputValue(), "1");
+  await page.getByLabel("Automation name", { exact: true }).fill("PDF watcher");
+  await page.getByLabel("Zotero library").selectOption("personal/library");
+  await page.getByLabel("Docling installation").selectOption("converter");
+  await page.getByLabel("Shared PDF folder").fill("Papers");
+  await page.getByLabel("Check every (minutes)").fill("0");
+  assert.equal(await page.getByRole("button", { name: "Add automation", exact: true }).isEnabled(), false);
+  await page.getByLabel("Check every (minutes)").fill("2");
+  await page.screenshot({ path: new URL("pdf-watcher-mobile.png", output).pathname, fullPage: true });
+  await page.getByRole("button", { name: "Add automation", exact: true }).click();
+  await page.getByText("Checks every 2 minutes when enabled.", { exact: true }).waitFor();
+  const pdfReceipt = Object.values(installations).find((receipt) => receipt.name === "PDF watcher");
+  assert.equal(pdfReceipt.settings.minutesInterval, 2);
+  assert.equal(pdfReceipt.settings.hoursInterval, undefined);
   unavailable = true;
   await page.getByRole("button", { name: "Refresh status", exact: true }).click();
   await page.getByRole("button", { name: "Catalog", exact: true }).click();

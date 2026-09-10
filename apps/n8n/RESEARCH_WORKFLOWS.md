@@ -16,7 +16,24 @@ of their complete entry points are still required before release.
 | --- | --- | --- |
 | Zotero reading notes | Creates a scaffold for papers added in the last seven days; filenames use Zotero item keys. Existing files remain unchanged. | Zotero `research-items` and Obsidian `create-research-note` actions. These actions are source candidates, not in the currently pinned app packages. |
 | Daily research digest | Lists papers added during the previous UTC day. Empty days produce no note. Existing dated digests remain unchanged. | The same two candidate actions. This is a daily digest, not a weekly or catch-up implementation. |
-| Convert Zotero PDFs to Markdown | Matches shared PDFs to Zotero attachments, queues one Docling conversion at a time, waits, checks success and attaches the result to the original paper. OCR is off. | Zotero's complete workspace, Docling, and the same folder exposed in both apps. Fewer than 100 PDFs in that folder. |
+| Automatically convert new Zotero PDFs | Checks the shared folder every minute by default, matches PDFs to Zotero attachments, queues Docling conversion and attaches Markdown to the original paper. OCR is off. | Zotero's complete workspace in linked-folder mode, Docling, and the same folder exposed in both apps. Fewer than 100 PDFs in that folder. |
+
+The PDF watcher uses scheduled polling, not an instant filesystem event. Enable
+its schedule once; the page can then be closed. A PDF must finish syncing into the
+shared folder and be present as an attachment in Zotero before it can match. This
+does not watch PDFs held only in Zotero Storage or WebDAV. The first scan also
+checks existing matching PDFs. Completed conversion jobs and attached results are
+reused; failed jobs require review in Docling rather than automatic retry. Existing
+installed six-hour workflows keep their schedule until deliberately replaced or
+edited in n8n; this template revision does not change them silently.
+
+Scanning cadence, PDF iteration, conversion-status waits and bounded request
+retries are native n8n nodes. PDF requests make at most three attempts, three
+seconds apart. The two write operations reuse existing results: Docling identifies
+jobs by source hash and conversion profile; Zotero serializes result imports and
+recognizes the source-hash attachment receipt. Do not copy these retry settings to
+operations without an equivalent duplicate-prevention contract. Manager and the
+integration do not run a second automation scheduler or retry queue.
 
 Reading notes do not catch up after more than seven days offline. The digest does
 not backfill missed days or update an existing digest when a late sync adds older

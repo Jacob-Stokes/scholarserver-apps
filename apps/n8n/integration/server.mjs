@@ -4,7 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError } from "./bootstrap-client.mjs";
 import { readCatalog } from "./catalog.mjs";
-import { AutomationConfigurationError, scheduleConfiguration, workflowScheduleHours } from "./configuration.mjs";
+import {
+  AutomationConfigurationError,
+  scheduleConfiguration,
+  workflowScheduleHours,
+  workflowScheduleMinutes
+} from "./configuration.mjs";
 import { completeWorkflowInventory, editingState } from "./inventory.mjs";
 import { ManagerConnection } from "./manager-connection.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
@@ -137,7 +142,7 @@ createServer(async (request, response) => {
             id: workflow.id,
             name: workflow.name,
             active: workflow.active,
-            hoursInterval: installedSchedule(workflow, state.installations)
+            ...installedSchedule(workflow, state.installations)
           })),
           moreAvailable: false
         });
@@ -251,7 +256,11 @@ createServer(async (request, response) => {
 function installedSchedule(workflow, receipts) {
   const receipt = Object.values(receipts).find((candidate) => candidate.workflowId === workflow.id);
   const template = templates.find((candidate) => candidate.id === receipt?.templateId);
-  return template ? workflowScheduleHours(template, workflow) : null;
+  if (!template) return { hoursInterval: null, minutesInterval: null };
+  return {
+    hoursInterval: workflowScheduleHours(template, workflow),
+    minutesInterval: workflowScheduleMinutes(template, workflow)
+  };
 }
 
 // Not an app-UI route: Manager does not forward workflow bearer credentials.
