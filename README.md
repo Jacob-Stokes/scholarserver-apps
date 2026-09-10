@@ -19,6 +19,8 @@ checksummed release bundles; it does not execute files directly from a Git branc
 The [research automation roadmap](docs/automation-roadmap.md) ranks 50 candidates,
 identifies the first ten priorities and specifies the first three release targets.
 It separates public demand signals from implementation and acceptance evidence.
+Automation expansion follows base-infrastructure acceptance and a catalogue of
+25–30 high-quality apps; it is not the immediate implementation queue.
 
 - `apps/<id>/package`: installable ScholarServer package
 - `apps/<id>/*`: application-specific source and tests

@@ -4,7 +4,13 @@ Updated: 10 September 2026. Status: researched planning document, not an impleme
 
 ## Recommendation
 
-Finish the three existing non-AI workflows, then prioritise **annotations into notes without losing the researcher's writing**, followed by selective capture and quiet literature alerts. Build a small trustworthy catalogue before expanding it. Fifty candidates are a discovery backlog, not fifty promised features.
+Jacob's delivery order, agreed 10 September 2026, supersedes the earlier recommendation to work on automations next:
+
+1. **Finish the base infrastructure.** Close a bounded acceptance checklist for installation, access, secrets, app lifecycle, backup/restore, recovery and affordable releases. Verify the architecture and code readability. Readiness means passing agreed release gates, not eliminating every conceivable edge case or building speculative infrastructure.
+2. **Build a catalogue of 25–30 high-quality apps.** An app should have tested installation, guided setup, usable access, persistent data, update/removal behaviour, recovery coverage and clear documentation. A manifest or running container alone does not count. Keep app-specific code outside Manager and expose narrow operations where the app genuinely needs them; do not build automation-specific APIs speculatively.
+3. **Then expand automations across those apps.** Revalidate this backlog against the delivered catalogue and user needs before implementing it. Existing n8n/templates remain preserved as reference work; automation expansion is parked, not deleted or silently disabled.
+
+The rankings below apply **within phase 3**, not ahead of infrastructure or apps. At that point, finish the three existing non-AI workflows, then prioritise **annotations into notes without losing the researcher's writing**, followed by selective capture and quiet literature alerts. Fifty candidates are a discovery backlog, not fifty promised features.
 
 The strongest signal in this review is demand for continuity between reading and writing: less copying, stable source links, incremental imports and preservation of personal notes. Users describe these problems directly in [Zotero][S01] and [Obsidian][S02] discussions. Requests for [filtered alerts][S03], [missing PDFs][S04] and [publication updates][S05] provide additional concrete targets. These are qualitative signals, not a representative survey or proof of willingness to pay.
 
@@ -207,7 +213,9 @@ These are release targets with an explicit current-state comparison, not claims 
 
 ## Delivery gates and validation plan
 
-### Next implementation pass
+### Phase 3 implementation pass — parked until infrastructure and apps are ready
+
+These are not the current implementation priorities. First complete phases 1 and 2 above. Preserve existing automation behaviour; address a genuine platform security or release blocker in its owning component without using it to restart automation feature work.
 
 - Finish release acceptance for 01–03 through Manager; expose truthful run outcomes, not just green execution badges.
 - Correct time-window ownership in 02/03 without widening grants. Document or implement catch-up rather than promising it.
