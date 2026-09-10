@@ -8,6 +8,13 @@ added to the Dockerfile. A separate local AMD64 candidate passes password-only
 setup, but neither its image nor its test package has been published. A new
 immutable, native multi-architecture package remains required.
 
+Before removing this block, run `node apps/n8n/check-package.mjs` on an isolated
+Docker daemon for each supported native architecture against the final package
+directory (an optional first argument). It selects
+the exact manifest digests, checks Compose agreement and exercises the declared
+password plus Manager-service input. Passing `test-container.sh` against separate
+development tags is useful candidate evidence, not final-package acceptance.
+
 The following earlier evidence concerns beta.2, not the beta.3 source contract.
 Native ARM64 and AMD64
 container/browser/API checks pass. Public immutable multi-architecture images are

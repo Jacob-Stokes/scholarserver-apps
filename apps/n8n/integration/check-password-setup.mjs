@@ -11,10 +11,16 @@ import { N8nSetup } from "./setup.mjs";
 const status = async () => (await fetch("http://localhost:8080/api/status")).json();
 assert.equal((await status()).phase, "password-required");
 const password = `Check9${randomBytes(24).toString("hex")}`;
+// Match the reserved input Manager supplies for provisionServiceAccess. This is
+// synthetic and grants no access to an actual Manager installation.
+const serviceCredential = {
+  url: "http://scholarserver-manager:8080/api/v1/service",
+  token: randomBytes(32).toString("base64url")
+};
 const requestId = randomBytes(16).toString("hex");
 const requestPath = `/runtime/requests/${requestId}.json`;
 const responsePath = `/runtime/responses/${requestId}.json`;
-await atomicJson(requestPath, { action: "setup", input: { password } });
+await atomicJson(requestPath, { action: "setup", input: { password, scholarserverService: serviceCredential } });
 let response;
 for (let attempt = 0; attempt < 180; attempt++) {
   try {
@@ -26,30 +32,20 @@ for (let attempt = 0; attempt < 180; attempt++) {
   }
 }
 assert.ok(response, "Password action must complete within its deadline");
-if (!response.ok) {
-  const diagnostics = new BootstrapClient("http://n8n:5678", async (url, options) => {
-    const result = await fetch(url, options);
-    if (!result.ok) {
-      const failure = await result.clone().json();
-      console.error("Disposable setup contract failure", url.pathname, result.status, failure.message);
-    }
-    return result;
-  });
-  if (await diagnostics.needsOwner()) await diagnostics.createOwner(defaultOwnerEmail, password);
-  await diagnostics.signIn(defaultOwnerEmail, password);
-  const attempt = JSON.parse(await readFile("/runtime/setup.json", "utf8"));
-  await diagnostics.findSetupKey(attempt.label);
-  await diagnostics.createKey(attempt.label);
-}
 assert.equal(response.ok, true, response.error);
+assert.equal(JSON.stringify(response).includes(password), false);
+assert.equal(JSON.stringify(response).includes(serviceCredential.token), false);
 assert.deepEqual(await status(), { connected: true, phase: "ready" });
 await assert.rejects(readFile(requestPath), { code: "ENOENT" });
 await rm(responsePath);
-for (const file of ["setup.json", "connection.json"]) {
+for (const file of ["setup.json", "connection.json", "manager-connection.json"]) {
   const saved = await readFile(`/runtime/${file}`, "utf8");
   assert.equal(saved.includes(password), false);
   assert.equal((await stat(`/runtime/${file}`)).mode & 0o777, 0o600);
 }
+const savedService = JSON.parse(await readFile("/runtime/manager-connection.json", "utf8"));
+assert.ok(savedService.url === serviceCredential.url, "Manager service URL was not retained");
+assert.ok(savedService.token === serviceCredential.token, "Manager service credential was not retained");
 const bootstrap = new BootstrapClient("http://n8n:5678");
 await bootstrap.signIn(defaultOwnerEmail, password);
 const journal = JSON.parse(await readFile("/runtime/setup.json", "utf8"));
@@ -69,5 +65,5 @@ const credential = await client.createCredential({
 assert.equal(typeof credential.id, "string");
 assert.deepEqual(await readdir("/runtime/requests"), []);
 console.log(
-  "Password-only action passed: owner sign-in, restricted key, no owner overwrite, credential creation and secret-file cleanup."
+  "Declared setup passed: password-only owner setup, restricted key, protected Manager identity, no owner overwrite and secret-file cleanup."
 );

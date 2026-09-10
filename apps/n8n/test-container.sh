@@ -2,6 +2,17 @@
 set -euo pipefail
 : "${N8N_IMAGE:?Provide the native n8n image}"
 : "${INTEGRATION_IMAGE:?Provide the native integration image}"
+case "$(docker info --format '{{.Architecture}}')" in
+  x86_64|amd64) native_arch=amd64 ;;
+  aarch64|arm64) native_arch=arm64 ;;
+  *) echo "This test requires a supported native Linux Docker host." >&2; exit 1 ;;
+esac
+for image in "$N8N_IMAGE" "$INTEGRATION_IMAGE"; do
+  if [ "$(docker image inspect "$image" --format '{{.Os}}/{{.Architecture}}')" != "linux/$native_arch" ]; then
+    echo "Refusing a non-native test image: $image" >&2
+    exit 1
+  fi
+done
 prefix="scholarserver-n8n-ci-$$"
 n8n_ports=(--expose 5678)
 integration_ports=(--expose 8080)
@@ -22,10 +33,12 @@ docker run --rm --user 0 --entrypoint sh \
   "$INTEGRATION_IMAGE" -c 'chown 1000:1000 /state /cache /runtime && chmod 700 /state /cache /runtime'
 docker run -d --name "$prefix-app" --network "$prefix" --network-alias n8n \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
+  --cpus=1 --memory=1g --memory-swap=1g --pids-limit=128 \
   --tmpfs /tmp:rw,nosuid,nodev,size=128m -v "$prefix-state:/home/node/.n8n" \
   -v "$prefix-cache:/home/node/.cache" "${n8n_ports[@]}" "$N8N_IMAGE" >/dev/null
 docker run -d --name "$prefix-integration" --network "$prefix" --network-alias integration \
   --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
+  --cpus=0.5 --memory=192m --memory-swap=192m --pids-limit=64 \
   -v "$prefix-runtime:/runtime" "${integration_ports[@]}" "$INTEGRATION_IMAGE" >/dev/null
 ready=false
 for attempt in $(seq 1 90); do
@@ -44,6 +57,7 @@ docker exec "$prefix-integration" node --input-type=module -e '
   assert.match(html, /assets/);
 '
 docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-password-setup.mjs
+service_identity_before=$(docker exec "$prefix-integration" sha256sum /runtime/manager-connection.json)
 docker restart "$prefix-integration" >/dev/null
 for attempt in $(seq 1 30); do
   if docker exec "$prefix-integration" node -e 'fetch("http://localhost:8080/api/status").then(async r => { if (!(await r.json()).connected) process.exit(1); }).catch(() => process.exit(1));'; then break; fi
@@ -52,7 +66,14 @@ done
 docker exec "$prefix-integration" node --input-type=module -e '
   import assert from "node:assert/strict";
   assert.deepEqual(await (await fetch("http://localhost:8080/api/status")).json(), { connected: true, phase: "ready" });
+  const { ManagerConnection } = await import("/app/integration/manager-connection.mjs");
+  await new ManagerConnection("/runtime").read();
 '
+service_identity_after=$(docker exec "$prefix-integration" sha256sum /runtime/manager-connection.json)
+if [ "$service_identity_before" != "$service_identity_after" ]; then
+  echo "Controller restart changed the saved Manager service identity." >&2
+  exit 1
+fi
 if [ "${SCHOLARSERVER_CHECK_BROWSER:-0}" = 1 ]; then
   node apps/n8n/integration/check-app-ui.mjs
   docker exec -i -w /app/integration "$prefix-integration" node --input-type=module < apps/n8n/integration/check-managed.mjs

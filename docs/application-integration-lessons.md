@@ -80,6 +80,11 @@ release checklist or proof that a particular application is ready.
   action change can make an otherwise valid manifest incompatible with its old
   controller. n8n beta.3 exposed this in fresh installation; source unit tests
   against the new controller did not test the old shipped artifact.
+- Include platform-issued reserved inputs in native setup tests when a package
+  requests them. Verify their protected persistence and restart behaviour without
+  printing credentials. A failed setup test must stop, not create accounts or
+  keys as a diagnostic fallback. Select final package images from the manifest
+  rather than assuming tested development tags match its digests.
 - Keep evidence levels separate: unit/mock tests, native containers, browser
   rendering, shared-data sync, installer, published package and deployed instance.
   Source pushed is not package released. Keep incomplete candidates outside the

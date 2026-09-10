@@ -1,5 +1,40 @@
 # n8n integration — development record
 
+## 10 September 2026 — exact-image setup regression
+
+The native container test was still submitting only `{ password }`, although
+the beta.3 package requests a Manager service identity too. It now supplies a
+synthetic reserved credential, verifies its owner-only saved file, checks that
+neither secret appears in the result, and compares the saved identity across a
+controller restart. It does not issue a real Manager identity or test grants.
+The post-failure diagnostic account/key writes were removed: setup failure now
+ends the test instead of changing the state being diagnosed.
+
+`node apps/n8n/check-package.mjs [package-directory]` selects the exact two image
+digests from the package, checks their Compose references and rejects a setup
+contract the test no longer represents. The existing native test rejects image
+architecture mismatch before allocating resources and uses the package's CPU,
+memory and process limits. This remains container acceptance, not a full Compose
+network-policy, Manager/executor or fresh-host test.
+
+On Resolution's isolated AMD64 daemon, the current package's pinned integration
+image `sha256:7f910fce3bab4daec4619e2505ecbfd1b01a674c8b0ec5c705ec0cd24f1e0927`
+failed at the setup action with the same misleading password-validation error
+seen on the fresh host. This is an expected negative regression result, not a
+passing package. The complete locked apps source suite passed, including the new
+package-selection tests. The package's release block and image pins are unchanged.
+
+The same native test passed against the corrected local AMD64 integration image
+`sha256:a2a0ebfe450c7e3e6b34b43e679a83cf1872f08f71875788c40821914fdbb3fd`
+and the unchanged runtime. Setup, scoped n8n key, synthetic Manager credential
+persistence, credential creation and controller restart all passed. This does
+not publish that image or close final-package ARM64 acceptance.
+
+Both runs used disposable volumes on the rootless CI daemon. Their containers,
+volumes and networks were removed and absence verified. No production instance
+or paid host was used. Source and native logs are retained on Resolution under
+`/var/lib/scholar-ci-evidence/2026-09-10/n8n-contract/`.
+
 ## 10 September 2026 — fresh-host packaging acceptance
 
 A fresh Ubuntu 24.04 AMD64 installation built from core `d406651` and apps
