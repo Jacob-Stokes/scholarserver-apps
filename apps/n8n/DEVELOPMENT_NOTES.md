@@ -1,5 +1,45 @@
 # n8n integration — development record
 
+## 10 September 2026 — native beta.4 image publication
+
+Both architecture images were built from source `94b1da2`. AMD64 used Resolution's
+isolated rootless CI daemon, bounded to two CPUs and 3 GiB for the CI user. ARM64
+used Freelove's existing Docker daemon for one controller build, with build steps
+limited to 0.75 CPU and 1 GiB. No host reinstall, Mac build, emulation or paid
+runner was used. The existing n8n runtime image was retained.
+
+Before publication, both native candidates passed password-only setup with the
+reserved Manager input, restricted n8n key creation, mode-0600 secret files,
+credential creation and controller restart with an unchanged saved identity.
+Freelove's checks used separate temporary containers, volumes and a network;
+they did not update an installed application or its data.
+
+The public integration index is
+`sha256:ce82c53f9cbd7aa839d9fd1dbf1dd7c4d41474aab8aea5308e22c73584f591d7`.
+Its native image manifests are:
+
+- AMD64: `sha256:db0983d7838ded03e25b29e2157d84e682580341bb911ca10590ba294783378b`.
+- ARM64: `sha256:bab7608b1e0c53b5849fcafa140ba7dd1c5211bf29e0a23fc7193a7f24f528ce`.
+
+Anonymous registry inspection confirmed both native entries and their provenance
+attestations. Beta.4's manifest and Compose pin this index; beta.3 and earlier
+published image references were not overwritten. Temporary publishing credentials
+were removed from both hosts after use. The official catalog release remains
+blocked pending the platform/access/recovery gates in `RELEASE_BLOCKED.md`.
+
+Post-publication checks pulled this exact index and passed on both native hosts.
+AMD64 used `check-package.mjs`; ARM64 used its validated image selection with
+`test-container.sh`, without installing a Node toolchain on the host. Both covered
+the complete declared setup, secret persistence and controller restart. Test
+containers, volumes and networks were removed, with absence verified. Freelove's
+installed n8n and Manager remained healthy with unchanged start times. The ARM
+source workspace was removed after preserving evidence on Resolution under
+`/var/lib/scholar-ci-evidence/2026-09-10/n8n-beta4/`.
+
+The full apps `npm test` suite passed again with beta.4's final manifest and
+Compose pins on Resolution. No app runtime code or Manager branch was added in
+this publication pass.
+
 ## 10 September 2026 — exact-image setup regression
 
 The native container test was still submitting only `{ password }`, although

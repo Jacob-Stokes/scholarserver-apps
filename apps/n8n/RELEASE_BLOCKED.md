@@ -1,12 +1,16 @@
 # n8n release acceptance
 
-This candidate is not ready for catalog publication. The beta.3 source manifest
-still pins a beta.2 integration image that rejects the newly declared Manager
-service input during password setup. Fresh-host acceptance on 10 September
-reproduced that failure. Current source also needed a missing runtime module
-added to the Dockerfile. A separate local AMD64 candidate passes password-only
-setup, but neither its image nor its test package has been published. A new
-immutable, native multi-architecture package remains required.
+Beta.4 is not ready for official catalog publication. It replaces the incompatible
+beta.3 image pin with a new public, immutable AMD64/ARM64 integration candidate
+built from source `94b1da2`. Both native builds passed declared setup and controller
+restart checks, followed by the same checks against the published package digest.
+The missing runtime module and reserved Manager-input mismatch
+are fixed; they are no longer the reason for this release block.
+
+Fresh installation through the final signed platform, real application-service
+grant enforcement, private editor access lifecycle and Manager-driven recovery
+of workflow credentials still require acceptance. Image publication does not
+publish a catalog package or update Freelove's installed instance.
 
 Before removing this block, run `node apps/n8n/check-package.mjs` on an isolated
 Docker daemon for each supported native architecture against the final package
