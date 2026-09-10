@@ -1,6 +1,15 @@
 # n8n release acceptance
 
-This candidate is not ready for catalog publication. Native ARM64 and AMD64
+This candidate is not ready for catalog publication. The beta.3 source manifest
+still pins a beta.2 integration image that rejects the newly declared Manager
+service input during password setup. Fresh-host acceptance on 10 September
+reproduced that failure. Current source also needed a missing runtime module
+added to the Dockerfile. A separate local AMD64 candidate passes password-only
+setup, but neither its image nor its test package has been published. A new
+immutable, native multi-architecture package remains required.
+
+The following earlier evidence concerns beta.2, not the beta.3 source contract.
+Native ARM64 and AMD64
 container/browser/API checks pass. Public immutable multi-architecture images are
 published and wired into the manifest. Manager installation on Freelove completed
 successfully and the app-owned setup API is reachable through Manager.

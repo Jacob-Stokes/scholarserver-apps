@@ -1,5 +1,37 @@
 # n8n integration — development record
 
+## 10 September 2026 — fresh-host packaging acceptance
+
+A fresh Ubuntu 24.04 AMD64 installation built from core `d406651` and apps
+`967b43e` exposed a mismatch in the beta.3 source candidate: its setup declaration
+requests a Manager service identity, but its pinned beta.2 integration image does
+not separate that reserved input from the password fields. The normal Manager
+password form therefore rejected a valid test password. This is an artifact
+compatibility failure, not a password policy or user-input failure.
+
+Building the current integration also required adding `manager-connection.mjs`
+to its explicit Dockerfile COPY list. A focused image-recipe regression now checks
+that dependency. The complete apps source suite and native AMD64 image build pass.
+
+A separate, disposable-only package `0.1.0-beta.4-e2e.20260910` used integration
+digest `sha256:a2a0ebfe450c7e3e6b34b43e679a83cf1872f08f71875788c40821914fdbb3fd`.
+It was transferred directly to the test host, not published. Through the real
+Manager/executor path, password-only owner setup and automatic connection passed,
+followed by creating one disabled six-hour test workflow, enabling it, disabling
+it and reloading. No native-editor login or API-key copying was required.
+
+Manager's normal browser backup and restore actions also passed on this candidate.
+After backup, enabling the synthetic schedule made a visible change; restoring
+returned the same workflow/receipt to its disabled six-hour state, with the API
+connection still ready. This is encrypted local application backup and same-host
+recovery, not off-site recovery or workflow-credential decryption evidence.
+
+Do not ship beta.3 with its existing pinned integration image. Publish a new
+immutable package only after both native architecture images and their exact
+package setup contract pass. This check does not establish research-workflow
+execution against real apps, native-editor access, or official release readiness.
+Core `docs/fresh-install-20260910.md` records the host acceptance and teardown.
+
 ## 9 September 2026 — scoped Manager service identity
 
 The source candidate is now `0.1.0-beta.3`. Its package declares the exact Zotero,

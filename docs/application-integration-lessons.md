@@ -76,6 +76,10 @@ release checklist or proof that a particular application is ready.
 - Pinning makes selected inputs deliberate; final digests make installation
   repeatable. Neither alone proves cross-component compatibility or bit-for-bit
   rebuilds. Record compatible versions and remaining moving build inputs.
+- Exercise declared setup inputs against the exact pinned image. A source-only
+  action change can make an otherwise valid manifest incompatible with its old
+  controller. n8n beta.3 exposed this in fresh installation; source unit tests
+  against the new controller did not test the old shipped artifact.
 - Keep evidence levels separate: unit/mock tests, native containers, browser
   rendering, shared-data sync, installer, published package and deployed instance.
   Source pushed is not package released. Keep incomplete candidates outside the
