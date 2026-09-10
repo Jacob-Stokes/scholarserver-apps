@@ -1,5 +1,14 @@
 # n8n integration — development record
 
+## 10 September 2026 — real reading-note workflow passed
+
+The reading-note candidate now has real Manager/executor, connected-library,
+native n8n and official Obsidian Sync evidence. Repeat execution preserved a user
+edit; encrypted backup/restore retained usable credentials; revocation rejected
+execution. The isolated runtime and copied secrets were removed. Existing apps
+were not upgraded. See [scope, results and remaining limits](REAL_RESEARCH_ACCEPTANCE.md),
+including the compatibility-controller overlays and unsuccessful browser check.
+
 ## 10 September 2026 — outcome-led automation catalog candidate
 
 The app-owned screen now separates My automations, Catalog and Configuration.

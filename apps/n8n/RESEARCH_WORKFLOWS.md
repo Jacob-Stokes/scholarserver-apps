@@ -7,8 +7,10 @@ applications and folder, then review it before enabling its schedule.
 
 **Development candidate, not deployed:** core source now provides the scoped
 Manager service API and the n8n source package provisions its service identity
-through setup. Source and synthetic HTTP tests pass. New immutable app packages
-and a live workflow-to-app acceptance test are still required before release.
+through setup. Source and synthetic HTTP tests pass. The reading-note workflow
+also passed [real Manager/executor and Obsidian Sync acceptance](REAL_RESEARCH_ACCEPTANCE.md)
+using compatibility-controller overlays. New immutable app packages and acceptance
+of their complete entry points are still required before release.
 
 | Workflow | Behaviour | Prerequisites |
 | --- | --- | --- |
