@@ -46,7 +46,8 @@ test("PDF watcher uses native minute polling and rejects ambiguous or invalid se
   const workflow = configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: 2 });
   assert.equal(workflowScheduleMinutes(pdf, workflow), 2);
   assert.equal(workflowScheduleHours(pdf, workflow), null);
-  assert.equal(pdf.workflow.nodes[1].parameters.rule.interval[0].minutesInterval, 1);
+  const templateSchedule = pdf.workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
+  assert.equal(templateSchedule.parameters.rule.interval[0].minutesInterval, 1);
   assert.deepEqual(workflow.connections, pdf.workflow.connections);
   for (const value of [0, 61, 1.5, null, "1", "={{ $env.SECRET }}"]) {
     assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: value }));
@@ -54,7 +55,8 @@ test("PDF watcher uses native minute polling and rejects ambiguous or invalid se
   assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { hoursInterval: 1 }));
   assert.throws(() => configureWorkflow(template, workflowFromTemplate(template), { minutesInterval: 1 }));
   // Previously installed hourly graphs retain their actual cadence in inventory.
-  workflow.nodes[1].parameters.rule.interval = [{ field: "hours", hoursInterval: 6 }];
+  const installedSchedule = workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
+  installedSchedule.parameters.rule.interval = [{ field: "hours", hoursInterval: 6 }];
   assert.equal(workflowScheduleHours(pdf, workflow), 6);
   assert.equal(workflowScheduleMinutes(pdf, workflow), null);
 });

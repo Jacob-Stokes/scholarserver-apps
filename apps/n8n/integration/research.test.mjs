@@ -50,6 +50,28 @@ test("PDF watcher polls every minute and checks cached conversion status before 
   );
 });
 
+test("PDF canvas groups stages without connecting presentation notes to execution", () => {
+  const { workflow } = templates.find((candidate) => candidate.research === "convert-pdfs");
+  const notes = workflow.nodes.filter((node) => node.type === "n8n-nodes-base.stickyNote");
+  assert.deepEqual(
+    notes.map((node) => node.name),
+    ["Find new PDFs", "Convert with Docling", "Save to Zotero", "Waiting and failure handling"]
+  );
+  for (const note of notes) {
+    assert.equal(workflow.connections[note.name], undefined);
+    for (const outputs of Object.values(workflow.connections)) {
+      for (const targets of outputs.main) {
+        assert.ok(targets.every((target) => target.node !== note.name));
+      }
+    }
+  }
+  const status = workflow.nodes.find((node) => node.id === "job");
+  for (const id of ["wait", "failed", "stop"]) {
+    const node = workflow.nodes.find((candidate) => candidate.id === id);
+    assert.ok(node.position[1] > status.position[1]);
+  }
+});
+
 test("research scopes reject URLs, traversal, hidden folders and extra bindings", () => {
   const template = templates.find((candidate) => candidate.research === "convert-pdfs");
   const { kind, ...bindings } = scope;

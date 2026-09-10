@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: zotero-pdf-markdown
-version: 2
+version: 3
 name: Automatically convert new Zotero PDFs
 description: Check the shared Zotero–Docling folder every minute and attach converted Markdown to the matching paper. Existing PDFs are also checked when enabled; completed results are reused. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
 research: convert-pdfs
@@ -24,6 +24,46 @@ configuration:
   scheduleNode: schedule
 workflow:
   nodes:
+    - id: find-stage
+      name: Find new PDFs
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [-80, -220]
+      parameters:
+        content: "## 1 · Find new PDFs\nCheck the selected folder every minute by default. Process PDFs one at a time; skip files without exactly one matching Zotero attachment."
+        width: 1360
+        height: 600
+        color: 4
+    - id: convert-stage
+      name: Convert with Docling
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [1340, -220]
+      parameters:
+        content: "## 2 · Convert with Docling\nReuse completed results, or start a conversion and check its status. OCR is off."
+        width: 760
+        height: 600
+        color: 5
+    - id: save-stage
+      name: Save to Zotero
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [2160, -220]
+      parameters:
+        content: "## 3 · Save to Zotero\nAttach Markdown to the original paper, then continue to the next PDF. Existing attachments are reused."
+        width: 460
+        height: 600
+        color: 4
+    - id: waiting-stage
+      name: Waiting and failure handling
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [1340, 430]
+      parameters:
+        content: "## While conversion is running\nWait one minute between checks. Stop this run if conversion fails or exceeds one hour. Each app request has up to three attempts, three seconds apart."
+        width: 1280
+        height: 480
+        color: 2
     - id: manual
       name: Run now
       type: n8n-nodes-base.manualTrigger
@@ -105,7 +145,7 @@ workflow:
       retryOnFail: true
       maxTries: 3
       waitBetweenTries: 3000
-      position: [1320, 0]
+      position: [1420, 0]
       parameters:
         method: POST
         url: http://integration:8081/research/enqueue
@@ -119,7 +159,7 @@ workflow:
       name: Wait before checking conversion
       type: n8n-nodes-base.wait
       typeVersion: 1.1
-      position: [1540, 0]
+      position: [1480, 700]
       parameters: {resume: timeInterval, amount: 1, unit: minutes}
     - id: job
       name: Check conversion status
@@ -128,7 +168,7 @@ workflow:
       retryOnFail: true
       maxTries: 3
       waitBetweenTries: 3000
-      position: [1760, 0]
+      position: [1640, 0]
       parameters:
         method: POST
         url: http://integration:8081/research/job
@@ -142,7 +182,7 @@ workflow:
       name: Conversion succeeded?
       type: n8n-nodes-base.if
       typeVersion: 2.2
-      position: [1980, 0]
+      position: [1880, 0]
       parameters:
         conditions:
           options: {caseSensitive: true, leftValue: '', typeValidation: strict, version: 2}
@@ -154,7 +194,7 @@ workflow:
       name: Conversion failed or timed out?
       type: n8n-nodes-base.if
       typeVersion: 2.2
-      position: [2200, 200]
+      position: [1880, 650]
       parameters:
         conditions:
           options: {caseSensitive: true, leftValue: '', typeValidation: strict, version: 2}
@@ -166,7 +206,7 @@ workflow:
       name: Report conversion failure
       type: n8n-nodes-base.stopAndError
       typeVersion: 1
-      position: [2420, 300]
+      position: [2300, 650]
       parameters: {errorMessage: 'The conversion failed or exceeded one hour. Check Docling before retrying.'}
     - id: attach
       name: Attach Markdown to original paper
@@ -176,7 +216,7 @@ workflow:
       retryOnFail: true
       maxTries: 3
       waitBetweenTries: 3000
-      position: [2200, -100]
+      position: [2300, 0]
       parameters:
         method: POST
         url: http://integration:8081/research/attach

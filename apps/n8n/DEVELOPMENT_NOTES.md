@@ -1,5 +1,13 @@
 # n8n integration — development record
 
+## 10 September 2026 — PDF workflow canvas labels
+
+Template version 3 adds native sticky-note stages: Find new PDFs, Convert with
+Docling, Save to Zotero, and a separate waiting/failure area below the main path.
+Execution node definitions, connections and settings are unchanged from version 2;
+only positions and disconnected presentation notes changed. Existing installed
+workflows are not rewritten. This is a source candidate, not a deployed update.
+
 ## 10 September 2026 — automatic PDF watcher acceptance
 
 The PDF template now polls every minute by default, with minute settings exposed
