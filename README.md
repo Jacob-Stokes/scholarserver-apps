@@ -16,6 +16,10 @@ checksummed release bundles; it does not execute files directly from a Git branc
 
 ## Repository layout
 
+The [research automation roadmap](docs/automation-roadmap.md) ranks 50 candidates,
+identifies the first ten priorities and specifies the first three release targets.
+It separates public demand signals from implementation and acceptance evidence.
+
 - `apps/<id>/package`: installable ScholarServer package
 - `apps/<id>/*`: application-specific source and tests
 - `packages/*`: shared libraries used by first-party apps
