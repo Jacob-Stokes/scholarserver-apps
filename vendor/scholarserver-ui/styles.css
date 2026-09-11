@@ -3,6 +3,7 @@ The MIT License (MIT)
 
 Motion / motion-dom / motion-utils: Copyright (c) 2024 Motion B.V.
 framer-motion: Copyright (c) 2018 Framer B.V.
+Sonner: Copyright (c) 2023 Emil Kowalski
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 @import "./typography.css";
+/* External CSS keeps toast styling available under production style-src 'self'. */
+@import "sonner/dist/styles.css";
+@import "./notifications.css";
 @import "./nebula.css";
 @import "./source.css";
 

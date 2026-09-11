@@ -8,12 +8,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "motion": "13.2.0",
     "@radix-ui/react-dialog": "1.1.15",
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
     "lucide-react": "0.475.0",
+    "motion": "13.2.0",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "sonner": "2.0.7"
   },
   "devDependencies": {
     "@types/react": "19.1.10",

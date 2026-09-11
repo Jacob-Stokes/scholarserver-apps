@@ -1,6 +1,7 @@
 import React from "react";
 import { ScholarServerLogo } from "./logo.tsx";
 import { MotionSurface } from "./motion.tsx";
+import { Notifications, SuccessNotice } from "./notifications.tsx";
 
 export interface ApplicationTab<T extends string> {
   id: T;
@@ -35,6 +36,8 @@ export function ApplicationScreen<T extends string>({
 }: ApplicationScreenProps<T>) {
   return (
     <div className="ss-app">
+      <Notifications />
+      <SuccessNotice message={notice} />
       <header className="ss-app-header">
         <div className="ss-app-header-inner">
           <div className="ss-brand">
@@ -76,11 +79,6 @@ export function ApplicationScreen<T extends string>({
             </button>
           ))}
         </nav>
-        {notice ? (
-          <div className="ss-alert ss-alert-success" role="status">
-            {notice}
-          </div>
-        ) : null}
         {error ? (
           <div className="ss-alert ss-alert-error" role="alert">
             {error}

@@ -257,6 +257,7 @@ export function App() {
     );
 
   const copy = async (value: string, label: string) => {
+    setNotice(null);
     await navigator.clipboard.writeText(value);
     setNotice(`${label} copied.`);
   };

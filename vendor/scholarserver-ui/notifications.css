@@ -1,0 +1,36 @@
+.ss-notifications [data-sonner-toast].ss-notification {
+  font-family: inherit;
+  background: var(--ss-surface, var(--background, #fff));
+  color: var(--ss-text, var(--foreground, #183d31));
+  border: 1px solid var(--ss-border, var(--border, #d9e4de));
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 10%);
+  transition-duration: 180ms;
+  padding-right: 42px;
+}
+
+.ss-notifications [data-sonner-toast][data-styled="true"] [data-close-button] {
+  left: auto;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: inherit;
+  border: none;
+}
+
+.ss-notifications [data-type="success"] [data-icon] {
+  color: var(--ss-primary, var(--primary, #23664e));
+}
+
+html[data-motion="off"] .ss-notifications [data-sonner-toast] {
+  transition: none !important;
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-notifications [data-sonner-toast] {
+    transition: none !important;
+    animation: none !important;
+  }
+}

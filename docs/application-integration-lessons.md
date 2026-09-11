@@ -104,6 +104,24 @@ release checklist or proof that a particular application is ready.
 
 ## Keeping these notes useful
 
+### Completion feedback, 11 September 2026
+
+The shared UI snapshot now uses Sonner 2.0.7 for routine `notice` messages.
+Errors, setup state, unknown outcomes and recovery instructions stay inline.
+Each of the six UI manifests and independent lockfiles pins the runtime for
+isolated image builds; `tests/notifications.test.mjs` guards this boundary.
+External CSS provides rendering under restrictive CSP without a style exemption.
+The Obsidian clipboard path clears the previous notice before awaiting the copy,
+so repeating the same copy can announce a new completion.
+
+Full apps tests and all six UI builds pass; core's local browser fixture exercises
+the shared frame, expiry, close, repeated completions and reduced motion. These
+are source/presentation checks, not new published packages or live acceptance.
+Existing manifests remain immutable. Toast-only releases must start from their
+published source baseline or qualify additional unpublished app changes first.
+The project-vault documentation update is pending; no vault connector was used
+for this shared UI pass.
+
 ### Local device setup is separate from server setup
 
 Keep the web experience complete. An optional future desktop companion may reuse

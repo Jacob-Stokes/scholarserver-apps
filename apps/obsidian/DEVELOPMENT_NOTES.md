@@ -1,5 +1,14 @@
 # Obsidian development notes
 
+## Completion feedback — 11 September 2026
+
+The shared frame displays completion notices as dismissible, expiring toasts.
+Clipboard copy clears the prior notice before the awaited write, allowing the
+same successful copy to be announced again. Vault, sync and setup operations are
+unchanged. Full apps tests and UI builds pass; shared-frame browser checks use
+synthetic completions, not a new device-sync test. No package was published or
+deployed. The project-vault documentation update remains pending.
+
 ## Create-only research notes — 9 September 2026
 
 The controller has a candidate `create-research-note` action for the n8n research
