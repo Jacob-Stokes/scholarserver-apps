@@ -144,3 +144,12 @@ new full-platform installation or a new public OAuth acceptance test.
 - https://github.com/FreshRSS/FreshRSS/blob/1.29.1/cli/create-user.php
 - https://freshrss.github.io/FreshRSS/en/developers/06_GoogleReader_API.html
 - https://freshrss.github.io/FreshRSS/en/admins/15_extensions.html
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `News & feeds` tag under
+`presentation.details.tags`. The metadata-only source candidate is
+`0.1.0-beta.5`; existing images, requirements and runtime/security settings are
+unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.

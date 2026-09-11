@@ -17,6 +17,7 @@ test("beta package is explicit, supports both native architectures and keeps edi
   assert.equal(manifest.variants[0].recommended, true);
   assert.equal(manifest.variants[1].services.includes("editor"), false);
   assert.equal(manifest.lifecycle.removeDataDefault, false);
+  assert.deepEqual(manifest.presentation.details.tags, ["Notes", "Knowledge graphs", "Sync"]);
   for (const image of manifest.images) assert.equal(compose.services[image.service].image, image.reference);
   assert.match(manifest.variants[0].limitations.join(" "), /not legacy Markdown/);
 });

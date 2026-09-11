@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.files
 name: Files
-packageVersion: 0.1.0-beta.2
+packageVersion: 0.1.0-beta.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -76,6 +76,8 @@ endpoints:
       credentialData: runtime
       credentialFile: service-token
 presentation:
+  details:
+    tags: [Files]
   icon:
     path: assets/icons/files.webp
     mediaType: image/webp

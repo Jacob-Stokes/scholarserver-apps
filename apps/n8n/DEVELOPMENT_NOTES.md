@@ -618,3 +618,12 @@ a local-development catalog deployment, not official catalog publication.
    preserve direct edits and reconcile uncertain writes.
 4. Keep legacy automation controls/history until explicit migration is verified.
    Publish a new immutable catalog package only after its release gates pass.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `Automation` tag under
+`presentation.details.tags`. The metadata-only source candidate is
+`0.1.0-beta.5`; existing images, requirements and runtime/security settings are
+unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.

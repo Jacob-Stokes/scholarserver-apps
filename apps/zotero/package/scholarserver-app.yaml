@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.10-beta.1
+packageVersion: 0.5.10-beta.2
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -156,6 +156,8 @@ ui:
   endpoint: app-ui
   defaultPath: /overview
 presentation:
+  details:
+    tags: [References, Notes, Documents, Files]
   icon:
     path: assets/icons/zotero.webp
     mediaType: image/webp

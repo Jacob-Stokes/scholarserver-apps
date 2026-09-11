@@ -32,9 +32,10 @@ export function logseqPackage({ helper, mcp, sync, version, architectures = ["am
     schemaVersion: 1,
     id: "org.scholarserver.logseq",
     name: beta ? "Logseq (Beta)" : "Logseq",
-    ...(beta
-      ? {
-          presentation: {
+    presentation: {
+      details: { tags: ["Notes", "Knowledge graphs", "Sync"] },
+      ...(beta
+        ? {
             icon: {
               path: "assets/icons/logseq.webp",
               mediaType: "image/webp",
@@ -46,8 +47,8 @@ export function logseqPackage({ helper, mcp, sync, version, architectures = ["am
               }
             }
           }
-        }
-      : {}),
+        : {})
+    },
     packageVersion: version,
     compatibility: { platform: ">=0.1.0", schema: 1 },
     upstream: { name: "Logseq database graphs", version: "2.0.1", license: "AGPL-3.0" },

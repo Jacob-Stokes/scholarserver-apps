@@ -391,3 +391,12 @@ encryption still enabled. Do not speculate about account limits or silently crea
 an unencrypted graph. Record the observation; the precise upstream cause is not
 established. A clean browser context is an independent replica, not a physical
 desktop/mobile client. Remaining packaging work is in `PACKAGING_AUDIT.md`.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `Notes`, `Knowledge graphs` and
+`Sync` tags under `presentation.details.tags`. The metadata-only source candidate
+is `0.1.0-beta.2`; existing images, requirements and runtime/security settings
+are unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.

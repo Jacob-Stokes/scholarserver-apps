@@ -32,3 +32,12 @@ Verification uses the apps test suite and synthetic browser responses for delaye
 defaults, failed-read retry, draft preservation and an older poll completing after
 queue pause. These are UI/source checks, not a new container conversion or published
 package. File discovery and remaining operation lifetimes still need review.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `Documents` and `PDF conversion`
+tags under `presentation.details.tags`. The metadata-only source candidate is
+`0.3.5-beta.2`; existing images, requirements and runtime/security settings are
+unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.

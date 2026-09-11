@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { lstat, readdir, readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,6 +10,20 @@ import { parse } from "yaml";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const applicationsRoot = path.join(repositoryRoot, "apps");
 const iconLock = JSON.parse(await readFile(path.join(repositoryRoot, "icons.lock.json"), "utf8"));
+const catalogTagVocabulary = new Set([
+  "Automation",
+  "Documents",
+  "Files",
+  "Knowledge graphs",
+  "News & feeds",
+  "Notes",
+  "PDF conversion",
+  "References",
+  "Sync",
+  "Vaults"
+]);
+const maximumCatalogTags = 6;
+const maximumCatalogTagLength = 32;
 
 async function packages(root = applicationsRoot) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -38,8 +52,26 @@ function unique(values, label) {
 function checkDeclaredIds(manifest, label) {
   for (const field of ["data", "endpoints", "images"]) {
     const key = field === "images" ? "service" : "id";
-    unique((manifest[field] ?? []).map((entry) => entry[key]), `${label}: ${field} ${key}s`);
+    unique(
+      (manifest[field] ?? []).map((entry) => entry[key]),
+      `${label}: ${field} ${key}s`
+    );
   }
+}
+
+function checkCatalogTags(manifest, label) {
+  const tags = manifest.presentation?.details?.tags;
+  assert.ok(Array.isArray(tags) && tags.length > 0, `${label}: catalog tags are required`);
+  assert.ok(tags.length <= maximumCatalogTags, `${label}: too many catalog tags`);
+
+  const normalizedTags = tags.map((tag) => {
+    assert.equal(typeof tag, "string", `${label}: catalog tags must be strings`);
+    assert.ok(tag.length > 0 && tag.length <= maximumCatalogTagLength, `${label}: catalog tag length`);
+    assert.equal(tag, tag.trim(), `${label}: catalog tags must not have surrounding whitespace`);
+    assert.ok(catalogTagVocabulary.has(tag), `${label}: catalog tag is outside the controlled vocabulary: ${tag}`);
+    return tag.toLocaleLowerCase();
+  });
+  unique(normalizedTags, `${label}: catalog tags`);
 }
 
 test("package discovery rejects incomplete packages but allows source-only directories", async (t) => {
@@ -59,8 +91,10 @@ test("package discovery rejects incomplete packages but allows source-only direc
 test("duplicate declarations are rejected before building lookup sets and maps", () => {
   for (const field of ["data", "endpoints", "images"]) {
     const key = field === "images" ? "service" : "id";
-    assert.throws(() => checkDeclaredIds({ [field]: [{ [key]: "same" }, { [key]: "same" }] }, "candidate"),
-      /must be unique/);
+    assert.throws(
+      () => checkDeclaredIds({ [field]: [{ [key]: "same" }, { [key]: "same" }] }, "candidate"),
+      /must be unique/
+    );
     checkDeclaredIds({ [field]: [{ [key]: "one" }, { [key]: "two" }] }, "candidate");
   }
 });
@@ -195,5 +229,14 @@ test("every first-party package satisfies the reusable package boundary", async 
         `${label}: every Compose service belongs to at least one setup choice`
       );
     }
+  }
+});
+
+test("every first-party package declares bounded unique catalog tags", async () => {
+  const discovered = await packages();
+  assert.ok(discovered.length > 0, "at least one first-party package must be discovered");
+
+  for (const { directory, manifest } of discovered) {
+    checkCatalogTags(manifest, `${directory} (${manifest.id})`);
   }
 });

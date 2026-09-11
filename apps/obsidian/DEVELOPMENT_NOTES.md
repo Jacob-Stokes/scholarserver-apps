@@ -49,3 +49,12 @@ Verification: source tests, production UI build and the four-app mock-browser su
 passed, including a held old poll released after installation and scope editing.
 This is not device-to-server sync acceptance or a published package. Remaining
 mutation lifetimes and the wider setup component still need separate review.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `Notes`, `Vaults` and `Sync` tags
+under `presentation.details.tags`. The metadata-only source candidate is
+`0.5.0-beta.2`; existing images, requirements and runtime/security settings are
+unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.

@@ -15,3 +15,13 @@ Its package declaration is intentionally withheld until a new compatible
 controller image/version is published. See `apps/n8n/RESEARCH_WORKFLOWS.md`.
 Live 0.4.2 remains connected in linked-folder mode and was not upgraded. The old
 automation worker, settings, schedules and history are unchanged.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `References`, `Notes`,
+`Documents` and `Files` tags under `presentation.details.tags`. The metadata-only
+source candidate is `0.5.10-beta.2`; existing images, requirements and
+runtime/security settings are unchanged. No package was published or deployed.
+The Obsidian project-vault note was updated through Jacob Gateway on 11
+September 2026; this repository's catalog-tags document remains authoritative
+for the exact vocabulary.

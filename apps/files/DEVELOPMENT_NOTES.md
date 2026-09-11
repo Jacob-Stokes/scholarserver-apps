@@ -56,3 +56,12 @@ The final browser screen showed Running, Built-in and both folder grants, with
 Update Files / Review change wording and no stop or remove action. Neighbouring
 installations remained healthy. These are test deployments and published app
 images, not publication of a new public ScholarServer core release.
+
+## Catalog tags — 11 September 2026
+
+The package manifest now declares the app-owned `Files` tag under
+`presentation.details.tags`. The metadata-only source candidate is
+`0.1.0-beta.3`; existing images, requirements and runtime/security settings are
+unchanged. No package was published or deployed. The Obsidian project-vault
+note was updated through Jacob Gateway on 11 September 2026; this repository's
+catalog-tags document remains authoritative for the exact vocabulary.
