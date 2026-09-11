@@ -2,6 +2,18 @@
 
 ## 11 September 2026 — executor-driven package update
 
+The acceptance harness was subsequently split so its seed and verification logic
+is normal JavaScript in `integration/check-upgrade-state.mjs`, not compressed
+code inside template strings. Named Docker inspection results and explicit cleanup
+branches make the operator sequence easier to follow. A regression checks the
+ID-only receipt, protected file mode and rejection of a changed workflow or
+unknown phase. This is a readability/test change, not a shipped app change; the
+native acceptance record below identifies the earlier script hash.
+
+The full apps `npm test` suite passed for this refactor on Resolution in an
+isolated source-test container (45.7 seconds). The native n8n upgrade was not
+rerun for the refactored harness; no app package was published or deployed.
+
 Exact beta.2 → beta.4 acceptance passed on Resolution's isolated native AMD64
 daemon using core `1149b24`. The same workflow executed before and after; its
 identity, saved API connection, decryptable credential and non-root data ownership

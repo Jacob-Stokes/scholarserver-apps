@@ -28,11 +28,16 @@ function docker(args, input) {
     throw new Error(`Isolated Docker ${args[0]} failed; output withheld to protect credentials`);
   }
 }
-assert.match(docker(["info", "--format", "{{json .SecurityOptions}}"]), /name=rootless/);
-assert.equal(docker(["info", "--format", "{{.Architecture}}"]), "x86_64");
+const securityOptions = docker(["info", "--format", "{{json .SecurityOptions}}"]);
+assert.match(securityOptions, /name=rootless/);
+const architecture = docker(["info", "--format", "{{.Architecture}}"]);
+assert.equal(architecture, "x86_64");
 mkdirSync(path.dirname(socket), { recursive: true });
-const edgeExisted = docker(["network", "ls", "--format", "{{.Name}}"]).split("\n").includes("scholarserver-edge");
-if (!edgeExisted) docker(["network", "create", "--internal", "scholarserver-edge"]);
+const networkNames = docker(["network", "ls", "--format", "{{.Name}}"]).split("\n");
+const edgeExisted = networkNames.includes("scholarserver-edge");
+if (!edgeExisted) {
+  docker(["network", "create", "--internal", "scholarserver-edge"]);
+}
 const executor = spawn(
   binary,
   [
@@ -77,7 +82,11 @@ async function request(route, body) {
             reject(new Error(`${route} returned HTTP ${response.statusCode}: ${text}`));
             return;
           }
-          resolve(JSON.parse(text));
+          try {
+            resolve(JSON.parse(text));
+          } catch {
+            reject(new Error(`${route} returned invalid JSON`));
+          }
         });
       }
     );
@@ -117,23 +126,24 @@ function container(service) {
   return id;
 }
 
-function integration(script) {
-  return docker(
-    ["exec", "-i", "-w", "/app/integration", container("integration"), "node", "--input-type=module"],
-    script
-  );
+function integrationCheck(phase) {
+  const scriptPath = new URL("./integration/check-upgrade-state.mjs", import.meta.url);
+  const script = readFileSync(scriptPath, "utf8");
+  const integrationContainer = container("integration");
+  const argumentsForCheck = [
+    "exec",
+    "-i",
+    "-w",
+    "/app/integration",
+    integrationContainer,
+    "node",
+    "--input-type=module",
+    "-",
+    phase
+  ];
+  const output = docker(argumentsForCheck, script);
+  return JSON.parse(output);
 }
-
-const seed = `
-  import { N8nSetup } from './setup.mjs';
-  import { writeFile } from 'node:fs/promises';
-  const client = await new N8nSetup({directory:'/runtime',baseUrl:'http://n8n:5678'}).client();
-  const credential = await client.createCredential({name:'Upgrade test credential',type:'httpHeaderAuth',
-    data:{name:'X-Upgrade-Test',value:'synthetic-upgrade-only'}});
-  const workflow = await client.createWorkflow({name:'Preserved upgrade workflow',settings:{},
-    nodes:[{id:'manual',name:'Manual',type:'n8n-nodes-base.manualTrigger',typeVersion:1,position:[0,0]}],connections:{}});
-  await writeFile('/runtime/upgrade-test.json', JSON.stringify({workflowId:workflow.id,credentialId:credential.id}), {mode:0o600});
-`;
 
 function verify() {
   for (const directory of Object.values(appliedPlan.dataBindings)) {
@@ -142,17 +152,8 @@ function verify() {
     assert.equal(metadata.gid, 1000, "Managed data must retain the app's non-root GID");
     assert.equal(metadata.mode & 0o777, 0o700);
   }
-  const workflowId = integration(`
-    import assert from 'node:assert/strict';
-    import { readFile } from 'node:fs/promises';
-    import { N8nSetup } from './setup.mjs';
-    const saved=JSON.parse(await readFile('/runtime/upgrade-test.json','utf8'));
-    const client=await new N8nSetup({directory:'/runtime',baseUrl:'http://n8n:5678'}).client();
-    const workflow=await client.getWorkflow(saved.workflowId);
-    assert.equal(workflow.name,'Preserved upgrade workflow');
-    assert.equal(workflow.active,false);
-    console.log(workflow.id);
-  `);
+  const saved = integrationCheck("verify");
+  const workflowId = saved.workflowId;
   assert.match(workflowId, /^[a-zA-Z0-9-]+$/);
   const runtime = container("n8n");
   docker([
@@ -165,11 +166,6 @@ function verify() {
     "--output=/tmp/upgrade-credentials.json"
   ]);
   const credentials = JSON.parse(docker(["exec", runtime, "cat", "/tmp/upgrade-credentials.json"]));
-  const saved = JSON.parse(
-    integration(
-      "import {readFile} from 'node:fs/promises'; console.log(await readFile('/runtime/upgrade-test.json','utf8'));"
-    )
-  );
   const credential = credentials.find((item) => item.id === saved.credentialId);
   assert.equal(credential?.data.value, "synthetic-upgrade-only");
   docker(["exec", runtime, "rm", "/tmp/upgrade-credentials.json"]);
@@ -199,7 +195,7 @@ try {
   await request("/v1/instances/upgrade-test/n8n/actions/setup", {
     password: `Check9${randomBytes(24).toString("hex")}`
   });
-  integration(seed);
+  integrationCheck("seed");
   verify();
   version = "0.1.0-beta.4";
   await apply();
@@ -210,9 +206,13 @@ try {
   console.log("n8n package update acceptance passed; upstream n8n version remains 2.38.1.");
 } finally {
   try {
-    if (appliedPlan) await apply(false);
+    if (appliedPlan) {
+      await apply(false);
+    }
   } finally {
     executor.kill("SIGTERM");
-    if (!edgeExisted) docker(["network", "rm", "scholarserver-edge"]);
+    if (!edgeExisted) {
+      docker(["network", "rm", "scholarserver-edge"]);
+    }
   }
 }
