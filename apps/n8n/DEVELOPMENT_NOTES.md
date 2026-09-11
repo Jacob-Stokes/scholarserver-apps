@@ -1,5 +1,17 @@
 # n8n integration — development record
 
+## 11 September 2026 — executor-driven package update
+
+Exact beta.2 → beta.4 acceptance passed on Resolution's isolated native AMD64
+daemon using core `1149b24`. The same workflow executed before and after; its
+identity, saved API connection, decryptable credential and non-root data ownership
+were preserved. The recovery journal completed and all disposable runtime/data
+were removed. See [inputs, checks and limits](UPDATE_ACCEPTANCE.md).
+
+This upgrades the integration while keeping n8n 2.38.1. It is not upstream
+database migration, Manager browser, new research-grant or production deployment
+acceptance. No n8n-specific logic was added to core.
+
 ## 10 September 2026 — PDF workflow canvas labels
 
 Template version 3 adds native sticky-note stages: Find new PDFs, Convert with
