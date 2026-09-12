@@ -14,9 +14,20 @@ of their complete entry points are still required before release.
 
 | Workflow | Behaviour | Prerequisites |
 | --- | --- | --- |
-| Zotero reading notes | Creates a scaffold for papers added in the last seven days; filenames use Zotero item keys. Existing files remain unchanged. | Zotero `research-items` and Obsidian `create-research-note` actions. These actions are source candidates, not in the currently pinned app packages. |
-| Daily research digest | Lists papers added during the previous UTC day. Empty days produce no note. Existing dated digests remain unchanged. | The same two candidate actions. This is a daily digest, not a weekly or catch-up implementation. |
+| Zotero reading notes | Creates a scaffold for papers added in the last seven days; filenames use Zotero item keys. Existing files remain unchanged. | Zotero `research-items` and Obsidian `create-research-note` actions must be available to the automation platform. |
+| Daily research digest | Lists papers added during the previous UTC day. Empty days produce no note. Existing dated digests remain unchanged. | The same two actions. This is a daily digest, not a catch-up implementation. |
 | Automatically convert new Zotero PDFs | Checks the shared folder every minute by default, matches PDFs to Zotero attachments, queues Docling conversion and attaches Markdown to the original paper. OCR is off. | Zotero's complete workspace in linked-folder mode, Docling, and the same folder exposed in both apps. Fewer than 100 PDFs in that folder. |
+| Weekly reading roundup (unpublished candidate) | Collects metadata for the previous complete UTC Monday-to-Monday week into `Weekly roundups/digest-YYYY-MM-DD.md`. | Zotero `research-items` and Obsidian `create-research-note`. |
+| Reference details check (unpublished candidate) | Flags empty title, authors or publication date for papers added during the previous UTC day. DOI is optional. Saves only when there are findings, in `Reference checks/digest-YYYY-MM-DD.md`. | The same two actions. It does not verify metadata accuracy against external sources. |
+| Markdown bibliography (unpublished candidate) | Exports the previous UTC day's metadata into `Bibliographies/digest-YYYY-MM-DD.md`. | The same two actions. Plain Markdown, not CSL/APA citation-style formatting. |
+
+The three new report templates default to checking every 24 hours and are added
+with schedules disabled. Their fixed subfolders are beneath the root chosen at
+setup. Empty periods produce no note; repeated runs leave existing reports and
+user edits untouched. Copies using the same root and report type share the same
+dated output, so choose different roots for separate libraries. They do not
+backfill missed periods or revise reports after late library synchronisation.
+The weekly filename uses the week's Monday start date. No AI service is involved.
 
 The PDF watcher uses scheduled polling, not an instant filesystem event. Enable
 its schedule once; the page can then be closed. A PDF must finish syncing into the
@@ -80,7 +91,7 @@ integration runtime together to retain both encrypted credentials and grants.
 Do not advertise these actions in an existing immutable package or point an
 updated declaration at an old controller image. Publish new tested controller
 images and compatible app versions first. The integration capability checks keep
-the two Obsidian templates unavailable until the installed packages declare them.
+the Obsidian-writing templates unavailable until the installed packages declare them.
 
 Zotero (`runtime` data, 120-second action timeout):
 
@@ -115,10 +126,13 @@ be interpreted as a completed note. Live sync propagation still needs acceptance
 
 `SCHOLARSERVER_CHECK_RESEARCH=1` extends `test-container.sh` with a disposable
 Manager/app-response fixture and real Linux note writes. Native n8n installs all
-three workflows through its public API with credential references, then executes
+six workflows through its public API with credential references, then executes
 their native HTTP, Code, branching, looping and Wait nodes. Only the test copy's
 wait is accelerated. This verifies native workflow execution, **not** a real
 Zotero library, Docling conversion, paid Obsidian Sync, or Manager/executor queues.
+The new reports are also rerun against empty input and revoked action grants;
+the fixture checks that neither case causes a note write. Unit tests separately
+cover issue-free audits and UTC boundary calculations.
 
 The normal source suite covers credential redaction, uncertain creation, revoked
 access, invalid paths, instance/workspace checks, capability gates and bounded

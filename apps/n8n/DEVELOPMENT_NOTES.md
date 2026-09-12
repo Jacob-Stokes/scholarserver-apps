@@ -14,8 +14,13 @@ These are unpublished integration-image changes. Do not advance an accepted
 image-source lock or package digest on the strength of source checks. Local
 candidate selection is explicit and fingerprint-checked; see
 [local development](../../docs/local-development.md). Native fixture and browser
-results will be recorded separately from connected-library or signed-release
-acceptance. Existing published package versions remain immutable.
+results are recorded in [the report acceptance note](../../docs/n8n-reports-20260912.md).
+All six templates passed repeated ARM64 native execution against synthetic app
+services and real Linux note files. The new reports also passed empty-input and
+revoked-action tests without writes; browser checks passed configuration,
+enable/disable, reload, filtering and mobile layout. This is not connected-library
+or signed-release acceptance. The local dev preview explicitly selects the new
+candidate; existing published package versions remain immutable.
 
 ## Image refresh checkpoint — 12 September 2026
 

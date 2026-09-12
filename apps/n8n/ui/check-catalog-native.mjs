@@ -112,6 +112,7 @@ try {
           }
         )
         .waitFor();
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: new URL(`native-catalog-setup-${index}.png`, output).pathname, fullPage: true });
     }
     const installRequest = page.waitForRequest(
