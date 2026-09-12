@@ -25,6 +25,8 @@
   "scripts": {
     "pretest": "node --test tests/notifications.test.mjs tests/image-source.test.mjs tests/source-check.test.mjs tests/native-image-pipeline.test.mjs tests/n8n-development.test.mjs tests/n8n-candidate.test.mjs apps/n8n/integration/*.test.mjs apps/n8n/ui/test/*.test.mjs apps/obsidian/sync/research-note.test.mjs apps/obsidian/sync/couchdb-request.test.mjs && npm run typecheck -w apps/n8n/ui",
     "dev:n8n": "node dev/n8n/command.mjs",
+    "dev:desktops": "node dev/desktop-clients/command.mjs",
+    "test:desktops": "node --test tests/desktop-clients.test.mjs && python3 -m unittest discover -s dev/desktop-clients/zotero -p 'test_*.py'",
     "build": "npm run build -w apps/n8n/ui && npm run build -w apps/freshrss/ui && npm run build -w apps/docling/ui && npm run build -w apps/obsidian/ui && npm run build -w apps/zotero/ui && npm run build -w apps/logseq/ui && npm run build -w apps/obsidian/api && npm run build -w packages/mcp-common && npm run build -w apps/obsidian/mcp && npm run build -w apps/zotero/mcp && npm run build -w apps/logseq/mcp",
     "format": "biome check --write apps packages scripts tests icons.lock.json",
     "icons:sync": "node scripts/sync-icons.mjs",

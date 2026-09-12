@@ -1,0 +1,53 @@
+name: scholarserver-test-desktops
+
+# Deliberate local qualification receipts. Rebuilds require review and a new ID.
+x-qualified-image-ids:
+  obsidian: sha256:9bed047a2dfb0ef597bf3402469c080030c45f4ddc32d08c4a79a7e0594fabed
+  zotero: sha256:2f149a243c697e3a91e923158086a560a2b0fc478c4668db36c59ae07e9ba3aa
+
+services:
+  obsidian:
+    image: lscr.io/linuxserver/obsidian@sha256:c6c86336a2cf57506b0db2beb09ef4a50170808820a59c20063e669d12122dd4
+    pull_policy: never
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/London
+      TITLE: Obsidian — isolated test desktop
+    ports:
+      - "127.0.0.1:18330:3000"
+    volumes:
+      - obsidian-profile:/config
+    shm_size: 512m
+    mem_limit: 1536m
+    cpus: 2
+    pids_limit: 512
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1:3000/]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  zotero:
+    image: scholarserver-test-zotero:local
+    pull_policy: never
+    ports:
+      - "127.0.0.1:18331:6080"
+    volumes:
+      - zotero-profile:/config
+    shm_size: 256m
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  obsidian-profile:
+  zotero-profile:

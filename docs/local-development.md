@@ -1,5 +1,12 @@
 # Local application development
 
+## Desktop clients for sync testing
+
+The Mac also has isolated real Obsidian and Zotero desktop clients. They do not
+mount or modify the native macOS profiles. See [desktop testing](desktop-testing.md)
+for local URLs, persistent volume ownership and start/stop commands. These clients
+are separate from the synthetic Manager preview and n8n development backends below.
+
 ## n8n: source UI with pinned native backends
 
 The n8n development command runs the current UI source with Vite HMR while the
