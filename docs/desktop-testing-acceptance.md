@@ -35,6 +35,54 @@ as UID 1000 under LinuxServer's container-root supervisor; Zotero uses UID 10001
 
 ## Evidence
 
+### Freelove test-instance preparation
+
+The Mac desktops remain the retained desktop-side clients. On Freelove, the
+existing Zotero is connected to a personal account and shared Google Drive storage;
+the existing Obsidian reports a connected official-Sync vault. Neither was
+reconfigured for testing.
+
+After approved unused-build-cache cleanup, Manager's local administrative API
+installed a separate `personal/zotero-sync-test` from the already installed
+`0.4.2` package, with no external storage bindings. The fresh library is empty
+and unconnected. All four services passed healthchecks, but Gateway registration
+was rejected because the personal Zotero already owns the package's namespace.
+The original registration remains enabled. Healthy services therefore do not
+mean a second usable AI integration.
+
+The fresh server desktop's Plugins screen initially showed both ScholarServer
+Zotero Setup Bridge and ZotMoov disabled. The account-connect attempt produced no
+login link. After explicit operator approval, enabling only the setup bridge
+allowed the same guided step to produce Zotero's official login flow. It reached
+email MFA for the dedicated test account. Verification is pending because the
+authorized Gmail browser became unavailable to computer control; no account
+password was read or entered. This observation concerns deployed `0.4.2`, not
+the unpublished `0.5.10-beta.3` candidate. ZotMoov remains disabled.
+
+A separate `personal/obsidian-sync-test` plan selected package `0.4.6` and
+`self-hosted-livesync`. Apply returned a generic executor failure. Executor
+revision 1 shows lifecycle application followed by successful rollback: containers
+started but failed readiness. One controlled retry after reconciling the rollback
+also failed, and revision 2 confirms rollback at 14:41:08 UTC. No test containers
+or Manager instance remained. The original controller exception is unavailable;
+the package predates the documented CouchDB bootstrap fix, but HTTP 401 was not
+proven as this runtime failure. No further retry or image override was made.
+Planning files and test data remain for diagnosis. No sync or automation
+roundtrip through Freelove is claimed.
+
+The server Zotero desktop is temporarily reachable through an SSH tunnel on Mac
+loopback port 18333; the retained Mac desktop remains on port 18331. Neither
+publishes a public desktop port. The disabled-bridge screenshot is retained at
+`.dev/desktop-clients/freelove-zotero-test-bridge-disabled.png`.
+
+Core `pnpm check` passed with its two explicitly skipped checks. Apps `npm test`
+initially failed a short Logseq timeout assertion while both suites ran. The
+focused seven-test suite and a complete subsequent apps run passed. No test code
+was changed; this does not establish the cause of that timing-sensitive failure.
+
+Exact core/runtime preflight and cleanup evidence is recorded in core's
+`docs/deployments.md`. The personal native Mac applications remain out of scope.
+
 ### Authenticated metadata roundtrip
 
 The retained isolated Linux client completed browser authorization. The browser
