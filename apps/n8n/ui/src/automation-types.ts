@@ -15,7 +15,7 @@ export type Template = {
   schedule: Schedule | null;
   research?: ResearchKind | null;
   requirements: AppRequirement[];
-  presentation: { summary: string; maturity: string; effects: string; ai: string } | null;
+  presentation: { summary: string; maturity: string; effects: string; ai: string; tags?: string[] } | null;
 };
 export type Receipt = {
   templateId: string;

@@ -11,6 +11,14 @@ name. Icons are loaded only from the authenticated Manager's local catalog.
 Templates remain reviewed native n8n YAML; requirements and presentation live
 beside their nodes, not in Manager.
 
+The catalog uses a responsive card grid. Search matches all entered words across
+outcomes, descriptions, app names/roles and tags. The application filter combines
+with search and any selected tag. Tags belong to each reviewed YAML template;
+they are bounded, unique labels, not executable configuration. Name sorting is
+explicit in either direction; there are no invented popularity or usage counts.
+Filters survive opening setup and returning to the catalog. Missing app access
+stays visible on cards; detailed roles and configuration appear during setup.
+
 Choose **Set up**, give the automation a name, choose its app instances and output
 folder, and select the interval. The workflow is created disabled. **My automations**
 shows its saved bindings, schedule and recent execution statuses. A second copy

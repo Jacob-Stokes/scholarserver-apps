@@ -5,6 +5,7 @@ name: Create a daily list of new papers
 description: Create an Obsidian list of papers added during the previous UTC day. Empty days create no note; existing digests are left unchanged. No AI service is used.
 research: research-digest
 presentation:
+  tags: [Library review, Notes]
   summary: "Collect the previous UTC day's new papers in one note. Empty days create no note."
   maturity: preview
   effects: "Creates notes; existing files are not replaced."

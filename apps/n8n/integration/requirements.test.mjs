@@ -8,6 +8,23 @@ import { assertRequiredApplications, validateRequirements } from "./requirements
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
 const manifest = parse(await readFile(new URL("../package/scholarserver-app.yaml", import.meta.url), "utf8"));
 
+test("research catalog tags are bounded, nonempty and case-insensitively unique", () => {
+  const template = templates.find((candidate) => candidate.research);
+  for (const tags of [
+    undefined,
+    [],
+    ["Notes", "notes"],
+    [" bad"],
+    ["<script>"],
+    ["a".repeat(33)],
+    new Array(9).fill("Notes")
+  ]) {
+    const broken = structuredClone(template);
+    broken.presentation.tags = tags;
+    assert.throws(() => validateRequirements(broken), /catalog tags/);
+  }
+});
+
 test("reviewed role actions match the implemented bridge and stay within package grants", () => {
   for (const template of templates.filter((candidate) => candidate.research)) {
     const expected =

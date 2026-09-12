@@ -5,6 +5,7 @@ name: Automatically convert new Zotero PDFs
 description: Check the shared Zotero–Docling folder every minute and attach converted Markdown to the matching paper. Existing PDFs are also checked when enabled; completed results are reused. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
 research: convert-pdfs
 presentation:
+  tags: [PDFs, Conversion]
   summary: "Watch a shared folder for Zotero PDFs and attach Markdown automatically. Checks every minute by default; OCR is off."
   maturity: preview
   effects: "Converts matching PDFs and attaches Markdown; existing results are reused."

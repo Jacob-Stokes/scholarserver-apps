@@ -37,6 +37,16 @@ export function validateRequirements(template) {
   ) {
     throw new Error("Research templates require explicit effects and maturity");
   }
+  const tags = template.presentation.tags;
+  if (
+    !Array.isArray(tags) ||
+    tags.length < 1 ||
+    tags.length > 8 ||
+    !tags.every((tag) => typeof tag === "string" && /^[A-Za-z][A-Za-z0-9 -]{0,31}$/.test(tag) && tag.trim() === tag) ||
+    new Set(tags.map((tag) => tag.toLowerCase())).size !== tags.length
+  ) {
+    throw new Error("Research templates require bounded unique catalog tags");
+  }
 }
 
 export function requirementsForScope(templates, scope) {

@@ -121,11 +121,44 @@ try {
   await page.goto("http://127.0.0.1:18232");
   await page.getByRole("button", { name: "Browse automation catalog" }).click();
   await page.getByRole("heading", { name: "Create reading-note starters" }).waitFor();
+  const cards = page.locator(".automation-template");
+  assert.equal(await cards.count(), 3);
+  const positions = await cards.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().top)
+  );
+  assert.ok(
+    positions.every((top) => top === positions[0]),
+    "desktop catalog should have three columns"
+  );
+  assert.equal(await page.getByLabel("Run every (hours)").count(), 0, "setup fields should not be on browse cards");
   await page.screenshot({ path: new URL("catalog-desktop.png", output).pathname, fullPage: true });
+  await page.getByRole("searchbox", { name: "Search automations" }).fill("reading-note");
+  assert.equal(await cards.count(), 1);
+  await page.getByLabel("Application", { exact: true }).selectOption("org.scholarserver.docling");
+  await page.getByRole("heading", { name: "No matching automations" }).waitFor();
+  await page.screenshot({ path: new URL("catalog-no-results.png", output).pathname, fullPage: true });
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await page.locator(".catalog-tag-picker summary").click();
+  await page.getByRole("checkbox", { name: "Reading", exact: true }).check();
+  assert.equal(await cards.count(), 1);
+  await page.getByRole("checkbox", { name: "PDFs", exact: true }).check();
+  assert.equal(await cards.count(), 2, "tags use OR within the selection");
+  await page.locator(".catalog-tag-picker summary").click();
+  await page.screenshot({ path: new URL("catalog-filtered.png", output).pathname, fullPage: true });
+  await page.getByRole("button", { name: "Remove Reading filter" }).click();
+  assert.equal(await cards.count(), 1);
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await page.getByLabel("Sort by", { exact: true }).selectOption("name-desc");
+  const descending = await cards.locator("h2").allTextContents();
+  await page.getByLabel("Sort by", { exact: true }).selectOption("name");
+  assert.deepEqual(await cards.locator("h2").allTextContents(), [...descending].reverse());
   assert.equal(await page.getByRole("heading", { name: "Check automation execution" }).count(), 0);
   const reading = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Create reading-note starters", exact: true }) });
+  await reading.getByRole("button", { name: "Set up", exact: true }).click();
+  await page.getByRole("button", { name: "Back to catalog", exact: true }).click();
+  assert.equal(await cards.count(), 3);
   await reading.getByRole("button", { name: "Set up", exact: true }).click();
   await page.getByLabel("Automation name", { exact: true }).fill("My reading notes");
   await page.getByLabel("Zotero library").selectOption("personal/library");
@@ -146,6 +179,8 @@ try {
   await page.getByRole("heading", { name: "My reading notes", exact: true }).waitFor();
   // ApplicationScreen navigation uses buttons, so keyboard activation shares the normal path.
   await page.getByRole("button", { name: "Catalog", exact: true }).click();
+  await page.screenshot({ path: new URL("catalog-mobile.png", output).pathname, fullPage: true });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await reading.getByRole("button", { name: "Set up", exact: true }).click();
   await page.getByLabel("Automation name", { exact: true }).fill("Second reading folder");
   await page.getByLabel("Zotero library").selectOption("personal/library");

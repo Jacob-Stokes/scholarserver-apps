@@ -1,5 +1,20 @@
 # n8n integration — development record
 
+## 12 September 2026 — catalog discovery and artifact audit
+
+The catalog now has three-column desktop cards, a single-column mobile layout,
+outcome/app search, application selection, multi-tag filtering and A–Z/Z–A
+sorting. Reviewed template YAML owns the tags. Cards keep effects, preview status
+and missing app access visible; setup fields and detailed app roles remain behind
+Set up. No schedules, saved copies, grants or user data are migrated.
+
+Focused tests cover search/filter combinations, old metadata, stable sorting and
+same-workspace app requirements. The mocked Chrome checks cover the actual UI,
+combined/no-result filtering, independent copies, unknown-outcome draft retention,
+enable/reload, customised workflows and mobile layout. These checks passed, as
+did the full apps source suite. This is not final-image or publication evidence;
+the package-image refresh is tracked separately in the repository build audit.
+
 ## 11 September 2026 — executor-driven package update
 
 The acceptance harness was subsequently split so its seed and verification logic

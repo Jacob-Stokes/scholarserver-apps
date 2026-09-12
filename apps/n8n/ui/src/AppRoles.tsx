@@ -1,6 +1,14 @@
 import type { AppRequirement } from "./automation-types";
 
-export function AppRoles({ requirements, icons }: { requirements: AppRequirement[]; icons: Record<string, string> }) {
+export function AppRoles({
+  requirements,
+  icons,
+  compact = false
+}: {
+  requirements: AppRequirement[];
+  icons: Record<string, string>;
+  compact?: boolean;
+}) {
   return (
     <ul className="automation-roles" aria-label="Required applications">
       {requirements.map((requirement) => (
@@ -14,7 +22,7 @@ export function AppRoles({ requirements, icons }: { requirements: AppRequirement
           )}
           <span>
             <strong>{requirement.name}</strong>
-            <small>{requirement.role}</small>
+            {!compact ? <small>{requirement.role}</small> : null}
           </span>
         </li>
       ))}
