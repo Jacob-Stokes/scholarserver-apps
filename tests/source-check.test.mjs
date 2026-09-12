@@ -76,5 +76,6 @@ test("both CI entry points run the locked source check and GitHub stays manual-o
   assert.deepEqual(sourceCheckCommands(githubWorkflow), ["sh scripts/check-source.sh"]);
   assert.deepEqual(Object.keys(githubWorkflow.on), ["workflow_dispatch"]);
   assert.deepEqual(giteaWorkflow.on.push.branches, ["main", "codex/beginner-acceptance"]);
+  assert.equal(giteaWorkflow.on.push["paths-ignore"], undefined, "every trusted checkpoint needs its own CI result");
   assert.ok("workflow_dispatch" in giteaWorkflow.on);
 });

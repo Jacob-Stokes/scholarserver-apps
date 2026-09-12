@@ -3,7 +3,6 @@ name: Application source and production builds
 on:
   push:
     branches: [main, codex/beginner-acceptance]
-    paths-ignore: ['docs/**', '**/*.md']
   workflow_dispatch:
 
 jobs:
