@@ -2,3 +2,5 @@
 !Dockerfile
 !start-zotero.py
 !healthcheck.py
+!zotero-test.desktop
+!mimeapps.list

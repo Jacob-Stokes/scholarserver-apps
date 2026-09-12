@@ -4,6 +4,8 @@ ARG BUILDARCH
 ARG TARGETARCH
 ARG ZOTERO_VERSION=10.0.1
 ARG ZOTERO_SHA256_ARM64=e42e69275dafa14af0342f5dea24242a3f7c39ba7e92b4ee00a97b0f08cd387a
+ARG FIREFOX_DEB=firefox_154.0~build1_arm64_2b9118399a9a57866b6ead6db0baedfc.deb
+ARG FIREFOX_SHA256_ARM64=9fe1800859d501469653b851efe6abc686daf5c83505b91ae6921d48353268db
 
 # This local test client deliberately has no emulated or non-ARM64 build path.
 RUN test "${BUILDARCH}" = arm64 && test "${TARGETARCH}" = arm64 \
@@ -14,7 +16,16 @@ RUN apt-get update \
       ca-certificates curl dbus-x11 fonts-dejavu-core fonts-liberation \
       libasound2t64 libdbus-glib-1-2 libegl1 libgtk-3-0 libnss3 libpci3 libx11-xcb1 libxt6t64 \
       novnc openbox python3-minimal tini tigervnc-standalone-server \
-      websockify x11-utils xauth xz-utils \
+      websockify x11-utils xauth xz-utils xdg-utils desktop-file-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Zotero 10 signs in through the default browser, inside this isolated desktop.
+RUN curl --fail --location --show-error --retry 3 --connect-timeout 30 --max-time 600 \
+      "https://packages.mozilla.org/apt/pool/mozilla/${FIREFOX_DEB}" --output /tmp/firefox.deb \
+    && echo "${FIREFOX_SHA256_ARM64}  /tmp/firefox.deb" | sha256sum -c - \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/firefox.deb \
+    && rm /tmp/firefox.deb \
     && rm -rf /var/lib/apt/lists/*
 
 RUN set -eu; \
@@ -35,6 +46,9 @@ RUN groupadd --gid 10001 zotero \
     && chmod 1777 /tmp/.X11-unix
 
 COPY --chown=root:root start-zotero.py healthcheck.py /usr/local/lib/zotero-test/
+COPY --chown=root:root zotero-test.desktop /usr/share/applications/zotero-test.desktop
+COPY --chown=root:root mimeapps.list /etc/xdg/mimeapps.list
+RUN update-desktop-database /usr/share/applications
 
 USER 10001:10001
 ENV HOME=/config DISPLAY=:1 NO_AT_BRIDGE=1

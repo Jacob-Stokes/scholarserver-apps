@@ -15,6 +15,19 @@ spec.loader.exec_module(startup)
 
 
 class DesktopTests(unittest.TestCase):
+    def test_browser_and_callback_are_packaged_inside_the_test_desktop(self):
+        recipe = (DIRECTORY / "Dockerfile").read_text()
+        self.assertIn("https://packages.mozilla.org/apt/pool/mozilla/${FIREFOX_DEB}", recipe)
+        self.assertIn('${FIREFOX_SHA256_ARM64}  /tmp/firefox.deb', recipe)
+        self.assertIn("update-desktop-database /usr/share/applications", recipe)
+        defaults = (DIRECTORY / "mimeapps.list").read_text()
+        self.assertIn("x-scheme-handler/https=firefox.desktop", defaults)
+        self.assertIn("x-scheme-handler/zotero=zotero-test.desktop", defaults)
+        callback = (DIRECTORY / "zotero-test.desktop").read_text()
+        self.assertIn("Exec=/opt/zotero/zotero -url %U", callback)
+        for filename in ("mimeapps.list", "zotero-test.desktop"):
+            self.assertIn(f"!{filename}", (DIRECTORY / ".dockerignore").read_text())
+
     def test_archive_and_base_match_the_existing_verified_recipe(self):
         existing = (DIRECTORY.parents[2] / "apps/zotero/desktop/Dockerfile").read_text()
         recipe = (DIRECTORY / "Dockerfile").read_text()

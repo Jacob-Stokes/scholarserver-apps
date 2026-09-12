@@ -8,13 +8,13 @@ macOS applications. No personal Mac profile was opened, reconfigured or mounted.
 No remote deployment, paid resource or published package was changed.
 
 This pass qualifies desktop startup, browser control, storage isolation and a
-specific stop/start persistence check. It does **not** qualify account sign-in,
-email verification, attachment sync, two-way sync with Freelove or n8n workflows.
+specific stop/start persistence check. It does **not** qualify desktop account
+sign-in, attachment sync, two-way sync with Freelove or n8n workflows.
 
-The dedicated Zotero account form was prepared in the in-app browser. Registration
-requires the operator's password/terms submission; no password was generated,
-stored in this repository or submitted by the agent. Verification and client login
-remain pending. No account address, verification link or secret is recorded here.
+The operator completed registration for the dedicated Zotero account. Its email
+verification page confirmed success. No password was generated, stored in this
+repository or submitted by the agent. Desktop client login remains pending.
+No account address, verification link or secret is recorded here.
 Obsidian has no sync configured; choose separate test vaults for each sync mechanism.
 
 ## Runtime identity
@@ -22,7 +22,7 @@ Obsidian has no sync configured; choose separate test vaults for each sync mecha
 | Client | Version | Running image ID |
 | --- | --- | --- |
 | Obsidian | 1.13.7, desktop welcome screen | `sha256:9bed047a2dfb0ef597bf3402469c080030c45f4ddc32d08c4a79a7e0594fabed` |
-| Zotero | 10.0.1, checksum-verified upstream archive | `sha256:2f149a243c697e3a91e923158086a560a2b0fc478c4668db36c59ae07e9ba3aa` |
+| Zotero | 10.0.1 with Firefox 154.0 for account login | `sha256:b4f0e16a29c4b675ec1cc4209140ad6592aa9746d211df3385f9ac4b1372ad45` |
 
 The qualified IDs are checked before start. Exact container names, volumes, local
 URLs and build inputs are documented in [desktop testing](desktop-testing.md).
@@ -31,6 +31,42 @@ loopback published ports and no native host folders. The Obsidian process runs
 as UID 1000 under LinuxServer's container-root supervisor; Zotero uses UID 10001.
 
 ## Evidence
+
+### Browser login follow-up
+
+Zotero 10's Account → Log In needs an external browser. The original image had
+none: the desktop waited for login while GLib reported that it could not launch
+the default application. The replacement adds checksum-pinned Mozilla Firefox
+and container-only HTTP/HTTPS/Zotero protocol associations. It does not change
+Mac associations or mount Mac browser profiles.
+
+A disposable native ARM64 profile opened Firefox and the official Zotero login
+page through that button. Firefox's first-run Terms screen and the account login
+require operator interaction; this is browser-launch proof, not authenticated
+callback or sync acceptance. No terms were accepted on the operator's behalf.
+
+The initial combined browser/app launch reached the 256-thread cap (`pids.events`
+recorded 54 failures), with failed subprocess creation. The replacement permits
+512 threads and 1.5 GiB memory. After restarting the disposable check, the login
+page rendered without the earlier page-crash banner; thread-limit and OOM event
+counters remained zero. This is not a sustained sync workload test.
+
+The old health probe also closed the RFB connection before authentication,
+triggering TigerVNC's blacklist while falsely reporting success. The replacement
+finishes a bounded shared handshake, without input or framebuffer requests.
+Native regression tests reproduced the old false success and verified thirty
+new probes without blacklisting or disconnecting an existing synthetic viewer.
+Local focused tests pass: eight JavaScript tests and nineteen Python tests,
+with two native-only Python skips. Those two native cases passed separately in
+the helper's disposable ARM64 container. Full `npm test` and lint also passed.
+
+The retained desktop was recreated with the qualified image and its original
+named volume. It passed health readiness and reopened the `ScholarServer Test`
+collection in the browser. Obsidian was not recreated. The browser-check
+container and its disposable writable layer were removed and absence verified;
+the retained Zotero and Obsidian volumes were preserved.
+
+### Initial desktop and persistence checks
 
 - `npm test`: passed, including the existing application suites and typechecks.
 - `npm run test:desktops`: eight JavaScript and seven Python tests passed.

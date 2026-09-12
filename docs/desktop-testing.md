@@ -15,6 +15,10 @@ desktop interface under `/config`. That is a container path, not a Mac folder.
 Zotero starts with its ordinary upstream profile and library under `/config`.
 No ScholarServer bridge, ZotMoov or other extension is installed in this Zotero
 client. It is deliberately separate from the server-side Zotero package.
+The Zotero desktop also includes Firefox for its browser-based account login.
+This is Linux Firefox inside the same container, not Firefox on the Mac. Its
+profile is under the same isolated `/config` volume. Login pages and any Zotero
+callback stay inside that desktop; no browser security exceptions are configured.
 
 From this repository, with Docker Desktop already running:
 
@@ -39,7 +43,7 @@ Compose project `scholarserver-test-desktops` owns:
 | Service | Persistent volume | Contents |
 | --- | --- | --- |
 | `obsidian` | `scholarserver-test-desktops_obsidian-profile` | Desktop settings, vaults and future test sync credentials |
-| `zotero` | `scholarserver-test-desktops_zotero-profile` | Default Zotero profile, library, attachments and future test sync credentials |
+| `zotero` | `scholarserver-test-desktops_zotero-profile` | Default Zotero profile, library, attachments, isolated Firefox profile and test sync credentials |
 
 No host directories, native profiles, device nodes or Docker socket are mounted.
 The clients have outbound network access for sync, but no published sync/API/VNC
@@ -59,7 +63,8 @@ the desktop/app processes run as UID 1000. Both prevent new privileges. This is
 not equivalent to a hostile-code sandbox: only install deliberately selected,
 trusted test plugins. No host-wide Docker or browser security settings are changed.
 
-Memory caps are 1.5 GiB for Obsidian and 1 GiB for Zotero, not reserved RAM.
+Memory caps are 1.5 GiB per desktop, not reserved RAM. Zotero shares its cap with
+the browser used for login; both desktops allow at most 512 processes/threads.
 The Mac had 16 GiB physical RAM and Docker about 3.84 GiB when provisioned.
 Measure active sync and attachment workloads before increasing caps or concurrency.
 Mac sleep and Docker shutdown suspend availability. These clients do not qualify
@@ -77,7 +82,8 @@ docker build -t scholarserver-test-zotero:local dev/desktop-clients/zotero
 
 Run the commands only against local native ARM64 Docker. The Zotero recipe
 refuses other build/target architectures and verifies the upstream Zotero 10.0.1
-archive checksum. Ubuntu is pinned; apt package repositories remain moving inputs.
+archive checksum. Firefox 154.0 uses a checksum-pinned native ARM64 DEB from
+Mozilla's package server. Ubuntu is pinned; apt dependencies remain moving inputs.
 This local image is not published or part of the signed app catalog.
 
 The `x-qualified-image-ids` section in Compose records the images accepted on this
@@ -118,4 +124,5 @@ Runtime and browser evidence is recorded separately in `desktop-testing-acceptan
 
 References: [Docker Desktop's Linux VM](https://docs.docker.com/desktop/features/vmm/),
 [LinuxServer Obsidian](https://docs.linuxserver.io/images/docker-obsidian/),
-[Zotero sync](https://www.zotero.org/support/sync).
+[Zotero sync](https://www.zotero.org/support/sync),
+[Mozilla Linux installation](https://support.mozilla.org/en-US/kb/install-firefox-linux).

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Zotero
+Exec=/opt/zotero/zotero -url %U
+Type=Application
+Terminal=false
+Categories=Office;
+MimeType=x-scheme-handler/zotero;
