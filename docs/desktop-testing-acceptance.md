@@ -35,6 +35,27 @@ as UID 1000 under LinuxServer's container-root supervisor; Zotero uses UID 10001
 
 ## Evidence
 
+### First cloud-to-Freelove metadata sync
+
+After the operator completed authorization, `zotero-sync-test` reported the
+dedicated test account connected. Through its existing app-owned API, storage
+was set to Zotero Storage with download-on-sync and group-library file sync off.
+A manual sync completed without a reported error. The server desktop's supported
+local API returned Book item `FE8WXQER`, version 2, in collection `B3P2EUAN`, titled
+`scholarserver sync test desktop roundtrip 2026-09-12`.
+
+This matches the earlier Mac-container edit and proves that it reached Freelove
+through Zotero's cloud. It does not prove a fresh post-restart Mac roundtrip,
+attachment-byte sync, local write authorization or an n8n workflow. The instance
+still reports `authorization-required`, with read-only local API access.
+
+Mac Docker remained stopped after the operator's freeze/restart. No builds,
+parallel tests or personal native profiles were used for this follow-up. The
+operator requested periodic resource checks, including builds as a possible load
+source; a five-minute read-only task monitor was created. Future heavy work must
+check pressure first and avoid concurrent build/test suites. The monitor can
+report a worsening trend but cannot guarantee prevention of another freeze.
+
 ### Freelove test-instance preparation
 
 The Mac desktops remain the retained desktop-side clients. On Freelove, the
