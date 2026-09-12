@@ -2,8 +2,9 @@
 
 ## Result and limits
 
-Two persistent native ARM64 Linux desktop clients are running on the operator Mac
-under Compose project `scholarserver-test-desktops`. They are not the native
+Two persistent native ARM64 Linux desktop clients were qualified on the operator
+Mac under Compose project `scholarserver-test-desktops`. Docker is currently
+stopped following the freeze described below. They are not the native
 macOS applications. No personal Mac profile was opened, reconfigured or mounted.
 No remote deployment, paid resource or published package was changed.
 
@@ -35,6 +36,21 @@ as UID 1000 under LinuxServer's container-root supervisor; Zotero uses UID 10001
 
 ## Evidence
 
+### Freelove local-write authorization and return sync request
+
+After the operator approved local access in the separate server test desktop,
+the instance reported `ready`, authorized local API access and the expected test
+identity. A conditional write required synthetic item `FE8WXQER` to retain its
+known version 2 and title before changing it to
+`ScholarServer sync test - Freelove return 2026-09-12`. Local readback confirmed
+version 3. The subsequent manual sync completed with no reported error.
+
+This proves a supported local write on Freelove and a completed sync request.
+Independent cloud readback and delivery to the Mac client remain unverified.
+Docker stayed stopped; Mac swap remained unused. No build, full test suite or
+personal native profile was used. The duplicate Gateway namespace still blocks
+the test instance's integration; this is not n8n workflow acceptance.
+
 ### First cloud-to-Freelove metadata sync
 
 After the operator completed authorization, `zotero-sync-test` reported the
@@ -46,8 +62,9 @@ local API returned Book item `FE8WXQER`, version 2, in collection `B3P2EUAN`, ti
 
 This matches the earlier Mac-container edit and proves that it reached Freelove
 through Zotero's cloud. It does not prove a fresh post-restart Mac roundtrip,
-attachment-byte sync, local write authorization or an n8n workflow. The instance
-still reports `authorization-required`, with read-only local API access.
+attachment-byte sync, local write authorization or an n8n workflow. At that point
+the instance reported `authorization-required`, with read-only local API access;
+the later authorization and write check are recorded above.
 
 Mac Docker remained stopped after the operator's freeze/restart. No builds,
 parallel tests or personal native profiles were used for this follow-up. The
