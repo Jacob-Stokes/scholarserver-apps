@@ -15,6 +15,14 @@ require all twelve card images to decode, with no letter placeholders. Native
 browser checks assert the same against the packaged UI. Publication remains
 separate from rebuilding and selecting an unpublished local candidate.
 
+Source `960f9f8` passed full npm tests, lint, UI build and the mocked browser
+regression. Native ARM64 image
+`sha256:c261165ba792c8b09ef5f94387e932680aa844cf3cda3eff3f9716d602a01256`
+passed twelve-image decoding, attribution serving and desktop/mobile checks on
+the retained local stack. It is explicitly selected for local development, not
+published or deployed to Freelove. Screenshot:
+`.dev/automation-catalog-review/catalog-icons-packaged.png`.
+
 ## Three research-report candidates — 12 September 2026
 
 The source catalog adds a completed-UTC-week reading roundup, a previous-UTC-day
