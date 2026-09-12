@@ -12,6 +12,8 @@ if [ "$native_arch" != "$ARCH" ]; then
   exit 1
 fi
 
+node scripts/check-image-source.mjs --inventory scripts/image-source-inventory.json
+
 build() {
   image="$1"
   dockerfile="$2"
@@ -21,7 +23,17 @@ build() {
   tag_suffix=""
   [ -z "$variant" ] || tag_suffix="-$variant"
   target="$REGISTRY/$repository:sha-$REVISION$tag_suffix-$ARCH"
-  docker build --pull --build-arg TARGETARCH="$ARCH" --file "$dockerfile" --tag "$target" "$context"
+  source_digest=$(node --input-type=module -e '
+    import { loadInventory, fingerprintRecipe } from "./scripts/check-image-source.mjs";
+    const inventory = await loadInventory("scripts/image-source-inventory.json");
+    const recipe = inventory.recipes.find((entry) => entry.name === process.argv[1]);
+    console.log((await fingerprintRecipe(process.cwd(), recipe)).digest);
+  ' "$image")
+  docker build --pull --build-arg TARGETARCH="$ARCH" \
+    --label "org.opencontainers.image.revision=$REVISION" \
+    --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
+    --label "com.scholarserver.source-digest=$source_digest" \
+    --file "$dockerfile" --tag "$target" "$context"
   python3 scripts/check-image-contents.py "$target"
   if [ "$image" = files ]; then
     bash apps/files/test-container.sh "$target"
@@ -39,6 +51,11 @@ build() {
 }
 
 build files apps/files/Dockerfile .
+build n8n apps/n8n/Dockerfile .
+build n8n-app apps/n8n/integration/Dockerfile . scholarserver-n8n-app
+build logseq-helper apps/logseq/helper/Dockerfile .
+build logseq-mcp apps/logseq/mcp/Dockerfile .
+build logseq-sync apps/logseq/sync-adapter/Dockerfile .
 build obsidian-sync apps/obsidian/sync/Dockerfile .
 build obsidian-api apps/obsidian/api/Dockerfile apps/obsidian/api
 build obsidian-mcp apps/obsidian/mcp/Dockerfile .

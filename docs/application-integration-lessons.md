@@ -104,6 +104,23 @@ release checklist or proof that a particular application is ready.
 
 ## Keeping these notes useful
 
+### Source and image drift, 12 September 2026
+
+A signed core bundle authenticates its selected catalog; it does not establish
+that an app image contains the current source. Record a fingerprint of each
+recipe's runtime, UI, lockfiles, shared build inputs and Dockerfile alongside
+its immutable image reference and native architectures. Release assembly now
+requires matching records. These records are engineering evidence, not registry
+attestations or substitutes for native acceptance.
+
+The audit also found a second entry point for Zotero's controller whose image
+omitted newly imported modules. Check every Dockerfile that ships a shared
+entry point, not only its primary service. The bridge recipe regression and
+native startup check cover this failure.
+
+See [the package build audit](package-build-audit-20260912.md) and
+`scripts/check-image-source.mjs`. No live deployment follows from these checks.
+
 ### Completion feedback, 11 September 2026
 
 The shared UI snapshot now uses Sonner 2.0.7 for routine `notice` messages.

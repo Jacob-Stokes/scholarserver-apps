@@ -1,5 +1,18 @@
 # Zotero development notes
 
+## 12 September 2026 — bridge image dependency closure
+
+The first rebuilt local API bridge exited before listening with
+`ERR_MODULE_NOT_FOUND` for `@scholarserver/controller-runtime`. Its Dockerfile
+still copied only `controller.mjs`, although that file now imports the shared
+atomic-file helpers, status model and bounded research metadata reader. The
+controller image already copied those dependencies; the bridge recipe did not.
+
+The bridge now includes the same imported modules without changing its command,
+user, API boundary or data mounts. A recipe regression covers both entry points.
+New native image and startup results belong to the package-build audit; the
+first failed image is not qualified or published as the package update.
+
 ## Read-only research metadata — 9 September 2026
 
 The controller has a candidate `research-items` action for n8n reading notes and

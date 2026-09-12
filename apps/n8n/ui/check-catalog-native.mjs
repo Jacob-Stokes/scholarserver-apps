@@ -12,6 +12,29 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto("http://127.0.0.1:18231");
   await page.getByRole("button", { name: "Catalog", exact: true }).click();
+  const cards = page.locator(".automation-template");
+  await page.getByRole("searchbox", { name: "Search automations" }).waitFor();
+  assert.equal(await cards.count(), 3);
+  await page.screenshot({ path: new URL("native-catalog-desktop.png", output).pathname, fullPage: true });
+  await page.getByRole("searchbox", { name: "Search automations" }).fill("reading-note");
+  assert.equal(await cards.count(), 1);
+  await page.getByLabel("Application", { exact: true }).selectOption("org.scholarserver.docling");
+  await page.getByRole("heading", { name: "No matching automations" }).waitFor();
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await page.locator(".catalog-tag-picker summary").click();
+  await page.getByRole("checkbox", { name: "Reading", exact: true }).check();
+  assert.equal(await cards.count(), 1);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator(".catalog-tag-picker").getAttribute("open"), null);
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await page.getByLabel("Sort by", { exact: true }).selectOption("name-desc");
+  const descending = await cards.locator("h2").allTextContents();
+  await page.getByLabel("Sort by", { exact: true }).selectOption("name");
+  assert.deepEqual(await cards.locator("h2").allTextContents(), [...descending].reverse());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: new URL("native-catalog-mobile.png", output).pathname, fullPage: true });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 1280, height: 900 });
   const reading = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Create reading-note starters", exact: true })
   });

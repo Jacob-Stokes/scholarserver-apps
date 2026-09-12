@@ -15,6 +15,16 @@ async function recipes(directory) {
   return result;
 }
 
+test("both Zotero controller entry points ship their imported modules", async () => {
+  for (const role of ["controller", "local-api-bridge"]) {
+    const recipe = await readFile(`apps/zotero/${role}/Dockerfile`, "utf8");
+    for (const module of ["controller.mjs", "status-model.mjs", "research-items.mjs"]) {
+      assert.ok(recipe.includes(`apps/zotero/controller/${module}`), `${role} must copy ${module}`);
+    }
+    assert.ok(recipe.includes("COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime"));
+  }
+});
+
 test("every distributed custom image pins its base and cannot install official Headless", async () => {
   const files = await recipes("apps");
   assert.equal(files.length, 19, "Existing application recipes plus n8n wrapper and integration");
