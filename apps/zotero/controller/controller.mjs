@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { mkdir, open, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 import { createAccountLink } from "./account-link.mjs";
 import { createLibraryActions } from "./library-actions.mjs";
@@ -550,21 +551,31 @@ const contentTypes = new Map([
   [".ico", "image/x-icon"]
 ]);
 
-async function sendStatic(requestPath, response) {
-  const root = path.resolve(uiPath);
+async function sendStatic(requestPath, response, staticRoot) {
+  const root = path.resolve(staticRoot);
   // Vite emits relative asset URLs so the same UI can run at / locally and
   // behind the Manager's /apps/:instance prefix. On a client-side detail
   // route those URLs include the route segments (for example
   // /automations/assets/app.js), so map every assets suffix back to the
   // immutable build directory before applying the normal traversal guard.
-  const assetPosition = requestPath.indexOf("/assets/");
+  const assetPosition = requestPath.search(/\/assets(?:\/|$)/);
   const staticPath = assetPosition >= 0 ? requestPath.slice(assetPosition) : requestPath;
+  const navigation = assetPosition < 0 && path.extname(staticPath) === "";
   let candidate = path.resolve(root, staticPath.replace(/^\/+/, ""));
   if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`))
     return json(response, 404, { error: "Not found" });
   try {
-    if (!(await stat(candidate)).isFile()) candidate = path.join(root, "index.html");
-  } catch {
+    if (!(await stat(candidate)).isFile()) {
+      if (!navigation) return json(response, 404, { error: "Not found" });
+      candidate = path.join(root, "index.html");
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+      return json(response, 503, { error: "Zotero interface is unavailable" });
+    }
+    // Missing assets are failures, not client-side navigation. Returning HTML
+    // here gives module scripts a 200 response that the browser cannot execute.
+    if (!navigation) return json(response, 404, { error: "Not found" });
     candidate = path.join(root, "index.html");
   }
   try {
@@ -578,7 +589,7 @@ async function sendStatic(requestPath, response) {
   }
 }
 
-async function handleHttp(request, response) {
+export async function handleHttp(request, response, { staticRoot = uiPath } = {}) {
   const url = new URL(request.url ?? "/", "http://localhost");
   try {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, await healthStatus());
@@ -613,7 +624,7 @@ async function handleHttp(request, response) {
       return json(response, 200, await attachDoclingResult(await body(request)));
     if (url.pathname === "/api/automations" || url.pathname.startsWith("/api/automations/"))
       return proxyAutomations(request, response, url);
-    if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response);
+    if (request.method === "GET" || request.method === "HEAD") return sendStatic(url.pathname, response, staticRoot);
     return json(response, 404, { error: "Not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zotero request failed";
@@ -622,29 +633,31 @@ async function handleHttp(request, response) {
   }
 }
 
-await mkdir(requestsPath, { recursive: true });
-await mkdir(responsesPath, { recursive: true });
-await ensureRandomFile(serviceTokenPath);
-await currentStatus();
-if (!onlineLibrary) {
-  // This observer survives page closure; the coordinator serializes it with
-  // explicit setup requests and resumes persisted sessions after restart.
-  const observeAccount = async () => {
-    try {
-      await accountLink.check();
-    } catch {
-      /* Retain state for inspection. */
-    }
-    setTimeout(observeAccount, 5000).unref();
-  };
-  void observeAccount();
-}
-createServer((request, response) => {
-  void handleHttp(request, response);
-}).listen(8080, "0.0.0.0");
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await mkdir(requestsPath, { recursive: true });
+  await mkdir(responsesPath, { recursive: true });
+  await ensureRandomFile(serviceTokenPath);
+  await currentStatus();
+  if (!onlineLibrary) {
+    // This observer survives page closure; the coordinator serializes it with
+    // explicit setup requests and resumes persisted sessions after restart.
+    const observeAccount = async () => {
+      try {
+        await accountLink.check();
+      } catch {
+        /* Retain state for inspection. */
+      }
+      setTimeout(observeAccount, 5000).unref();
+    };
+    void observeAccount();
+  }
+  createServer((request, response) => {
+    void handleHttp(request, response);
+  }).listen(8080, "0.0.0.0");
 
-for (;;) {
-  const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
-  for (const file of files) await processRequest(file);
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  for (;;) {
+    const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
+    for (const file of files) await processRequest(file);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
 }

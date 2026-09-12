@@ -61,6 +61,10 @@ release checklist or proof that a particular application is ready.
 
 ## Test the artifact we actually ship
 
+- Loading an HTML shell does not prove its UI assets are served. Request actual
+  JavaScript and CSS through the controller and assert MIME types and bytes, plus
+  deep navigation and missing-asset 404s. Broad SPA fallbacks can hide runtime
+  errors behind HTTP 200 HTML; Zotero's static HTTP regression covers this case.
 - Package discovery must reject incomplete package directories, not silently skip
   a missing manifest or Compose file. Validate duplicate declarations before
   creating lookup sets/maps, which otherwise erase the evidence. The shared

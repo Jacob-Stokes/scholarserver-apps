@@ -1,5 +1,55 @@
 # Zotero development notes
 
+## Disposable-host correction — 12 September 2026
+
+The user-installed instance on disposable host `599936240` initially had an
+`online-library` revision-1 plan. This establishes the saved choice, not what the
+user clicked. After explicit approval, Manager changed that existing instance
+to `complete-workspace` revision 2 with the same data directories; all five
+services are healthy. No personal native profile was used.
+
+The static-handler fix is running as a reversible controller-only read-only
+source bind mount on the existing immutable image, not as a newly published app
+package. Both Overview and Configuration render through the actual Manager
+proxy in fresh Chrome, with no page errors or writes. The configuration screen
+offers Connect Zotero account; account connection, sync and MCP acceptance remain
+pending. Core `docs/deployments.md` records exact image/source hashes, override
+paths, checkpoint and rollback limits. Evidence is locally retained in core
+`.dev/zotero-ui-fix-20260912`. The package still needs a new immutable image and
+version before this correction is qualified for release. The project-vault note
+update remains pending; this pass did not access the personal Obsidian profile.
+
+Full `npm test` passed on Resolution as `scholar-ci` with a 512 MiB JavaScript
+heap at 20:18:40–20:19:18 UTC (38 seconds), against `cb393fe` plus the controller
+fix and HTTP tests. An earlier harness attempt used `umask 077` and failed a
+permission-mode assertion; the unchanged suite passed with normal `022`.
+Both attempts remain in the private
+`/home/scholar-ci/guided-20260912-1/zotero-static-fulltest.sDfvow` evidence directory.
+
+## Static UI response correction — 12 September 2026
+
+The controller called `stat()` without importing it. Its broad fallback caught
+that error and returned `index.html` with HTTP 200 for JavaScript and CSS requests.
+The HTML shell could load while the browser rejected its module scripts.
+
+The source now imports `stat`, restricts SPA fallback to extensionless navigation
+outside asset paths, and returns 404 for missing asset files and directories.
+Other filesystem failures return 503 instead of successful HTML. Relative asset
+URLs still resolve from nested app routes. The HTTP handler can be imported for
+tests without starting the worker or accessing `/runtime`; direct execution keeps
+the existing controller entry point. No additional runtime file is required.
+
+`controller/static-http.test.mjs` runs the production handler on loopback with
+disposable HTML/JS/CSS fixtures. It checks MIME types, exact asset bytes, HEAD,
+deep routes, missing assets and a missing entry document. This is local HTTP
+source evidence, not a built-image, live browser or publication result. The
+existing health endpoint checks the setup bridge (or online mode), not UI asset
+delivery; a healthy container alone remains insufficient evidence of a usable UI.
+
+Retained/disposable-host qualification and image publication are separate work.
+Published manifests and image pins were not changed. The personal-vault note
+update remains pending because vault access is outside this task's scope.
+
 ## Guided candidate — 12 September 2026
 
 The new controller and relay are now built and native-startup/restart qualified
