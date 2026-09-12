@@ -38,6 +38,9 @@ Every selected Compose reference must agree with the package manifest and record
 missing, stale or incomplete records fail. Core release assembly invokes this
 check before copying any packages. An exported apps tree can use the invoking
 core checkout's locked YAML dependency; run assembly from that tooling checkout.
+The command compares canonical entry-point paths so a directory alias (including
+macOS `/tmp`) cannot make direct invocation silently skip verification. The CLI
+regression exercises accepted and deliberately stale source through such an alias.
 
 Keep native image IDs, source revisions and acceptance evidence in the release
 report. Do not manufacture records from existing digest pins or git's first

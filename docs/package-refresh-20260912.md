@@ -28,7 +28,7 @@ Native tests exposed two additional defects:
   regressions cover successful bootstrap, exhaustion and the restricted retry.
 
 The first failed Zotero bridge and Obsidian sync images are not package pins.
-No credentials, accounts or existing libraries were used to diagnose these defects.
+No existing credentials, accounts or libraries were used to diagnose these defects.
 
 ## Build provenance
 
@@ -48,6 +48,13 @@ and source fingerprints. Both app release assembly and core catalog assembly
 reject missing/stale records or differing manifest/Compose pins before packaging.
 This is an engineering source record, not a cryptographic build attestation or a
 replacement for account, install, recovery or redistribution review.
+
+A clean export test exposed a release-checker entry-point bug: Node canonicalizes
+its module path, but the CLI argument can retain `/tmp` or another directory
+symlink. The initial comparison then skipped the check. Both paths now resolve
+to real files; a CLI regression proves accepted and stale-source behavior through
+a directory alias. The changed source-checker is build tooling, not an app runtime
+input, so it does not require republishing the already verified app images.
 
 ## New source package candidates
 
@@ -115,4 +122,8 @@ successful final runs; they are not silently relabelled as passes.
 AMD64 checks use the disposable DigitalOcean host `599780940`, with firewall
 `460b2fb6-d1b6-4cb8-95d7-755092d9ef57`; ARM64 checks use local Mac Docker.
 No public app ports or Tailscale identity were created. The final cleanup result
-is recorded below after deletion is verified.
+was verified against fresh DigitalOcean inventories: both exact resource IDs
+were absent at **01:35:21 UTC, 12 September 2026**. The fallback timer is stopped
+and inactive, and the publishing SSH tunnel is closed. Resolution's source runner
+is active. Local Mac Docker was returned to its previous stopped state; unrelated
+stored containers and data were retained. No paid preview server remains.

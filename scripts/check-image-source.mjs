@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { access, lstat, readdir, readFile } from "node:fs/promises";
+import { access, lstat, readdir, readFile, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const DEFAULT_INVENTORY = "scripts/image-source-inventory.json";
 const IMMUTABLE_REFERENCE = /^[^@\s]+@sha256:[a-f0-9]{64}$/;
@@ -396,8 +396,11 @@ async function main() {
   process.stdout.write(`Validated ${inventory.recipes.length} image recipes and their fixed source inputs.\n`);
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(process.argv[1]).href : null;
-if (invokedPath && import.meta.url === invokedPath) {
+// Node resolves the module path, while argv can retain a directory symlink
+// (including macOS /tmp). Both paths must identify the same real file.
+const invokedPath = process.argv[1] ? await realpath(process.argv[1]).catch(() => null) : null;
+const modulePath = await realpath(fileURLToPath(import.meta.url));
+if (invokedPath && modulePath === invokedPath) {
   main().catch((error) => {
     process.stderr.write(`Image source check failed: ${error.message}\n`);
     process.exitCode = 1;

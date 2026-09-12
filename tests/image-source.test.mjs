@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -76,6 +77,42 @@ test("vendor and UI source changes produce a stale source-lock result", async ()
       () => validateSourceLock(lock, { recipes: [recipe] }, fingerprints),
       /stale source-lock record for recipe fixture-image/
     );
+  });
+});
+
+test("CLI runs through a directory symlink and rejects actual stale source", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const scripts = path.join(root, "scripts");
+    const commandAlias = path.join(root, "command-alias");
+    await mkdir(scripts);
+    await mkdir(path.join(root, "apps", "fixture"), { recursive: true });
+    await rename(path.join(root, "Dockerfile"), path.join(root, "apps", "fixture", "Dockerfile"));
+    recipe.dockerfile = "apps/fixture/Dockerfile";
+    recipe.sourceInputs[0] = recipe.dockerfile;
+    recipe.licenseCheck = recipe.dockerfile;
+    await symlink(path.resolve("scripts"), commandAlias, "dir");
+    const inventory = path.join(scripts, "image-source-inventory.json");
+    const lock = path.join(root, "source-lock.json");
+    const original = await currentFingerprint(root, recipe);
+    await writeFile(inventory, JSON.stringify({ format: 1, recipes: [recipe] }));
+    await writeFile(lock, JSON.stringify(lockFor(recipe, original.digest)));
+    const argumentsList = [
+      path.join(commandAlias, "check-image-source.mjs"),
+      "--inventory",
+      inventory,
+      "--root",
+      root,
+      "--lock",
+      lock
+    ];
+    const accepted = spawnSync(process.execPath, argumentsList, { encoding: "utf8" });
+    assert.equal(accepted.status, 0, accepted.stderr);
+    assert.match(accepted.stdout, /Validated 1 image source-lock records/);
+
+    await writeFile(path.join(root, "ui.ts"), "export const ui = 'changed';\n");
+    const rejected = spawnSync(process.execPath, argumentsList, { encoding: "utf8" });
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.stderr, /stale source-lock record for recipe fixture-image/);
   });
 });
 
