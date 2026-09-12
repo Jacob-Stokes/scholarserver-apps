@@ -1,6 +1,14 @@
 #!/bin/sh
 set -eu
 
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repository_root=${NATIVE_IMAGE_ROOT:-$(CDPATH= cd -- "$script_dir/.." && pwd)}
+cd "$repository_root"
+
+: "${ARCH:?Provide the native architecture to build}"
+: "${REGISTRY:?Provide the target registry and repository prefix}"
+: "${REVISION:?Provide the full committed source revision}"
+
 case "$(uname -m)" in
   x86_64) native_arch=amd64 ;;
   aarch64|arm64) native_arch=arm64 ;;
@@ -12,7 +20,16 @@ if [ "$native_arch" != "$ARCH" ]; then
   exit 1
 fi
 
-node scripts/check-image-source.mjs --inventory scripts/image-source-inventory.json
+inventory=scripts/image-source-inventory.json
+node "$script_dir/native-image-receipt.mjs" assert-source --root "$repository_root" --revision "$REVISION"
+
+receipt=.dev/native-images/$REVISION-$ARCH.json
+mkdir -p "$(dirname "$receipt")"
+rm -f -- "$receipt"
+records=$(mktemp ".dev/native-images/$REVISION-$ARCH.records.XXXXXX")
+trap 'rm -f -- "$records"' EXIT HUP INT TERM
+
+node "$script_dir/check-image-source.mjs" --inventory "$repository_root/$inventory" --root "$repository_root"
 
 build() {
   image="$1"
@@ -23,23 +40,35 @@ build() {
   tag_suffix=""
   [ -z "$variant" ] || tag_suffix="-$variant"
   target="$REGISTRY/$repository:sha-$REVISION$tag_suffix-$ARCH"
-  source_digest=$(node --input-type=module -e '
-    import { loadInventory, fingerprintRecipe } from "./scripts/check-image-source.mjs";
-    const inventory = await loadInventory("scripts/image-source-inventory.json");
-    const recipe = inventory.recipes.find((entry) => entry.name === process.argv[1]);
-    console.log((await fingerprintRecipe(process.cwd(), recipe)).digest);
-  ' "$image")
+  source_digest=$(node "$script_dir/native-image-receipt.mjs" fingerprint \
+    --root "$repository_root" --inventory "$inventory" --recipe "$image")
   docker build --pull --build-arg TARGETARCH="$ARCH" \
     --label "org.opencontainers.image.revision=$REVISION" \
     --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
     --label "com.scholarserver.source-digest=$source_digest" \
     --file "$dockerfile" --tag "$target" "$context"
-  python3 scripts/check-image-contents.py "$target"
-  if [ "$image" = files ]; then
-    bash apps/files/test-container.sh "$target"
-    bash apps/files/test-restart.sh "$target"
+  built_architecture=$(docker image inspect "$target" --format '{{.Architecture}}')
+  if [ "$built_architecture" != "$ARCH" ]; then
+    echo "Refusing non-native image for $image: expected $ARCH, built $built_architecture" >&2
+    exit 1
   fi
-  docker push "$target"
+  python3 scripts/check-image-contents.py "$target"
+  image_id=$(docker image inspect "$target" --format '{{.Id}}')
+  case "$image_id" in
+    sha256:[a-f0-9][a-f0-9]*) ;;
+    *) echo "Docker returned an invalid image ID for $image: $image_id" >&2; exit 1 ;;
+  esac
+  portable_identity=$(python3 "$script_dir/inspect-native-image.py" "$target")
+  IFS="$(printf '\t')" read -r config_digest config_architecture rootfs_diff_ids <<EOF
+$portable_identity
+EOF
+  if [ "$config_architecture" != "$ARCH" ]; then
+    echo "Portable image config has the wrong architecture for $image: $config_architecture" >&2
+    exit 1
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$image" "$target" "$image_id" "$config_digest" "$config_architecture" "$rootfs_diff_ids" "$source_digest" \
+    >> "$records"
   case "$image" in
     obsidian-sync|obsidian-api|obsidian-mcp)
       docker tag "$target" "scholarserver-packaging-review:$image" ;;
@@ -69,3 +98,14 @@ build zotero-mcp apps/zotero/mcp/Dockerfile .
 build docling-app apps/docling/controller/Dockerfile .
 build freshrss-reader apps/freshrss/reader/Dockerfile .
 build freshrss-app apps/freshrss/integration/Dockerfile .
+
+node "$script_dir/native-image-receipt.mjs" write-receipt \
+  --root "$repository_root" \
+  --inventory "$inventory" \
+  --records "$records" \
+  --receipt "$receipt" \
+  --revision "$REVISION" \
+  --architecture "$ARCH" \
+  --registry "$REGISTRY"
+echo "Built and locally verified 19 native images without publishing."
+echo "Receipt: $receipt"

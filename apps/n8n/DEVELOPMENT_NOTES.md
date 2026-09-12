@@ -660,3 +660,26 @@ The package manifest now declares the app-owned `Automation` tag under
 unchanged. No package was published or deployed. The Obsidian project-vault
 note was updated through Jacob Gateway on 11 September 2026; this repository's
 catalog-tags document remains authoritative for the exact vocabulary.
+
+## Repeatable local development — 12 September 2026
+
+`npm run dev:n8n -- start` now serves the current UI through Vite at loopback
+port 18320 with the beta.6 package's exact native backend images. The separately
+labelled startup source revision and pinned backend digests prevent a UI edit
+from being mistaken for an image rebuild. The explicit initializer uses the
+existing password-only setup queue; normal native-editor sign-in is preserved.
+See `docs/local-development.md` for prerequisites, ownership and stop/start rules.
+
+Local ARM64 Docker startup and initialization passed. Chrome verified catalog
+cards, search, application filtering, sorting, mobile width, native-editor
+sign-in and a real UI source edit/revert through HMR. Secret-path requests were
+rejected. The backend has no Manager service or research-app grants, and the
+catalog reports unavailable checks; this is not research-workflow, Manager
+installation or backup/restore acceptance. Existing release gates remain open.
+
+Source CI now builds the n8n UI alongside every other declared production
+workspace. Native build, named runtime checks and image publication are separate
+stages bound to committed source and exact image receipts. These development
+tool changes do not alter app runtime inputs, immutable images or package
+versions; all nineteen image-source records still match. No release or live
+deployment was performed. The project-vault note records this same limited scope.

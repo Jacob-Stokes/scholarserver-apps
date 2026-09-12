@@ -1,9 +1,10 @@
 name: n8n native candidate
 on:
+  # This is an opt-in native container proof. Image publication is owned by
+  # the guarded all-recipe workflow after its existing application gates.
   workflow_dispatch:
 permissions:
   contents: read
-  packages: write
 jobs:
   native:
     strategy:
@@ -15,21 +16,35 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build, test and publish native candidate images
+          node-version: '24'
+      - name: Install image-layer decoder
+        run: sudo apt-get update && sudo apt-get install -y zstd
+      - name: Build and test native candidate images without publishing
         env:
           N8N_IMAGE: ghcr.io/jacob-stokes/scholarserver-n8n:sha-${{ github.sha }}-${{ matrix.arch }}
           INTEGRATION_IMAGE: ghcr.io/jacob-stokes/scholarserver-n8n-app:sha-${{ github.sha }}-${{ matrix.arch }}
           EXPECTED_ARCH: ${{ matrix.arch }}
+          REVISION: ${{ github.sha }}
         run: |
-          docker build -f apps/n8n/Dockerfile -t "$N8N_IMAGE" .
-          docker build -f apps/n8n/integration/Dockerfile -t "$INTEGRATION_IMAGE" .
+          node scripts/native-image-receipt.mjs assert-source --revision "$REVISION"
+          n8n_source=$(node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe n8n)
+          integration_source=$(node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe n8n-app)
+          docker build --pull --build-arg TARGETARCH="$EXPECTED_ARCH" \
+            --label "org.opencontainers.image.revision=$REVISION" \
+            --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
+            --label "com.scholarserver.source-digest=$n8n_source" \
+            -f apps/n8n/Dockerfile -t "$N8N_IMAGE" .
+          docker build --pull --build-arg TARGETARCH="$EXPECTED_ARCH" \
+            --label "org.opencontainers.image.revision=$REVISION" \
+            --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
+            --label "com.scholarserver.source-digest=$integration_source" \
+            -f apps/n8n/integration/Dockerfile -t "$INTEGRATION_IMAGE" .
           test "$(docker image inspect "$N8N_IMAGE" --format '{{.Architecture}}')" = "$EXPECTED_ARCH"
           test "$(docker image inspect "$INTEGRATION_IMAGE" --format '{{.Architecture}}')" = "$EXPECTED_ARCH"
+          python3 scripts/check-image-contents.py "$N8N_IMAGE"
+          python3 scripts/check-image-contents.py "$INTEGRATION_IMAGE"
           bash apps/n8n/test-container.sh
-          docker push "$N8N_IMAGE"
-          docker push "$INTEGRATION_IMAGE"
+          node scripts/native-image-receipt.mjs assert-source --revision "$REVISION"
+          echo "Native n8n candidate proof passed without publishing images."

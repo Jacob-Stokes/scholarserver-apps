@@ -1,0 +1,97 @@
+name: scholarserver-n8n-dev
+
+# Development runs the exact package-selected native backends. The command reads
+# their immutable references from apps/n8n/package; this file owns no image pin.
+services:
+  volume-init:
+    image: ${N8N_INTEGRATION_IMAGE:?The development command must select the package integration image}
+    pull_policy: never
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 16
+    mem_limit: 64m
+    network_mode: none
+    volumes:
+      - n8n-state:/volumes/n8n-state
+      - n8n-cache:/volumes/n8n-cache
+      - integration-runtime:/volumes/integration-runtime
+    entrypoint: [node, --input-type=module, --eval]
+    command:
+      - |
+        import { chmod, chown } from "node:fs/promises";
+        for (const directory of process.argv.slice(1)) {
+          await chown(directory, 1000, 1000);
+          await chmod(directory, 0o700);
+        }
+      - /volumes/n8n-state
+      - /volumes/n8n-cache
+      - /volumes/integration-runtime
+
+  n8n:
+    image: ${N8N_IMAGE:?The development command must select the package n8n image}
+    pull_policy: never
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1
+    mem_limit: 1g
+    pids_limit: 128
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777"]
+    volumes:
+      - n8n-state:/home/node/.n8n
+      - n8n-cache:/home/node/.cache
+    ports: ["127.0.0.1:18322:5678"]
+    networks: [backend, egress]
+    depends_on:
+      volume-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5678/healthz/readiness').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
+      interval: 5s
+      timeout: 3s
+      start_period: 60s
+      retries: 12
+
+  integration:
+    image: ${N8N_INTEGRATION_IMAGE:?The development command must select the package integration image}
+    pull_policy: never
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 192m
+    pids_limit: 64
+    volumes:
+      - integration-runtime:/runtime
+    ports: ["127.0.0.1:18321:8080"]
+    # Docker does not publish ports from an internal-only network. This separate
+    # development bridge lets Docker publish the listener on loopback.
+    networks: [backend, ui]
+    depends_on:
+      n8n: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 12
+
+networks:
+  backend:
+    internal: true
+  egress: {}
+  ui: {}
+
+volumes:
+  n8n-state:
+    name: scholarserver-n8n-dev-state
+  n8n-cache:
+    name: scholarserver-n8n-dev-cache
+  integration-runtime:
+    name: scholarserver-n8n-dev-integration-runtime

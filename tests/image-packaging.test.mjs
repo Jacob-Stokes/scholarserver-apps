@@ -52,11 +52,15 @@ test("official client data is excluded, while vaults, credentials and version me
   assert.ok(manifest.onboarding.actions.some((item) => item.id === "install-client"));
 });
 
-test("runtime launcher is delivered and image-content audit precedes any push", async () => {
+test("runtime launcher is delivered and image publication is separated from build checks", async () => {
   const dockerfile = await readFile("apps/obsidian/sync/Dockerfile", "utf8");
   assert.match(dockerfile, /COPY.*official-client\.mjs.*official-command\.mjs/);
-  const script = await readFile("scripts/build-native-images.sh", "utf8");
-  assert.ok(script.indexOf("check-image-contents.py") < script.indexOf('docker push "$target"'));
+  const buildScript = await readFile("scripts/build-native-images.sh", "utf8");
+  const publishScript = await readFile("scripts/publish-native-images.sh", "utf8");
+  assert.match(buildScript, /check-image-contents\.py/);
+  assert.doesNotMatch(buildScript, /docker push/);
+  assert.match(publishScript, /verify-receipt/);
+  assert.ok(publishScript.indexOf("verify-receipt") < publishScript.indexOf('docker push "$target"'));
 });
 
 test("Logseq sync preview configures account verification, not just an HTTP health endpoint", async () => {

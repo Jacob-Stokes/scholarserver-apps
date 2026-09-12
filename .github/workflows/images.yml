@@ -28,21 +28,30 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install image-layer decoder
         run: sudo apt-get update && sudo apt-get install -y zstd
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push native images
+      - name: Build native images without publishing
         env:
           REGISTRY: ghcr.io/jacob-stokes
           ARCH: ${{ matrix.architecture }}
           REVISION: ${{ github.sha }}
         run: ./scripts/build-native-images.sh
-      - name: Verify native startup, user download and two-peer LiveSync
-        run: sudo python3 scripts/check-obsidian-packaging.py
-      - name: Verify FreshRSS setup, MCP, restart and restore
-        run: bash apps/freshrss/test-container.sh ghcr.io/jacob-stokes/scholarserver-freshrss-reader:sha-${{ github.sha }}-${{ matrix.architecture }} ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-${{ github.sha }}-${{ matrix.architecture }}
+      - name: Run the named native qualification gates
+        env:
+          REGISTRY: ghcr.io/jacob-stokes
+          ARCH: ${{ matrix.architecture }}
+          REVISION: ${{ github.sha }}
+          NATIVE_IMAGE_TEST_USE_SUDO: '1'
+        run: ./scripts/test-native-images.sh
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the exact images that passed the native gates
+        env:
+          REGISTRY: ghcr.io/jacob-stokes
+          ARCH: ${{ matrix.architecture }}
+          REVISION: ${{ github.sha }}
+        run: ./scripts/publish-native-images.sh
 
   manifest:
     needs: build
@@ -51,6 +60,7 @@ jobs:
       matrix:
         image: [files, n8n, n8n-app, logseq-helper, logseq-mcp, logseq-sync, obsidian-sync, obsidian-api, obsidian-mcp, zotero-desktop, zotero-controller, zotero-local-api-bridge, zotero-automations, zotero-mcp, docling-app, freshrss-reader, freshrss-app]
     steps:
+      - uses: actions/checkout@v4
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -61,14 +71,48 @@ jobs:
           IMAGE: ghcr.io/jacob-stokes/scholarserver-${{ matrix.image }}
           REVISION: ${{ github.sha }}
         run: |
+          work_directory=$(mktemp -d)
+          trap 'rm -rf -- "$work_directory"' EXIT HUP INT TERM
+
+          manifest_is_missing() {
+            grep -Eiq 'manifest unknown|no such manifest|name unknown|manifest[^:]*:.*not found' "$1"
+          }
+
+          manifest_matches_sources() {
+            target="$1"
+            source_suffix="$2"
+            docker manifest inspect --verbose "$IMAGE:sha-$REVISION$source_suffix-amd64" > "$work_directory/amd64.json"
+            docker manifest inspect --verbose "$IMAGE:sha-$REVISION$source_suffix-arm64" > "$work_directory/arm64.json"
+            docker manifest inspect --verbose "$target" > "$work_directory/target.json"
+            node scripts/native-image-receipt.mjs compare-manifest \
+              --existing "$work_directory/target.json" \
+              --source "$work_directory/amd64.json" \
+              --source "$work_directory/arm64.json"
+          }
+
           publish_manifest() {
             target="$1"
             source_suffix="${2:-}"
+            mutable="${3:-false}"
+
+            if [ "$mutable" = false ]; then
+              if docker manifest inspect --verbose "$target" > "$work_directory/existing.json" 2> "$work_directory/existing.err"; then
+                manifest_matches_sources "$target" "$source_suffix"
+                echo "Immutable manifest already contains the verified native images; skipping: $target"
+                return 0
+              fi
+              if ! manifest_is_missing "$work_directory/existing.err"; then
+                cat "$work_directory/existing.err" >&2
+                return 1
+              fi
+            fi
+
             for attempt in 1 2 3; do
               docker manifest rm "$target" 2>/dev/null || true
               if docker manifest create "$target" "$IMAGE:sha-$REVISION$source_suffix-amd64" "$IMAGE:sha-$REVISION$source_suffix-arm64" \
-                && docker manifest push "$target"; then
-                return 0
+                && docker manifest push "$target" \
+                && manifest_matches_sources "$target" "$source_suffix"; then
+                  return 0
               fi
               sleep $((attempt * 5))
             done
@@ -77,13 +121,13 @@ jobs:
           publish_manifest "$IMAGE:sha-$REVISION"
           # Manual candidate builds must not move the shared development tag.
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            publish_manifest "$IMAGE:edge"
+            publish_manifest "$IMAGE:edge" "" true
           fi
           if [ "$IMAGE" = "ghcr.io/jacob-stokes/scholarserver-obsidian-sync" ]; then
             publish_manifest "$IMAGE:sha-$REVISION-livesync-couchdb" "-livesync-couchdb"
             publish_manifest "$IMAGE:sha-$REVISION-livesync-worker" "-livesync-worker"
             if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-              publish_manifest "$IMAGE:edge-livesync-couchdb" "-livesync-couchdb"
-              publish_manifest "$IMAGE:edge-livesync-worker" "-livesync-worker"
+              publish_manifest "$IMAGE:edge-livesync-couchdb" "-livesync-couchdb" true
+              publish_manifest "$IMAGE:edge-livesync-worker" "-livesync-worker" true
             fi
           fi
