@@ -130,6 +130,10 @@ try {
   await page.getByRole("button", { name: "Save defaults", exact: true }).click();
   const toast = page.getByText("Docling defaults were saved.", { exact: true });
   await expect(toast).toBeVisible();
+  const toastCard = page.locator("[data-sonner-toast]");
+  await expect(toastCard).toHaveCSS("opacity", "1");
+  const toastBounds = await toastCard.boundingBox();
+  assert.ok(toastBounds && toastBounds.y >= 0 && toastBounds.y + toastBounds.height <= 1000);
   const output = path.resolve(process.env.SCHOLARSERVER_EVIDENCE ?? ".dev/docling-packaging");
   await mkdir(output, { recursive: true });
   await page.screenshot({ path: path.join(output, `docling-toast-${architecture}.png`), fullPage: true });

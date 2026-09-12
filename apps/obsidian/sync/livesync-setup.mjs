@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { createNewVaultSettings, PREFERRED_SETTING_SELF_HOSTED } from "@vrtmrz/livesync-commonlib/settings";
+import { couchRequest } from "./couchdb-request.mjs";
 import { applyScholarServerLiveSyncDefaults } from "./livesync-settings.mjs";
 
 const DEFAULT_ORIGINS = "app://obsidian.md,capacitor://localhost,http://localhost";
@@ -41,31 +42,15 @@ function basicAuthorization(username, password) {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
 
-async function couchRequest(label, url, init, accept = (response) => response.ok) {
-  let lastError;
-  for (let attempt = 1; attempt <= 24; attempt += 1) {
-    try {
-      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(10_000) });
-      const text = await response.text();
-      if (accept(response, text)) return text;
-      lastError = new Error(`${label} failed (HTTP ${response.status})`);
-      if (response.status < 500) throw lastError;
-    } catch (error) {
-      lastError = error;
-      if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) throw error;
-    }
-    if (attempt < 24) await new Promise((resolve) => setTimeout(resolve, 2_500));
-  }
-  throw lastError instanceof Error ? lastError : new Error(`${label} failed`);
-}
-
 export async function initializeCouchDb({ internalUrl, username, password }) {
   const base = normalizeCouchDbUrl(internalUrl);
   const headers = {
     Authorization: basicAuthorization(username, password),
     "Content-Type": "application/json"
   };
-  await couchRequest("CouchDB startup", `${base}/_up`, { method: "GET", headers });
+  await couchRequest("CouchDB startup", `${base}/_up`, { method: "GET", headers }, undefined, {
+    startupReadiness: true
+  });
   await couchRequest(
     "single-node setup",
     `${base}/_cluster_setup`,

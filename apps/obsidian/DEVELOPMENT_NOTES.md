@@ -1,5 +1,21 @@
 # Obsidian development notes
 
+## Fresh CouchDB readiness — 12 September 2026
+
+Native fresh-install testing reproduced an admin-bootstrap race: CouchDB briefly
+returned 401 to authenticated `/_up`, then completed creation of its admin
+account. The controller treated the first response as permanent and exited
+before its setup UI could start. A delayed-controller fixture passed with the
+same images and credentials, isolating startup ordering rather than the worker.
+
+Only the initial authenticated GET `/_up` may now retry 401 within the existing
+24-attempt window. It never falls back to unauthenticated access; persistent 401,
+403, configuration failures and mutation failures retain their errors. Unit tests
+cover transient and exhausted startup retries and immediate ordinary failures.
+The HTTP helper is included explicitly in the image recipe and source inventory.
+Native image/replication qualification is recorded in the package refresh report;
+real-account and device acceptance remain separate gates.
+
 ## Completion feedback — 11 September 2026
 
 The shared frame displays completion notices as dismissible, expiring toasts.
