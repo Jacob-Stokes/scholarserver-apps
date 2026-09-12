@@ -1,5 +1,9 @@
 # Package build audit — 2026-09-12
 
+Historical starting audit: the subsequent implementation, image qualification and
+publication results are in [App image refresh](package-refresh-20260912.md).
+The observations below describe the pre-refresh baseline, not its final state.
+
 This is a read-only source audit for `files`, `freshrss`, `docling`, `obsidian`,
 `zotero` and `logseq`. It records source and package evidence only. No image was
 built, pushed, installed or deployed, and no live deployment was queried.

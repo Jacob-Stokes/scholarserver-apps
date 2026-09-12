@@ -1,0 +1,176 @@
+{
+  "format": 1,
+  "records": [
+    {
+      "recipe": "docling-app",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:ae9fa5c8b3c693f77cc93235ebd00a96ead3a629b4d554c854489d9ba1ea1b0c",
+      "sourceDigest": "sha256:f0c7e16b49cfbfd617a2332b2c8fa75beb521a57381a8db4abba7c5c3e19fa62",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "files",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-files@sha256:2ff3cad3115a85a74ae6c71523e5c38d1c1cbb935fc2450d69c1cb2a6298605e",
+      "sourceDigest": "sha256:0e56815d4c718e41a07bc935bab59a3dd90ca2bf214ed9b27b857946596bea68",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "freshrss-app",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:4891c1f6b94e0423862f3e590b1a0e0d9fb01f14a0d6e5160aa6dd7cb4413fc6",
+      "sourceDigest": "sha256:c5f5f1766cd2ee8917b3bb100e51c3b3bf573c1baed8a36bb778644d3c854d2b",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "freshrss-reader",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:5bb29dd00a5d87ad3b44ac0a16eb463a0735f64ba3dde2d3e5ddeb61bcee7e05",
+      "sourceDigest": "sha256:e3ba03584d36387f85289091968e430216cefdea78ef62ec9cd9db2b5d1a15c5",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "logseq-helper",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:e894add1251b53068e872108142e180ed036456d8a87e5bd3ef45c2bfc2e900f",
+      "sourceDigest": "sha256:e718ebd50fcf5e6ada4183f8be403d5b238a510a787656e01c830c52f9f67506",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "logseq-mcp",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:011e7ebad8ef16d902781471fac8a803b80d5573652b21bb53f6290453b10e3d",
+      "sourceDigest": "sha256:858528b2b221c69cfcc7bcb2653c8937b3703f01af3fbb971dba2c72bf641f44",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "logseq-sync",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:0157e50ecac3086540c616dbbc0fa7b43397b5d2c90a229a70fef40b9dc240ab",
+      "sourceDigest": "sha256:2eeac4b040fa40f7c133b2d564dc46e736851dce2b74a92d38986cd71569c105",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "n8n",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n@sha256:48c4e461b86201a3b18d5d35dcf5ba9e6250e76fa697df1482871efcb413d68d",
+      "sourceDigest": "sha256:0b5acef778f944347d4c8005f61080e23ba0b56886b0d21b95a05a6f7da6cf21",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "n8n-app",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:63213089e4e6f7ac6abe44a75716e0e6d46ce026d3de75f2920719a10b96fbb9",
+      "sourceDigest": "sha256:9d62f1aa051f9e15d6360c4ed0907b7b8cf77a473f1d7b7d3e0149fa105c6af6",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "obsidian-api",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:5e37b53e1d57057959c545dacefbe6fa78f925be5fe50139fa6a683e12be29b2",
+      "sourceDigest": "sha256:b6d7e171450491e37a5d26b5717c1dafeeab046835f721e67ab226923d5ff697",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "obsidian-livesync-couchdb",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:579417d3217c7d9d931d09a0385d78b02727154e0ac2fc86a9e6186639acd73d",
+      "sourceDigest": "sha256:d66073cd77ac25594055e1726ee104b645d491384040767bed875fc7f4f257c8",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "obsidian-livesync-worker",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:895e52c4e26e51936a7e2983a637b92b96c5a92b2a814e50f3f61c3fec674e19",
+      "sourceDigest": "sha256:97e9279c06905165972a9516fb71db53af8b45a000edb4ab9cde64bded446442",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "obsidian-mcp",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:4ca243536106a014f9cb8b35a1159535dea90eae9e42018812a59b9dcef5f1f5",
+      "sourceDigest": "sha256:8707f026e4893b9b295c15c7cb302cb5e52aabd8d7ec513d19b3a851c5d16b6c",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "obsidian-sync",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:1d19d5a19766045e88b122a1aa648e77e5c8769ad5720a4323fa30ff304a006c",
+      "sourceDigest": "sha256:e8af70a14f584ff7e487123082f2b6c93f6c3b209b7aa9bc0b0a347f6c21b46a",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "zotero-automations",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:52be09a8625ad87e1cc47094bad824bac754791f657d3e2d14780678e3eee072",
+      "sourceDigest": "sha256:9dff78f2a7f222340e85d47b0b2eb5b5258f087b791b1f16923670ab5ab3e297",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "zotero-controller",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:bb9e1390c345aa7dac61cbf4d8a7a9c73a7499e9e2410b2fad1a6dff864e4d3f",
+      "sourceDigest": "sha256:f6b7b1c4cec7182bfe79885f79944e13bebde576c99e28d171341ccdf924b96f",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "zotero-desktop",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:9b97b6c6a1465dd9b7e85160c693081878d2d3f47cd16a66f1a0f2769fcb732b",
+      "sourceDigest": "sha256:ce4bdf1ce5b93bf756ad0f16bd76e1fc91468ed93cc4f613d6d3a9d0cdd229e8",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "zotero-local-api-bridge",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-local-api-bridge@sha256:feea7177b4bce4e18e59b5f611d5c6e398bd1231aa3cbbcbac2231654ffef889",
+      "sourceDigest": "sha256:013d29277df18d54858c08076c9c51636ceeba8f1b972df814a6ad607033a09c",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    {
+      "recipe": "zotero-mcp",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:f4ae4456de905185c80cfecc0216f65e39fb14bb7b2bea83aba94dd644f6f392",
+      "sourceDigest": "sha256:f7e0d4694440cee790ddea9b5ad5d7bda034144604f52f0e2e222b0de5db2dec",
+      "nativeArchitectures": [
+        "amd64",
+        "arm64"
+      ]
+    }
+  ]
+}

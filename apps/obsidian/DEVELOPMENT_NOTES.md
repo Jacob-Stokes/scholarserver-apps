@@ -1,5 +1,22 @@
 # Obsidian development notes
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.5.0-beta.3` selects five refreshed immutable AMD64/ARM64 images.
+The sync controller fixes a demonstrated CouchDB administrator-bootstrap race:
+only initial authenticated `GET /_up` retries a transient 401, with a bounded
+budget. Both architectures pass explicit-consent client download/integrity,
+non-root CLI/native SQLite, restart and legacy-layout preservation, MCP note
+write/edit/read and real independent two-peer LiveSync replication. This is not
+an actual desktop-plugin or paid-account test. Authenticated migration, official
+account sync, compatible platform minimum and Manager backup/restore remain gates.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## Fresh CouchDB readiness — 12 September 2026
 
 Native fresh-install testing reproduced an admin-bootstrap race: CouchDB briefly

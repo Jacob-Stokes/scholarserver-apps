@@ -1,5 +1,22 @@
 # Logseq development notes
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.1.0-beta.3` selects refreshed immutable AMD64/ARM64 helper, MCP
+and sync-adapter images; the upstream browser editor pin is unchanged. Both native
+runs exercise fourteen MCP tools on a disposable local graph, independent
+sessions, invalid input, restart persistence and the fresh setup UI. The sync
+adapter also passes startup, invalid-address rejection, valid private-address
+configuration and restart. Account enrollment, encrypted device sync, physical
+devices and public OAuth remain separate gates. Existing distribution notices
+and upstream source-delivery obligations still apply.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## Private connection failure handling — 7 September 2026
 
 Separated bounded endpoint requests and explicit sync/editor/configuration ordering

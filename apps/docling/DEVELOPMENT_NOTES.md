@@ -1,5 +1,20 @@
 # Docling development notes
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.3.5-beta.3` selects the rebuilt immutable AMD64/ARM64 controller;
+the upstream conversion engine pin is unchanged. Both architectures pass built-UI
+save, expiring toast, invalid-input rejection and settings preservation after
+restart. On AMD64 the real pinned engine also converts a synthetic PDF to
+Markdown with its source text verified. ARM64 engine execution, OCR/table fidelity
+and a real research-library workflow remain outside this check.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## n8n PDF watcher acceptance — 10 September 2026
 
 The installed Docling engine/controller images passed a real n8n-triggered PDF

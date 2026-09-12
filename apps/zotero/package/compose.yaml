@@ -1,6 +1,6 @@
 services:
   desktop:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:f0232533289dbfa7d529bef04c60fc80a362386d75d57ad4c287d937e0ace09f
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:9b97b6c6a1465dd9b7e85160c693081878d2d3f47cd16a66f1a0f2769fcb732b
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 18
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:8ced86982150c54a77411b2006335fdb1449e0cc27654e5001d7c117d99f2f80
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:bb9e1390c345aa7dac61cbf4d8a7a9c73a7499e9e2410b2fad1a6dff864e4d3f
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -43,7 +43,7 @@ services:
       start_period: 10s
       retries: 12
   local-api-bridge:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-local-api-bridge@sha256:f14acd9afc569949154de83273560396f81e2d651969843f0081a18d416c9a40
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-local-api-bridge@sha256:feea7177b4bce4e18e59b5f611d5c6e398bd1231aa3cbbcbac2231654ffef889
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -58,7 +58,7 @@ services:
       start_period: 10s
       retries: 12
   automations:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:4b0ac036beede4f1b9a65a0bef33b876389bccd93a489d5d676e850a1e34d7af
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-automations@sha256:52be09a8625ad87e1cc47094bad824bac754791f657d3e2d14780678e3eee072
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -81,7 +81,7 @@ services:
       start_period: 10s
       retries: 12
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:339c2028b55988a6ba36347f09114c53bc33957b541fb198f0711bc5c2bd07a6
+    image: ghcr.io/jacob-stokes/scholarserver-zotero-mcp@sha256:f4ae4456de905185c80cfecc0216f65e39fb14bb7b2bea83aba94dd644f6f392
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

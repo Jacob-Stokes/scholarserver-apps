@@ -1,7 +1,9 @@
 # Guided automation catalog
 
-This is a source candidate, not a new published package. The pinned beta.4
-integration image does not contain these changes.
+The `0.1.0-beta.6` source package selects new immutable native AMD64/ARM64 images
+containing this catalog. Earlier beta.4/beta.5 images do not contain it. Image
+publication does not publish an official catalog package or upgrade Freelove;
+see [acceptance and remaining gates](RELEASE_BLOCKED.md).
 
 ## Experience
 
@@ -74,8 +76,8 @@ change and tests.
 
 ## Remaining release and product gates
 
-- Publish a new immutable integration/package after final native architecture
-  acceptance. Do not repoint beta.4 at a different image.
+- Publish the new immutable package after its remaining release gates pass.
+  Its integration image is published; older versions are not repointed.
 - Prove real Zotero, Obsidian/Docling and Manager action queues with compatible
   app releases; synthetic responses and real note writes are not that proof.
 - Add signed data-only summaries for browsing before a platform is installed.

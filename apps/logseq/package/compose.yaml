@@ -1,6 +1,6 @@
 services:
   helper:
-    image: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:484f86f884af813f8d891633a9cbaaf01c5a7cf97cc7084c5025087e3d053cb8
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:e894add1251b53068e872108142e180ed036456d8a87e5bd3ef45c2bfc2e900f
     user: 1000:1000
     restart: unless-stopped
     read_only: true
@@ -35,7 +35,7 @@ services:
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime
       - ${SCHOLARSERVER_DATA_SYNC_CONFIG}:/sync-config
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:a530dcb8944813f09fb07cae90d5cffd01518a10d43a75443daa914940425c8d
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:011e7ebad8ef16d902781471fac8a803b80d5573652b21bb53f6290453b10e3d
     user: 1000:1000
     restart: unless-stopped
     read_only: true
@@ -66,7 +66,7 @@ services:
     volumes:
       - ${SCHOLARSERVER_DATA_RUNTIME}:/runtime:ro
   sync:
-    image: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:46a51cf9720d91f9ed7031f281030de08eb160521ed31d54733fdda0b7b97425
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:0157e50ecac3086540c616dbbc0fa7b43397b5d2c90a229a70fef40b9dc240ab
     user: 65532:65532
     restart: unless-stopped
     read_only: true

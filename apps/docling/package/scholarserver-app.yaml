@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.docling
 name: Docling
-packageVersion: 0.3.5-beta.2
+packageVersion: 0.3.5-beta.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -36,7 +36,7 @@ images:
   - service: docling
     reference: quay.io/docling-project/docling-serve-cpu@sha256:32ba1a1dded8d8fd21f9d8da1b9837e04cfee164ef891d9513174c3d989dcee9
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:950265066352d627c86397b34ecc1b6bf50daf448d53ce0d6dfbd802dcbf4950
+    reference: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:ae9fa5c8b3c693f77cc93235ebd00a96ead3a629b4d554c854489d9ba1ea1b0c
 data:
   - id: runtime
     mountPath: /runtime

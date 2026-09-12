@@ -12,7 +12,7 @@ presentation:
       url: https://selfh.st/icons/
       license: CC-BY-4.0
       licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
-packageVersion: 0.1.0-beta.2
+packageVersion: 0.1.0-beta.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -105,11 +105,11 @@ hardening:
     - ALL
 images:
   - service: helper
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:484f86f884af813f8d891633a9cbaaf01c5a7cf97cc7084c5025087e3d053cb8
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:e894add1251b53068e872108142e180ed036456d8a87e5bd3ef45c2bfc2e900f
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:a530dcb8944813f09fb07cae90d5cffd01518a10d43a75443daa914940425c8d
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:011e7ebad8ef16d902781471fac8a803b80d5573652b21bb53f6290453b10e3d
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:46a51cf9720d91f9ed7031f281030de08eb160521ed31d54733fdda0b7b97425
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:0157e50ecac3086540c616dbbc0fa7b43397b5d2c90a229a70fef40b9dc240ab
   - service: editor
     reference: ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d
 data:

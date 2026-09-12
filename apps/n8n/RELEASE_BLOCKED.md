@@ -1,11 +1,22 @@
 # n8n release acceptance
 
-The newer outcome-led catalog source described in
-[AUTOMATION_CATALOG.md](AUTOMATION_CATALOG.md) is not in beta.4's published image.
-It has source, mocked browser, native AMD64 and native-browser candidate evidence.
-It still needs a new immutable package, final native-architecture acceptance and
-real-app service/credential recovery checks. Do not present a source push as an
-update to an installed beta.4 application.
+## Current beta.6 candidate — 12 September 2026
+
+The `0.1.0-beta.6` source package selects new immutable AMD64/ARM64 images with
+the [card catalog, search, app/tag filters and sorting](AUTOMATION_CATALOG.md).
+Both architectures pass `check-package.mjs` against the exact published package
+pins, including declared password/Manager-service setup, browser and mobile
+checks, repeated synthetic research executions and restart. Missing runtime
+modules and stale catalog image content are resolved; they are not current gates.
+
+The official catalog package remains unpublished. Fresh installation through the
+final signed platform, real application-service grant enforcement and
+Manager-driven recovery of workflow credentials still need acceptance. The
+optional native editor's managed private-hostname lifecycle is also incomplete.
+Image publication does not update Freelove. See the
+[refresh report](../../docs/package-refresh-20260912.md) for exact evidence.
+
+## Earlier beta.4 and beta.2 evidence
 
 Beta.4 is not ready for official catalog publication. It replaces the incompatible
 beta.3 image pin with a new public, immutable AMD64/ARM64 integration candidate

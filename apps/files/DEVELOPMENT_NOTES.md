@@ -1,5 +1,19 @@
 # Files integration notes
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.1.0-beta.4` selects a freshly built immutable AMD64/ARM64 worker.
+Runtime source is unchanged; rebuilding establishes an explicit source/image
+record rather than inferring an old image's source from its first git appearance.
+Both native file/authentication checks and restart pass with disposable data.
+This does not qualify a user's shared folders or a fresh signed Manager install.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 - User-requested built-in status is manifest-owned (`lifecycle.required`); core
   only implements that generic policy. No Files identifier in platform code.
 - No Roots capability is advertised by the bridge. Client Roots would replace

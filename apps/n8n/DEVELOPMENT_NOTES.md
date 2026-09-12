@@ -1,5 +1,23 @@
 # n8n integration — development record
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.1.0-beta.6` selects new immutable AMD64/ARM64 runtime and integration
+images. The integration contains the compact automation cards, multiword search,
+application and tag filters, sorting, result count and preserved setup-return
+filters. Both native architectures pass `check-package.mjs` using the final
+manifest digests: password-only/Manager-service setup, browser catalog and mobile
+checks, configured copies, enable/disable, direct-edit protection and restart.
+Three research templates execute repeatedly against synthetic app services and
+real disposable note files. Real library grants, signed Manager acceptance and
+Manager-driven workflow-credential recovery remain release gates.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## 12 September 2026 — catalog discovery and artifact audit
 
 The catalog now has three-column desktop cards, a single-column mobile layout,

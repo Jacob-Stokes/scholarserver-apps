@@ -1,5 +1,19 @@
 # FreshRSS integration
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.1.0-beta.6` selects freshly built immutable AMD64/ARM64 reader and
+integration images, including the current shared UI/notification code. Both native
+runs pass setup, all six MCP tools, unauthenticated rejection, reader failure and
+recovery, restart and stopped-filesystem backup/restore with synthetic feeds.
+No real feed account or cross-host Manager restore is claimed.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## Ownership and decisions
 
 - FreshRSS 1.29.1 is the pinned official multi-architecture base of a thin

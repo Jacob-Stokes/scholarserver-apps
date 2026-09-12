@@ -142,7 +142,7 @@ def main():
 
         # A second independent LiveSync CLI represents another protocol peer;
         # this is real replication, not a claim of Obsidian desktop-plugin QA.
-        docker("rm", "-f", controller)
+        docker("rm", "-fv", controller)
         containers.remove(controller)
         (root / "runtime/enrollment.json").unlink()
         shutil.rmtree(root / "client")
@@ -207,7 +207,7 @@ def main():
         print("PASS: two-peer LiveSync replication, MCP note replication and restart, with Headless absent", flush=True)
     finally:
         for name in reversed(containers):
-            subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "rm", "-fv", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if network_created:
             subprocess.run(["docker", "network", "rm", prefix], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         shutil.rmtree(root)

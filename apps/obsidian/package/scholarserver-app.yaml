@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.0-beta.2
+packageVersion: 0.5.0-beta.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -67,15 +67,15 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:eb1408f13fbb09185b8e58df8b6efb7b11030a64640940dfa021018b104233eb
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:1d19d5a19766045e88b122a1aa648e77e5c8769ad5720a4323fa30ff304a006c
   - service: api
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:6a66315f92529a13e9abcd87a2e14960ba2bdc5f6b16bdf2117054a1ac129f8d
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:5e37b53e1d57057959c545dacefbe6fa78f925be5fe50139fa6a683e12be29b2
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:73c593708e2ce46e58f0e0c7c6537863da9b25bcffb082630d1c2a721b1537f0
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:4ca243536106a014f9cb8b35a1159535dea90eae9e42018812a59b9dcef5f1f5
   - service: livesync-couchdb
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:ff63b220d37c4b22cd57fc29dee84d873c83151f2e3516a894a72baf5b714fab
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:579417d3217c7d9d931d09a0385d78b02727154e0ac2fc86a9e6186639acd73d
   - service: livesync-worker
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0fbea3fda311380b5f78bc8af756c1f961f87ae68c72ab045774c826a1f819a5
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:895e52c4e26e51936a7e2983a637b92b96c5a92b2a814e50f3f61c3fec674e19
 data:
   - id: official-client
     mountPath: /official-client

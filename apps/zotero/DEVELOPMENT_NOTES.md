@@ -1,5 +1,21 @@
 # Zotero development notes
 
+## Image refresh checkpoint — 12 September 2026
+
+Candidate `0.5.10-beta.3` selects five refreshed immutable AMD64/ARM64 images.
+The local API bridge now packages all modules imported by its controller. Both
+native runs start a real disposable Zotero desktop profile, verify bridge token
+permissions and missing/wrong-token rejection, load the UI and retain bridge
+identity through restart. The unconnected profile is deliberate. Account/library
+sync is not claimed; `research-items` remains withheld from package grants pending
+real-library acceptance.
+
+Image publication does not publish the official catalog package or upgrade
+Freelove. Exact source revisions, nineteen native image records, test scope and
+cleanup are in [the refresh report](../../docs/package-refresh-20260912.md).
+Earlier dated entries below describe their own checkpoints.
+
+
 ## 12 September 2026 — bridge image dependency closure
 
 The first rebuilt local API bridge exited before listening with
