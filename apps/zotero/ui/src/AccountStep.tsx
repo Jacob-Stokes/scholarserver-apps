@@ -1,11 +1,14 @@
 import { SetupPanel } from "@scholarserver/ui/setup-pipeline";
-import type { Status } from "./setup-model";
+import type { AccountSession, Status } from "./setup-model";
 
 type Props = {
   online: boolean;
   status: Pick<Status, "accountConnected" | "username" | "userId">;
   busy: boolean;
   checkingAccount: boolean;
+  session: AccountSession;
+  recoveryUrl: string | null;
+  onPrepareRecovery: () => void;
   authorizationUrl: string | null;
   onlineApiKey: string;
   onApiKeyChange: (value: string) => void;
@@ -18,6 +21,9 @@ export function AccountStep({
   status,
   busy,
   checkingAccount,
+  session,
+  recoveryUrl,
+  onPrepareRecovery,
   authorizationUrl,
   onlineApiKey,
   onApiKeyChange,
@@ -81,16 +87,36 @@ export function AccountStep({
           </div>
         </div>
       ) : (
-        <div className="ss-form-actions">
-          <button className="ss-button" disabled={busy || checkingAccount} onClick={onConnectAccount}>
-            {busy || checkingAccount ? <span className="ss-spinner" /> : null}
-            {checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}
-          </button>
-          {authorizationUrl ? (
-            <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">
-              Open Zotero sign-in
-            </a>
+        <div className="ss-stack">
+          {session.error ? <p role="alert">{session.error}</p> : null}
+          {session.state === "cancelled" ? (
+            <p role="status">Zotero sign-in was cancelled. Your account was not connected.</p>
           ) : null}
+          {session.state === "interrupted" || session.state === "starting" ? (
+            recoveryUrl ? (
+              <a href={recoveryUrl} target="_blank" rel="noreferrer">
+                Open Zotero for account recovery
+              </a>
+            ) : (
+              <button className="ss-button ss-button-secondary" onClick={onPrepareRecovery}>
+                Set up Zotero recovery view
+              </button>
+            )
+          ) : null}
+          {checkingAccount ? (
+            <p>Complete sign-in on Zotero’s website. ScholarServer will continue checking if you close this page.</p>
+          ) : null}
+          <div className="ss-form-actions">
+            <button className="ss-button" disabled={busy || checkingAccount} onClick={onConnectAccount}>
+              {busy || checkingAccount ? <span className="ss-spinner" /> : null}
+              {checkingAccount ? "Waiting for approval…" : "Connect Zotero account"}
+            </button>
+            {authorizationUrl ? (
+              <a className="ss-button ss-button-secondary" href={authorizationUrl} target="_blank" rel="noreferrer">
+                Open Zotero sign-in
+              </a>
+            ) : null}
+          </div>
         </div>
       )}
     </SetupPanel>

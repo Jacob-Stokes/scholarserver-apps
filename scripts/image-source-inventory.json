@@ -360,6 +360,8 @@
       "sourceInputs": [
         "apps/zotero/controller/Dockerfile",
         "apps/zotero/controller/controller.mjs",
+        "apps/zotero/controller/account-link.mjs",
+        "apps/zotero/controller/library-actions.mjs",
         "apps/zotero/controller/research-items.mjs",
         "apps/zotero/controller/status-model.mjs",
         "apps/zotero/ui/index.html",
@@ -399,14 +401,7 @@
       "service": "local-api-bridge",
       "nativeArchitectures": ["amd64", "arm64"],
       "licenseCheck": "scripts/check-image-contents.py",
-      "sourceInputs": [
-        "apps/zotero/local-api-bridge/Dockerfile",
-        "apps/zotero/controller/controller.mjs",
-        "apps/zotero/controller/status-model.mjs",
-        "apps/zotero/controller/research-items.mjs",
-        "packages/controller-runtime/files.mjs",
-        "packages/controller-runtime/package.json"
-      ]
+      "sourceInputs": ["apps/zotero/local-api-bridge/Dockerfile", "apps/zotero/local-api-bridge/bridge.mjs"]
     },
     {
       "name": "zotero-mcp",

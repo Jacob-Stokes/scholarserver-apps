@@ -15,14 +15,22 @@ async function recipes(directory) {
   return result;
 }
 
-test("both Zotero controller entry points ship their imported modules", async () => {
-  for (const role of ["controller", "local-api-bridge"]) {
-    const recipe = await readFile(`apps/zotero/${role}/Dockerfile`, "utf8");
-    for (const module of ["controller.mjs", "status-model.mjs", "research-items.mjs"]) {
-      assert.ok(recipe.includes(`apps/zotero/controller/${module}`), `${role} must copy ${module}`);
-    }
-    assert.ok(recipe.includes("COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime"));
+test("Zotero setup dependencies stay in the controller, not the API relay", async () => {
+  const recipe = await readFile("apps/zotero/controller/Dockerfile", "utf8");
+  for (const module of [
+    "controller.mjs",
+    "status-model.mjs",
+    "research-items.mjs",
+    "account-link.mjs",
+    "library-actions.mjs"
+  ]) {
+    assert.ok(recipe.includes(`apps/zotero/controller/${module}`), `controller must copy ${module}`);
   }
+  assert.ok(recipe.includes("COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime"));
+  const relay = await readFile("apps/zotero/local-api-bridge/Dockerfile", "utf8");
+  assert.match(relay, /COPY .*local-api-bridge\/bridge.mjs/);
+  assert.match(relay, /CMD \["node", "bridge.mjs"\]/);
+  assert.doesNotMatch(relay, /controller\.mjs|controller-runtime|account-link|library-actions/);
 });
 
 test("Obsidian ships the isolated CouchDB readiness helper", async () => {

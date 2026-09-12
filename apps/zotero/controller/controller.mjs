@@ -1,14 +1,18 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
-import { lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat } from "node:fs/promises";
-import { createServer, request as nodeHttpRequest } from "node:http";
+import { randomBytes, randomUUID } from "node:crypto";
+import { mkdir, open, readdir, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { fileURLToPath } from "node:url";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
+import { createAccountLink } from "./account-link.mjs";
+import { createLibraryActions } from "./library-actions.mjs";
 import { researchItems } from "./research-items.mjs";
-import { desktopWorkspaceStatus, onlineLibraryStatus, onlineStorageModes, storageModes } from "./status-model.mjs";
+import {
+  desktopWorkspaceStatus,
+  onlineLibraryStatus,
+  onlineStorageModes,
+  rememberedAuthorizationKey,
+  storageModes
+} from "./status-model.mjs";
 
 const runtimePath = "/runtime";
 const requestsPath = path.join(runtimePath, "requests");
@@ -30,8 +34,21 @@ const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://deskto
 const automationsBaseUrl = process.env.ZOTERO_AUTOMATIONS_URL ?? "http://automations:8081/v1";
 const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
-let attachmentIndexCache = { expiresAt: 0, items: [] };
 let onlineAccountCache = { expiresAt: 0, value: null };
+let authorizationRequest = null;
+const accountLink = createAccountLink({
+  sessionPath: accountSessionPath,
+  callBridge,
+  saveIdentity: updateConfiguration
+});
+const { resolveAttachment, matchAttachment, attachDoclingResult } = createLibraryActions({
+  configuration,
+  api,
+  onlineApi,
+  webApiKey,
+  callBridge,
+  onlineLibrary
+});
 
 async function ensureRandomFile(filePath, bytes = 32) {
   try {
@@ -215,6 +232,7 @@ async function currentStatus(lastError = null) {
   } else {
     const probes = await probeDesktop(config);
     value = desktopWorkspaceStatus({ config, ...probes, lastError, variant });
+    value.accountLink = await accountLink.snapshot();
   }
   await atomicJson(statusPath, value, 0o644);
   return value;
@@ -306,29 +324,12 @@ async function configureOnlineStorage(input) {
 
 async function startAccountLink() {
   if (onlineLibrary) throw new Error("Use the Zotero online-library connection for this setup");
-  const result = await callBridge("account-start");
-  await atomicJson(accountSessionPath, { sessionToken: result.sessionToken });
-  return { state: "account-authorization-required", loginUrl: result.loginUrl };
+  return accountLink.start();
 }
 
 async function completeAccountLink() {
-  let session;
-  try {
-    session = JSON.parse(await readFile(accountSessionPath, "utf8"));
-  } catch {
-    throw new Error("Start Zotero account linking before checking its progress");
-  }
-  const result = await callBridge("account-complete", { sessionToken: session.sessionToken });
+  const result = await accountLink.check();
   if (result.state === "pending") return { state: "account-authorization-pending" };
-  if (result.state === "cancelled") {
-    await rm(accountSessionPath, { force: true });
-    return { state: "account-required" };
-  }
-  if (result.state !== "connected" || !/^\d+$/.test(String(result.userId ?? ""))) {
-    throw new Error("Zotero account linking completed without a valid user ID");
-  }
-  await updateConfiguration({ userId: String(result.userId) });
-  await rm(accountSessionPath, { force: true });
   return currentStatus();
 }
 
@@ -375,19 +376,17 @@ async function syncNow() {
   return currentStatus();
 }
 
-async function attachDoclingResult(input) {
-  if (onlineLibrary) throw new Error("Attaching Docling results in Online library only is not available yet");
-  const sourceAttachmentKey =
-    typeof input.sourceAttachmentKey === "string" ? input.sourceAttachmentKey.trim().toUpperCase() : "";
-  const relativePath = typeof input.relativePath === "string" ? input.relativePath.trim() : "";
-  if (!/^[A-Z0-9]{8}$/.test(sourceAttachmentKey)) throw new Error("A valid Zotero source attachment key is required");
-  if (!/^\.scholarserver\/docling\/[a-f0-9]{64}\/document\.md$/.test(relativePath)) {
-    throw new Error("The Docling result path is invalid");
+async function authorize() {
+  if (authorizationRequest) return authorizationRequest;
+  authorizationRequest = authorizeOnce();
+  try {
+    return await authorizationRequest;
+  } finally {
+    authorizationRequest = null;
   }
-  return callBridge("attach-docling-result", { sourceAttachmentKey, relativePath }, 120_000);
 }
 
-async function authorize() {
+async function authorizeOnce() {
   if (onlineLibrary) throw new Error("Online library only does not use Zotero Desktop authorization");
   const config = await configuration();
   if (!config?.userId) throw new Error("Configure the Zotero user ID before authorizing writes");
@@ -420,168 +419,10 @@ async function authorize() {
       result.denied ? "Zotero authorization was denied" : `Zotero authorization failed (HTTP ${response.status})`
     );
   }
-  await atomicWrite(localApiKeyPath, `${result.key}\n`, 0o600);
+  const key = rememberedAuthorizationKey(result);
+  await atomicWrite(localApiKeyPath, `${key}\n`, 0o600);
   await api(`/users/${encodeURIComponent(String(config.userId))}/items?limit=1`);
   return currentStatus();
-}
-
-async function sha256(filePath) {
-  const hash = createHash("sha256");
-  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
-  return hash.digest("hex");
-}
-
-async function allowedAttachmentPath(candidate) {
-  const desktopDataRoot = "/config/home/Zotero";
-  const controllerDataRoot = "/data";
-  const translated =
-    candidate === desktopDataRoot
-      ? controllerDataRoot
-      : candidate.startsWith(`${desktopDataRoot}${path.sep}`)
-        ? path.join(controllerDataRoot, candidate.slice(desktopDataRoot.length + 1))
-        : candidate;
-  const resolved = await realpath(translated);
-  const roots = [];
-  for (const root of ["/data", "/linked"]) {
-    try {
-      roots.push(await realpath(root));
-    } catch {}
-  }
-  if (!roots.some((root) => resolved === root || resolved.startsWith(`${root}${path.sep}`))) {
-    throw new Error("Zotero returned an attachment outside the configured storage roots");
-  }
-  if (!(await lstat(resolved)).isFile()) throw new Error("The resolved attachment is not a regular file");
-  return resolved;
-}
-
-async function resolveAttachment(input) {
-  const attachmentKey = input.attachmentKey?.trim();
-  if (!/^[A-Z0-9]{8}$/.test(attachmentKey ?? ""))
-    throw new Error("Attachment key must be eight uppercase letters or digits");
-  const config = await configuration();
-  if (!config?.userId) throw new Error("Zotero is not configured");
-  if (onlineLibrary) {
-    const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${attachmentKey}`;
-    const attachment = await onlineApi(prefix);
-    if (attachment?.data?.itemType !== "attachment") throw new Error("The requested Zotero item is not an attachment");
-    const common = {
-      attachmentKey,
-      filename: attachment.data.filename ?? attachment.data.title ?? null,
-      contentType: attachment.data.contentType ?? null,
-      linkMode: attachment.data.linkMode ?? null
-    };
-    if (config.storageMode !== "zotero-storage") return { state: "metadata-only", ...common };
-    if (attachment.data.linkMode === "linked_file") {
-      return { state: "unavailable", reason: "linked-file", ...common };
-    }
-    const key = await webApiKey();
-    const response = await fetch(`${zoteroWebApiUrl}${prefix}/file`, {
-      headers: { "Zotero-API-Key": key, "Zotero-API-Version": "3" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(120_000)
-    });
-    if (!response.ok || !response.body) {
-      const reason =
-        response.status === 404
-          ? "The file is not available from Zotero Storage; it may use WebDAV"
-          : `HTTP ${response.status}`;
-      throw new Error(`Zotero could not provide this attachment: ${reason}`);
-    }
-    const declared = Number(response.headers.get("content-length") ?? 0);
-    if (Number.isFinite(declared) && declared > 1024 * 1024 * 1024)
-      throw new Error("This attachment exceeds the 1 GiB safety limit");
-    const safeName =
-      String(common.filename ?? `${attachmentKey}.bin`)
-        .replace(/[^A-Za-z0-9._ -]/g, "_")
-        .slice(0, 180) || `${attachmentKey}.bin`;
-    const directory = path.join("/cache", "attachments", attachmentKey);
-    const destination = path.join(directory, safeName);
-    await mkdir(directory, { recursive: true });
-    const temporary = `${destination}.${process.pid}.tmp`;
-    try {
-      await pipeline(Readable.fromWeb(response.body), createWriteStream(temporary, { mode: 0o600 }));
-      await rename(temporary, destination);
-    } finally {
-      await rm(temporary, { force: true });
-    }
-    const metadata = await stat(destination);
-    return { state: "available", ...common, bytes: metadata.size, sha256: await sha256(destination), cached: true };
-  }
-  const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${attachmentKey}`;
-  const attachment = await api(prefix);
-  if (attachment?.data?.itemType !== "attachment") throw new Error("The requested Zotero item is not an attachment");
-  const fileUrl = await api(`${prefix}/file/view/url`);
-  if (typeof fileUrl !== "string" || !fileUrl.startsWith("file:"))
-    throw new Error("Zotero did not return a local file for this attachment");
-  const resolved = await allowedAttachmentPath(fileURLToPath(fileUrl.trim()));
-  const metadata = await stat(resolved);
-  return {
-    state: "available",
-    attachmentKey,
-    filename: path.basename(resolved),
-    contentType: attachment.data.contentType ?? null,
-    linkMode: attachment.data.linkMode ?? null,
-    bytes: metadata.size,
-    sha256: await sha256(resolved)
-  };
-}
-
-async function personalAttachments(userId) {
-  if (attachmentIndexCache.expiresAt > Date.now()) return attachmentIndexCache.items;
-  const items = [];
-  for (let start = 0; start < 1000; start += 100) {
-    const page = await api(
-      `/users/${encodeURIComponent(String(userId))}/items?itemType=attachment&limit=100&start=${start}&format=json`
-    );
-    if (!Array.isArray(page)) throw new Error("Zotero returned an invalid attachment list");
-    items.push(...page);
-    if (page.length < 100) break;
-  }
-  attachmentIndexCache = { expiresAt: Date.now() + 30_000, items };
-  return items;
-}
-
-async function matchAttachment(input) {
-  if (onlineLibrary) throw new Error("Shared linked-file matching requires the Complete Zotero workspace");
-  const sourcePath = typeof input.sourcePath === "string" ? input.sourcePath.trim().replaceAll("\\", "/") : "";
-  const relative = sourcePath ? sourcePath.split("/") : [];
-  if (!sourcePath || sourcePath.startsWith("/") || relative.some((part) => !part || part === "." || part === "..")) {
-    throw new Error("Enter a valid path inside the linked research files folder");
-  }
-  const linkedRoot = await realpath("/linked");
-  const expected = await realpath(path.join(linkedRoot, ...relative));
-  if (expected === linkedRoot || !expected.startsWith(`${linkedRoot}${path.sep}`)) {
-    throw new Error("The selected file leaves the linked research files folder");
-  }
-  const config = await configuration();
-  if (!config?.userId) throw new Error("Zotero is not configured");
-  const wantedName = path.basename(expected).toLocaleLowerCase();
-  const attachments = await personalAttachments(config.userId);
-  const candidates = attachments.filter((item) => {
-    const data = item?.data ?? {};
-    const storedPath = String(data.path ?? "").replace(/^attachments:/, "");
-    const filename = String(data.filename ?? path.basename(storedPath) ?? data.title ?? "");
-    return filename.toLocaleLowerCase() === wantedName || String(data.title ?? "").toLocaleLowerCase() === wantedName;
-  });
-  const matches = [];
-  for (const item of candidates) {
-    const key = String(item?.key ?? item?.data?.key ?? "").toUpperCase();
-    if (!/^[A-Z0-9]{8}$/.test(key)) continue;
-    try {
-      const prefix = `/users/${encodeURIComponent(String(config.userId))}/items/${key}`;
-      const fileUrl = await api(`${prefix}/file/view/url`);
-      if (typeof fileUrl !== "string" || !fileUrl.startsWith("file:")) continue;
-      if ((await allowedAttachmentPath(fileURLToPath(fileUrl.trim()))) !== expected) continue;
-      matches.push({
-        attachmentKey: key,
-        parentItemKey: item?.data?.parentItem ?? null,
-        title: item?.data?.title ?? path.basename(expected)
-      });
-    } catch {}
-  }
-  if (matches.length === 1) return { state: "matched", sourcePath, ...matches[0] };
-  if (matches.length > 1) return { state: "ambiguous", sourcePath, matches };
-  return { state: "not-found", sourcePath, matches: [] };
 }
 
 async function action(request) {
@@ -742,6 +583,10 @@ async function handleHttp(request, response) {
   try {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, await healthStatus());
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
+    if (request.method === "GET" && url.pathname === "/api/account/session") {
+      if (onlineLibrary) return json(response, 200, { state: "idle" });
+      return json(response, 200, await accountLink.snapshot(true));
+    }
     if (request.method === "POST" && url.pathname === "/api/account/start")
       return json(response, 200, await startAccountLink());
     if (request.method === "POST" && url.pathname === "/api/account/complete")
@@ -777,90 +622,29 @@ async function handleHttp(request, response) {
   }
 }
 
-const hopByHopHeaders = new Set([
-  "connection",
-  "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
-  "te",
-  "trailer",
-  "transfer-encoding",
-  "upgrade"
-]);
-
-function bridgeTokenMatches(candidate, expected) {
-  const candidateBuffer = Buffer.from(candidate);
-  const expectedBuffer = Buffer.from(expected);
-  return candidateBuffer.length === expectedBuffer.length && timingSafeEqual(candidateBuffer, expectedBuffer);
-}
-
-async function handleLocalApiBridge(request, response) {
-  const url = new URL(request.url ?? "/", "http://localhost");
-  if (request.method === "GET" && url.pathname === "/health") {
-    return json(response, 200, { status: "ok" });
-  }
-  if (!(url.pathname === "/api" || url.pathname.startsWith("/api/") || url.pathname === "/connector/ping")) {
-    return json(response, 404, { error: "Not found" });
-  }
-  const expected = await localApiBridgeToken();
-  const suppliedHeader = request.headers["x-scholarserver-bridge"];
-  const supplied = Array.isArray(suppliedHeader) ? suppliedHeader[0] : (suppliedHeader ?? "");
-  if (!expected || !bridgeTokenMatches(supplied, expected)) {
-    return json(response, 401, { error: "Unauthorized" });
-  }
-
-  const upstreamHeaders = {};
-  for (const [name, value] of Object.entries(request.headers)) {
-    if (!hopByHopHeaders.has(name) && name !== "host" && name !== "x-scholarserver-bridge" && value !== undefined) {
-      upstreamHeaders[name] = value;
+await mkdir(requestsPath, { recursive: true });
+await mkdir(responsesPath, { recursive: true });
+await ensureRandomFile(serviceTokenPath);
+await currentStatus();
+if (!onlineLibrary) {
+  // This observer survives page closure; the coordinator serializes it with
+  // explicit setup requests and resumes persisted sessions after restart.
+  const observeAccount = async () => {
+    try {
+      await accountLink.check();
+    } catch {
+      /* Retain state for inspection. */
     }
-  }
-  const upstreamRequest = nodeHttpRequest(
-    {
-      hostname: "127.0.0.1",
-      port: 23119,
-      path: `${url.pathname}${url.search}`,
-      method: request.method,
-      headers: upstreamHeaders
-    },
-    (upstreamResponse) => {
-      response.statusCode = upstreamResponse.statusCode ?? 502;
-      for (const [name, value] of Object.entries(upstreamResponse.headers)) {
-        if (!hopByHopHeaders.has(name) && value !== undefined) response.setHeader(name, value);
-      }
-      response.setHeader("Cache-Control", "no-store");
-      upstreamResponse.pipe(response);
-    }
-  );
-  upstreamRequest.on("error", () => {
-    if (!response.headersSent) json(response, 502, { error: "Zotero local API is unavailable" });
-    else response.destroy();
-  });
-  request.on("aborted", () => upstreamRequest.destroy());
-  request.pipe(upstreamRequest);
+    setTimeout(observeAccount, 5000).unref();
+  };
+  void observeAccount();
 }
+createServer((request, response) => {
+  void handleHttp(request, response);
+}).listen(8080, "0.0.0.0");
 
-if (process.argv.includes("--local-api-bridge")) {
-  await mkdir(runtimePath, { recursive: true });
-  await ensureRandomFile(localApiBridgeTokenPath);
-  createServer((request, response) => {
-    void handleLocalApiBridge(request, response).catch(() => {
-      if (!response.headersSent) json(response, 500, { error: "Local API bridge failed" });
-      else response.destroy();
-    });
-  }).listen(8082, "0.0.0.0");
-} else {
-  await mkdir(requestsPath, { recursive: true });
-  await mkdir(responsesPath, { recursive: true });
-  await ensureRandomFile(serviceTokenPath);
-  await currentStatus();
-  createServer((request, response) => {
-    void handleHttp(request, response);
-  }).listen(8080, "0.0.0.0");
-
-  for (;;) {
-    const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
-    for (const file of files) await processRequest(file);
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
+for (;;) {
+  const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
+  for (const file of files) await processRequest(file);
+  await new Promise((resolve) => setTimeout(resolve, 250));
 }

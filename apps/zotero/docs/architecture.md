@@ -2,6 +2,10 @@
 
 ScholarServer offers two Zotero setup architectures.
 
+Both variants include a Zotero MCP container for ScholarServer Gateway. The
+setup controller is never a replacement for MCP. See [install options](install-options.md)
+for the user-facing capability comparison.
+
 ## Complete Zotero workspace
 
 Zotero Desktop is the local library authority. Zotero deliberately binds its local API
@@ -36,6 +40,23 @@ editing its profile database or storing credentials in Compose. The controller s
 single-use JSON commands over a private runtime volume. Zotero performs account linking,
 encrypted WebDAV credential storage, server verification, and synchronization through
 its own internal APIs. Request and response files are removed after every operation.
+
+The controller starts Zotero's website login session through the plugin and owns
+its private persisted state and background observation. Browsers only start or
+observe that setup operation; an ordinary page reload does not replay creation.
+The use of Zotero's internal login functions remains a version-qualified adapter,
+not a promised stable third-party API. Passwords are entered on Zotero's website.
+Only the local permission prompt and recovery need the browser desktop. The UI
+embeds it only at the same origin and retains a separate-tab fallback without
+weakening frame or authentication policy.
+
+The API relay has its own minimal entry point and no controller imports. A
+controller outage must not stop an already configured MCP from talking to Zotero.
+Library attachment actions are separated from lifecycle decisions in
+`controller/library-actions.mjs`; the controller retains compatible routes for
+existing grants and workers. The legacy Docling importer still uses Zotero's
+plugin API. Moving it to local HTTP uploads or migrating schedules to n8n needs
+separate real-attachment and existing-state acceptance, not deletion of old routes.
 
 The Desktop image is built from Zotero's official, checksum-pinned native Linux
 tarballs for amd64 and arm64. It does not use architecture emulation. The web desktop

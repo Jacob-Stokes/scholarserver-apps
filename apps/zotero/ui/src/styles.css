@@ -19,4 +19,5 @@
 .ss-callout-warning { border-left-color: #b7791f; background: #fff8e7; color: #68420a; }
 .ss-result { margin-top: 1rem; border-radius: .65rem; background: var(--muted); padding: 1rem; font-size: .875rem; overflow-wrap: anywhere; }
 .ss-storage-description { min-height: 2.3rem; }
+.ss-zotero-setup-desktop { width: 100%; height: min(65vh, 42rem); min-height: 22rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--background); }
 @media (max-width: 720px) { .ss-details { grid-template-columns: 1fr; gap: .25rem; } .ss-details dd { margin-bottom: .65rem; } }

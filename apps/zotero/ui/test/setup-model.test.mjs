@@ -60,3 +60,31 @@ test("desktop sign-in defaults require both support and availability", () => {
     }
   }
 });
+
+test("only same-origin desktops can be embedded; other protected addresses use a new tab", () => {
+  const origin = "https://scholar.example";
+  assert.equal(model.canEmbedDesktop("/apps/zotero/desktop", origin), true);
+  assert.equal(model.canEmbedDesktop("https://zotero.example/", origin), false);
+  assert.equal(model.canEmbedDesktop("http://scholar.example/", origin), false);
+  assert.equal(model.canEmbedDesktop("https://user:pass@scholar.example/", origin), false);
+  assert.equal(model.canEmbedDesktop("javascript:alert(1)", origin), false);
+});
+
+test("account links reject non-Zotero origins and credentials in URLs", () => {
+  assert.equal(
+    model.approvedLoginUrl("https://www.zotero.org/login?session=test"),
+    "https://www.zotero.org/login?session=test"
+  );
+  assert.equal(
+    model.approvedLoginUrl("https://www.zotero.org/login/session?session=test"),
+    "https://www.zotero.org/login/session?session=test"
+  );
+  for (const url of [
+    "https://evil.test/login/session",
+    "http://www.zotero.org/login/session",
+    "https://www.zotero.org.evil.test/login/session",
+    "https://user:pass@www.zotero.org/login/session"
+  ]) {
+    assert.throws(() => model.approvedLoginUrl(url));
+  }
+});

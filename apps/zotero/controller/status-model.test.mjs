@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { desktopWorkspaceStatus, onlineLibraryStatus } from "./status-model.mjs";
+import { desktopWorkspaceStatus, onlineLibraryStatus, rememberedAuthorizationKey } from "./status-model.mjs";
 
 function online(values = {}) {
   return onlineLibraryStatus({
@@ -60,9 +60,26 @@ test("desktop setup precedence remains explicit when probes disagree", () => {
     "account-required"
   );
   assert.equal(desktop({ desktop: "available", engine: { accountConnected: true } }).state, "storage-required");
-  assert.equal(desktop(configured).state, "ready", "a failed ping does not override an independently authorized API");
-  assert.equal(desktop({ config: configured.config, localApi: "read-only" }).state, "authorization-required");
+  assert.equal(
+    desktop(configured).state,
+    "setup-required",
+    "saved access must not hide a failed desktop or setup probe"
+  );
+  const available = { desktop: "available", engine: { accountConnected: true } };
+  assert.equal(desktop({ ...available, ...configured }).state, "ready");
+  assert.equal(
+    desktop({ ...available, config: configured.config, localApi: "read-only" }).state,
+    "authorization-required"
+  );
   assert.equal(desktop({ config: { storageMode: "unknown" }, localApi: "authorized" }).state, "setup-required");
+});
+
+test("ongoing access requires an explicit remembered Zotero grant", () => {
+  const key = "a".repeat(32);
+  assert.equal(rememberedAuthorizationKey({ key, remember: true }), key);
+  assert.throws(() => rememberedAuthorizationKey({ key, remember: false }), /single-use/);
+  assert.throws(() => rememberedAuthorizationKey({ key }), /single-use/);
+  assert.throws(() => rememberedAuthorizationKey({ key: "invalid", remember: true }), /valid/);
 });
 
 test("desktop status preserves settings and uses configured identity before bridge identity", () => {

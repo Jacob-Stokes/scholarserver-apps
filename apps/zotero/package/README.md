@@ -2,6 +2,10 @@
 
 This package provides two beginner-facing setup options:
 
+Both options include a Zotero MCP container connected to ScholarServer Gateway.
+See [the capability comparison](../docs/install-options.md) for the install,
+storage and version distinctions.
+
 - **Complete Zotero workspace** runs native browser-hosted Zotero 10 Desktop, its
   setup bridge and ZotMoov, the first-party MCP, attachment resolver, and automation
   worker.
@@ -26,6 +30,8 @@ For the complete workspace, Zotero's application page guides the user through:
    advanced HTTPS choices appear only after the corresponding Manager connection
    has been enabled in the global Access page.
 5. Starting local authorization and choosing **Always Allow** in Zotero's prompt.
+   When the protected desktop is on the same origin, the setup panel can show it;
+   a separate-tab link remains available. Sign-in itself stays on Zotero's website.
 6. Starting the first synchronization from ScholarServer.
 
 ScholarServer never asks for the Zotero password. The account token and any WebDAV

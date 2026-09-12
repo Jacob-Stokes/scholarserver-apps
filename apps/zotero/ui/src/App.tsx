@@ -3,9 +3,13 @@ import { type EndpointAccessOption, EndpointAccessSelector } from "@scholarserve
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountStep } from "./AccountStep";
+import { AuthorizationStep } from "./AuthorizationStep";
 import { AutomationsTab } from "./AutomationsTab";
 import { StorageStep } from "./StorageStep";
 import {
+  type AccountSession,
+  approvedLoginUrl,
+  canEmbedDesktop,
   type DesktopAccessResponse,
   type DesktopAccessSelection,
   defaultDesktopAuthentication,
@@ -114,6 +118,10 @@ export function App() {
   const [desktopAccessSelection, setDesktopAccessSelection] = useState<DesktopAccessSelection | null>(null);
   const [desktopAccessLoading, setDesktopAccessLoading] = useState(false);
   const [checkingAccount, setCheckingAccount] = useState(false);
+  const [accountSession, setAccountSession] = useState<AccountSession>({ state: "idle" });
+  const [showSetupDesktop, setShowSetupDesktop] = useState(false);
+  const accountWindow = useRef<Window | null>(null);
+  const accountWasPending = useRef(false);
   const [attachmentKey, setAttachmentKey] = useState("");
   const [sourcePath, setSourcePath] = useState("");
   const [attachmentResult, setAttachmentResult] = useState<unknown>(null);
@@ -218,28 +226,33 @@ export function App() {
     return () => window.removeEventListener("popstate", pop);
   }, []);
   useEffect(() => {
-    if (!checkingAccount) return;
+    if (connectionMode !== "complete-workspace") return;
     let cancelled = false;
     let timer: number;
     const check = async () => {
       if (cancelled) return;
       try {
-        const result = await request<Status>("account/complete", { method: "POST" });
+        const result = await request<AccountSession>("account/session");
         if (cancelled) return;
-        if (result.state === "account-authorization-pending") {
-          timer = window.setTimeout(check, 2500);
-          return;
+        setAccountSession(result);
+        setCheckingAccount(result.state === "pending" || result.state === "starting");
+        setAuthorizationUrl(result.loginUrl ? approvedLoginUrl(result.loginUrl) : null);
+        if (result.state === "pending" || result.state === "starting") accountWasPending.current = true;
+        if (result.state === "connected" && accountWasPending.current) {
+          accountWasPending.current = false;
+          accountWindow.current?.close();
+          accountWindow.current = null;
+          await refresh();
+          setSetupStage((current) => (current === "account" ? "storage" : current));
+          setNotice("Your Zotero account is connected.");
         }
-        setCheckingAccount(false);
-        setAuthorizationUrl(null);
-        statusRequest.current?.abort();
-        setStatus(result);
-        setNotice("Your Zotero account is connected.");
+        if (result.state === "cancelled") accountWasPending.current = false;
       } catch (caught) {
         if (!cancelled) {
-          setCheckingAccount(false);
           setError(caught instanceof Error ? caught.message : "Could not finish Zotero account linking");
         }
+      } finally {
+        if (!cancelled) timer = window.setTimeout(check, 2500);
       }
     };
     timer = window.setTimeout(check, 1500);
@@ -247,7 +260,7 @@ export function App() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [checkingAccount]);
+  }, [connectionMode, refresh]);
 
   const navigate = (next: Tab) => {
     window.history.pushState({}, "", `${base}/${next}`);
@@ -273,17 +286,26 @@ export function App() {
     setError(null);
     setNotice(null);
     const popup = window.open("about:blank", "_blank");
+    accountWindow.current = popup;
     if (popup) {
       popup.document.title = "Opening Zotero sign-in…";
       popup.document.body.style.cssText = "font: 16px system-ui; margin: 3rem; color: #1f2937";
       popup.document.body.textContent = "Preparing your secure Zotero sign-in…";
     }
     try {
-      const result = await request<{ loginUrl: string }>("account/start", { method: "POST" });
-      if (!result.loginUrl || new URL(result.loginUrl).protocol !== "https:")
-        throw new Error("Zotero returned an invalid sign-in address");
-      setAuthorizationUrl(result.loginUrl);
-      if (popup) popup.location.replace(result.loginUrl);
+      const result = await request<AccountSession>("account/start", { method: "POST" });
+      setAccountSession(result);
+      if (result.state !== "pending" || !result.loginUrl) {
+        popup?.close();
+        throw new Error(result.error ?? "Open Zotero to inspect the existing account connection.");
+      }
+      const loginUrl = approvedLoginUrl(result.loginUrl);
+      setAuthorizationUrl(loginUrl);
+      if (popup) {
+        popup.opener = null;
+        popup.location.replace(loginUrl);
+      }
+      accountWasPending.current = true;
       setCheckingAccount(true);
     } catch (caught) {
       popup?.close();
@@ -313,7 +335,9 @@ export function App() {
       "Attachment access settings were saved.",
       () => {
         setStorageSettings((current) => ({ ...current, webdavPassword: "" }));
-        setSetupStage(status?.connectionMode === "online-library" ? "ready" : "access");
+        if (status?.connectionMode === "online-library") setSetupStage("ready");
+        else if (desktopAccessSelection) setSetupStage("authorization");
+        else setSetupStage("access");
       }
     );
   const saveDesktopAccess = () => {
@@ -346,11 +370,15 @@ export function App() {
     );
   const openDesktopAndAuthorize = () => {
     if (!desktopAccessSelection?.url) return;
-    window.open(desktopUrl(desktopAccessSelection.url), "_blank", "noopener,noreferrer");
+    if (canEmbedDesktop(desktopAccessSelection.url, window.location.origin)) setShowSetupDesktop(true);
+    else window.open(desktopUrl(desktopAccessSelection.url), "_blank", "noopener,noreferrer");
     void run(
       () => request<Status>("authorize", { method: "POST" }),
       "ScholarServer is authorized to use the Zotero local API.",
-      () => setSetupStage("ready")
+      () => {
+        setShowSetupDesktop(false);
+        setSetupStage("ready");
+      }
     );
   };
   const ready = status?.state === "ready";
@@ -379,7 +407,7 @@ export function App() {
       currentTab={tab}
       onNavigate={navigate}
       notice={notice}
-      error={error || statusError}
+      error={error || statusError || status?.lastError}
       loading={!status}
     >
       {status && tab === "overview" ? (
@@ -461,7 +489,10 @@ export function App() {
                   className="ss-button"
                   disabled={busy || status.syncInProgress}
                   onClick={() =>
-                    void run(() => request<Status>("sync", { method: "POST" }), "Zotero synchronization completed.")
+                    void run(
+                      () => request<Status>("sync", { method: "POST" }),
+                      "Zotero finished the sync request. Check another device to confirm delivery."
+                    )
                   }
                 >
                   {busy || status.syncInProgress ? <span className="ss-spinner" /> : null}Sync now
@@ -579,6 +610,9 @@ export function App() {
               status={status}
               busy={busy}
               checkingAccount={checkingAccount}
+              session={accountSession}
+              recoveryUrl={desktopAccessSelection?.url ? desktopUrl(desktopAccessSelection.url) : null}
+              onPrepareRecovery={() => setSetupStage("access")}
               authorizationUrl={authorizationUrl}
               onlineApiKey={onlineApiKey}
               onApiKeyChange={setOnlineApiKey}
@@ -651,36 +685,19 @@ export function App() {
           ) : null}
 
           {setupStage === "authorization" ? (
-            <SetupPanel
-              stage={4}
-              total={5}
-              title="Authorize ScholarServer"
-              description="Zotero asks once before ScholarServer can use its supported local API."
-              back={() => setSetupStage("access")}
-              next={status.localApi === "authorized" ? () => setSetupStage("ready") : openDesktopAndAuthorize}
-              nextLabel={status.localApi === "authorized" ? "Finish setup" : "Open Zotero and authorize"}
-              nextDisabled={!status.storageMode || !desktopAccessSelection}
+            <AuthorizationStep
+              authorized={status.localApi === "authorized"}
               busy={busy}
-            >
-              <div className="ss-callout ss-stack">
-                <div>Open the private Zotero desktop in a new tab, then approve the request inside Zotero.</div>
-                <div className="ss-form-actions">
-                  {desktopAccessSelection?.url ? (
-                    <a
-                      className="ss-button ss-button-secondary"
-                      href={desktopUrl(desktopAccessSelection.url)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open Zotero desktop
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-              {status.localApi === "authorized" ? (
-                <div className="ss-alert ss-alert-success">ScholarServer is authorized.</div>
-              ) : null}
-            </SetupPanel>
+              desktopUrl={desktopAccessSelection?.url ? desktopUrl(desktopAccessSelection.url) : null}
+              embedded={Boolean(
+                desktopAccessSelection?.url && canEmbedDesktop(desktopAccessSelection.url, window.location.origin)
+              )}
+              showDesktop={showSetupDesktop}
+              onShowDesktop={setShowSetupDesktop}
+              onAuthorize={openDesktopAndAuthorize}
+              onBack={() => setSetupStage("access")}
+              onContinue={() => setSetupStage("ready")}
+            />
           ) : null}
 
           {setupStage === "ready" ? (
@@ -696,11 +713,25 @@ export function App() {
               back={() => setSetupStage(online ? "storage" : "authorization")}
             >
               <div className="ss-alert ss-alert-success">
-                Setup is complete.{" "}
+                Connection settings are saved.{" "}
                 {online
-                  ? "Approved AI tools can now work with your online Zotero library."
-                  : "You can synchronize Zotero and use approved AI tools from this server."}
+                  ? "Check the Zotero connection under ScholarServer’s AI connections before using it from an AI tool."
+                  : "Run an initial sync, then check attachment access and ScholarServer’s AI connection separately."}
               </div>
+              {!online ? (
+                <button
+                  className="ss-button"
+                  disabled={busy || status.syncInProgress}
+                  onClick={() =>
+                    void run(
+                      () => request<Status>("sync", { method: "POST" }),
+                      "Zotero finished the sync request. Check another device to confirm delivery."
+                    )
+                  }
+                >
+                  {busy || status.syncInProgress ? "Syncing…" : "Run initial sync"}
+                </button>
+              ) : null}
               <dl className="ss-details">
                 <dt>Account</dt>
                 <dd>{status.username ?? status.userId ?? "Connected"}</dd>

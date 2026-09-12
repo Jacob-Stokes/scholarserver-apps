@@ -1,5 +1,59 @@
 # Zotero development notes
 
+## Setup boundary checkpoint — 12 September 2026
+
+Both install variants retain a Zotero MCP service. Normal tool requests go from
+Gateway through MCP to either the protected Desktop API relay or Zotero's Web
+API. The setup controller is not the normal MCP request path.
+
+The relay now has its own minimal entry point instead of importing the entire
+controller. The controller image explicitly ships the account-link coordinator
+and separated library-action module; source fingerprint inputs cover these files.
+Existing attachment/Docling action contracts, worker settings and schedules are
+preserved. The plugin's legacy Docling importer has not yet been migrated to
+HTTP uploads or n8n; see the focused readability review.
+
+Website login now has a controller-owned persisted session and background
+observer. Reloading the page observes the same request. Cancellation cannot
+produce a connected message, interrupted starts are not silently replayed, and
+public status omits login tokens and URLs. The protected session endpoint can
+return the official login URL to resume a pending flow. Internal Zotero login
+functions remain a pinned-version compatibility dependency, not a stable public
+setup API. Online mode still uses a manually created Web API key; OAuth app
+registration and client-credential ownership require a separate decision.
+
+Local approval uses the shared setup panel, with a same-origin desktop view and
+separate-tab fallback. No CORS or frame restrictions were weakened. Ongoing
+access requires Zotero's remembered grant rather than a single-use Allow. A
+failed Desktop/setup probe can no longer be hidden by a stored local key. Setup
+completion copy distinguishes saved connection settings from initial sync,
+attachment delivery and Gateway acceptance. Reauthorization after revocation
+and interrupted authorization still need real-client testing.
+
+Checks: full `npm test` passed (including its explicit platform skips), focused
+Zotero/relay tests passed, and all nineteen image recipes validate. A single
+isolated browser against source UI and synthetic APIs passed login resume,
+cancellation, continuation, denied permission, retry, panel dismissal and
+cross-origin fallback. Screenshots are in `.dev/zotero-setup-boundary`; run
+`scripts/check-zotero-setup.mjs` with the existing browser-module path to repeat.
+These are source and mocked-browser checks, not fresh installation or actual
+account/attachment/Gateway acceptance.
+
+Mac Docker stayed stopped. The full suite ran as one command with a 512 MiB
+per-process JavaScript heap limit; it includes small TypeScript builds, not
+Docker image builds. Swap remained unused in the before/after samples. No
+personal native profile, retained server or paid resource was changed.
+
+Publication gate: controller and relay images must be rebuilt, qualified on
+native architectures, and selected in a new immutable package version with new
+source-lock records. Existing image digests and candidate metadata were not
+rewritten to imply that they contain this source. Freelove is unchanged.
+The source-lock check was run for both changed recipes and rejected their old
+records as stale, as expected. Those records were not regenerated without builds.
+The project-vault note update is pending: this pass deliberately did not access
+the personal Obsidian profile or vault. The repository guide
+`docs/install-options.md` beside this app is authoritative for this checkpoint.
+
 ## Image refresh checkpoint — 12 September 2026
 
 Candidate `0.5.10-beta.3` selects five refreshed immutable AMD64/ARM64 images.

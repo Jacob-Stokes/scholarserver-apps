@@ -2,6 +2,34 @@ import type { EndpointAccessOption } from "@scholarserver/ui/endpoint-access";
 
 export type SetupStage = "account" | "storage" | "access" | "authorization" | "ready";
 
+export type AccountSession = {
+  state: "idle" | "starting" | "pending" | "connected" | "cancelled" | "interrupted";
+  loginUrl?: string;
+  error?: string;
+};
+
+export function approvedLoginUrl(value: string): string {
+  const url = new URL(value);
+  if (
+    url.origin !== "https://www.zotero.org" ||
+    url.username ||
+    url.password ||
+    (url.pathname !== "/login" && !url.pathname.startsWith("/login/"))
+  ) {
+    throw new Error("Zotero returned an unrecognized sign-in address");
+  }
+  return url.href;
+}
+
+export function canEmbedDesktop(endpointUrl: string, origin: string): boolean {
+  try {
+    const url = new URL(endpointUrl, origin);
+    return url.origin === origin && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 export function initialSetupStage(state: string): SetupStage {
   switch (state) {
     case "ready":

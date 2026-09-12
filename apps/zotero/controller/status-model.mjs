@@ -11,10 +11,20 @@ function desktopSetupState({ desktop, engine, storageMode, localApi }) {
   // Account and storage setup take precedence when the desktop reports them.
   if (desktop === "available" && engine && !engine.accountConnected) return "account-required";
   if (desktop === "available" && engine?.accountConnected && !storageMode) return "storage-required";
-  // API authorization is independent of the desktop ping and bridge probes.
+  if (desktop !== "available" || !engine) return "setup-required";
   if (storageMode && localApi === "authorized") return "ready";
   if (storageMode) return "authorization-required";
   return "setup-required";
+}
+
+export function rememberedAuthorizationKey(result) {
+  if (!result || typeof result.key !== "string" || !/^[A-Za-z0-9]{32}$/.test(result.key)) {
+    throw new Error("Zotero did not return a valid local authorization key");
+  }
+  if (result.remember !== true) {
+    throw new Error("Zotero granted single-use access. Request access again and choose Always Allow for ongoing use.");
+  }
+  return result.key;
 }
 
 export function onlineLibraryStatus({ config, account, accountError, lastError, variant }) {
