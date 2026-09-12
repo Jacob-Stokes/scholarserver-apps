@@ -1,5 +1,17 @@
 # n8n integration — development record
 
+## Guided candidate — 12 September 2026
+
+AMD64-only package `0.1.0-guided.20260912.1` now selects a new immutable
+integration image containing the report templates and bundled app icons below.
+Resolution built the committed source and checked native setup, restart,
+repeated execution of all six templates, empty input and revoked grants using
+synthetic research services. The existing n8n runtime image is unchanged.
+This is not ARM64 qualification, browser rendering, real-library acceptance or
+a Freelove upgrade. See [the candidate record](../../docs/guided-candidate-20260912.md).
+The personal project-vault documentation update remains pending; this pass does
+not access native Mac apps or vaults.
+
 ## Bundled automation-card icons — 12 September 2026
 
 The shared app-role presentation now bundles the catalog's pinned Zotero,

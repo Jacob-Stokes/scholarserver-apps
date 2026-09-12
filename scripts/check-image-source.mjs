@@ -231,17 +231,40 @@ async function readYaml(filePath) {
 }
 
 export async function readManifestImage(root, recipe) {
+  const { reference } = await readManifestPackage(root, recipe);
+  return reference;
+}
+
+export async function readManifestPackage(root, recipe) {
   const composePath = resolveWithinRoot(root, recipe.manifest);
   const manifestPath = path.join(path.dirname(composePath), "scholarserver-app.yaml");
   const compose = await readYaml(composePath);
   const manifest = await readYaml(manifestPath);
+  const packageArchitectures = manifest?.support?.architectures;
+  if (!Array.isArray(packageArchitectures) || packageArchitectures.length === 0)
+    fail(`Recipe ${recipe.name} package manifest must declare non-empty support.architectures`);
+  if (
+    packageArchitectures.some(
+      (architecture) => typeof architecture !== "string" || !NATIVE_ARCHITECTURES.has(architecture)
+    )
+  )
+    fail(`Recipe ${recipe.name} package manifest has invalid support.architectures; use amd64 and/or arm64`);
+  if (new Set(packageArchitectures).size !== packageArchitectures.length)
+    fail(`Recipe ${recipe.name} package manifest repeats support.architectures`);
+  const unsupportedPackageArchitectures = packageArchitectures.filter(
+    (architecture) => !recipe.nativeArchitectures.includes(architecture)
+  );
+  if (unsupportedPackageArchitectures.length > 0)
+    fail(
+      `Recipe ${recipe.name} package manifest promises unsupported architecture(s): ${unsupportedPackageArchitectures.join(", ")}`
+    );
   const reference = compose?.services?.[recipe.service]?.image;
   if (typeof reference !== "string" || !IMMUTABLE_REFERENCE.test(reference))
     fail(`Recipe ${recipe.name} service ${recipe.service} has no immutable Compose image`);
   const declarations = manifest?.images?.filter((image) => image.service === recipe.service) ?? [];
   if (declarations.length !== 1 || declarations[0].reference !== reference)
     fail(`Recipe ${recipe.name} package manifest and Compose image references disagree`);
-  return reference;
+  return { reference, packageArchitectures };
 }
 
 function validateRecordShape(record, index) {
@@ -259,10 +282,6 @@ function validateRecordShape(record, index) {
     fail(`Source-lock record ${index + 1} for ${record.recipe} has invalid nativeArchitectures`);
   if (new Set(record.nativeArchitectures).size !== record.nativeArchitectures.length)
     fail(`Source-lock record ${index + 1} for ${record.recipe} repeats nativeArchitectures`);
-}
-
-function sameValues(left, right) {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 export function validateSourceLock(lock, inventory, fingerprints, requestedReference = null, requestedRecipes = null) {
@@ -317,18 +336,23 @@ export function validateSourceLock(lock, inventory, fingerprints, requestedRefer
       errors.push(
         `stale source-lock record for recipe ${recipe.name}: recorded ${record.sourceDigest}, current ${fingerprint.digest}`
       );
-    const expectedArchitectures = [...recipe.nativeArchitectures].sort();
+    // Public callers may provide fingerprints assembled before package
+    // architecture metadata was added. Treat omission as the recipe's full
+    // capability so the historical exact-capability gate remains intact.
+    const packageArchitectures = fingerprint.packageArchitectures ?? recipe.nativeArchitectures;
     const recordedArchitectures = [...record.nativeArchitectures].sort();
-    if (!sameValues(recordedArchitectures, expectedArchitectures)) {
-      const missing = expectedArchitectures.filter((architecture) => !recordedArchitectures.includes(architecture));
-      const extra = recordedArchitectures.filter((architecture) => !expectedArchitectures.includes(architecture));
+    const unsupported = recordedArchitectures.filter(
+      (architecture) => !recipe.nativeArchitectures.includes(architecture)
+    );
+    const missing = packageArchitectures.filter((architecture) => !recordedArchitectures.includes(architecture));
+    if (missing.length > 0 || unsupported.length > 0) {
       if (missing.length > 0)
         errors.push(
-          `incomplete source-lock record for recipe ${recipe.name}: missing native architecture(s) ${missing.join(", ")}`
+          `incomplete source-lock record for recipe ${recipe.name}: missing package architecture(s) ${missing.join(", ")}`
         );
-      if (extra.length > 0)
+      if (unsupported.length > 0)
         errors.push(
-          `invalid source-lock record for recipe ${recipe.name}: unexpected native architecture(s) ${extra.join(", ")}`
+          `invalid source-lock record for recipe ${recipe.name}: unsupported native architecture(s) ${unsupported.join(", ")}`
         );
     }
   }
@@ -362,7 +386,9 @@ async function checkInventory(inventoryPath, rootPath) {
     if (fromLines.length === 0 || fromLines.some((line) => !/@sha256:[a-f0-9]{64}(?: AS \S+)?$/.test(line)))
       fail(`Recipe ${recipe.name} must keep every Dockerfile base pinned by digest`);
     const fingerprint = await fingerprintRecipe(root, recipe);
-    fingerprint.manifestReference = await readManifestImage(root, recipe);
+    const packageManifest = await readManifestPackage(root, recipe);
+    fingerprint.manifestReference = packageManifest.reference;
+    fingerprint.packageArchitectures = packageManifest.packageArchitectures;
     const manifestRepository = fingerprint.manifestReference
       .slice(0, fingerprint.manifestReference.indexOf("@"))
       .split("/")

@@ -26,10 +26,16 @@ async function repositoryFile(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-test("development backends derive the final beta.6 package image selection", async () => {
+test("development backends derive the current package version and exact image selection", async () => {
   const definition = await loadDevelopmentDefinition();
   const environment = composeEnvironment(definition, {});
-  assert.equal(definition.packageVersion, "0.1.0-beta.6");
+  const manifest = parse(await repositoryFile("apps/n8n/package/scholarserver-app.yaml"));
+  assert.equal(definition.packageVersion, manifest.packageVersion);
+  assert.equal(environment.N8N_IMAGE, manifest.images.find((image) => image.service === "n8n").reference);
+  assert.equal(
+    environment.N8N_INTEGRATION_IMAGE,
+    manifest.images.find((image) => image.service === "integration").reference
+  );
   assert.match(environment.N8N_IMAGE, /^ghcr\.io\/jacob-stokes\/scholarserver-n8n@sha256:[a-f0-9]{64}$/);
   assert.match(
     environment.N8N_INTEGRATION_IMAGE,

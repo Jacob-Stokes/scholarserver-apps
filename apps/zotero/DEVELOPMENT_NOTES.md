@@ -1,5 +1,15 @@
 # Zotero development notes
 
+## Guided candidate — 12 September 2026
+
+The new controller and relay are now built and native-startup/restart qualified
+on Resolution, with new immutable image references selected by AMD64-only package
+`0.5.10-guided.20260912.1`. ARM64 is deliberately not advertised by this candidate.
+The previous setup checkpoint's source-only publication gate is superseded for
+AMD64 image publication, not for browser, account, sync or Gateway acceptance.
+See [the candidate record](../../docs/guided-candidate-20260912.md) for exact
+provenance and limits. Mac Docker and personal profiles remain untouched.
+
 ## Setup boundary checkpoint — 12 September 2026
 
 Both install variants retain a Zotero MCP service. Normal tool requests go from

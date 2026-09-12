@@ -49,6 +49,22 @@ function unique(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be unique`);
 }
 
+function checkArchitectures(architectures, label) {
+  assert.ok(Array.isArray(architectures) && architectures.length > 0, `${label}: declared native architectures`);
+  unique(architectures, `${label}: native architectures`);
+  for (const architecture of architectures) {
+    assert.ok(["amd64", "arm64"].includes(architecture), `${label}: supported native architecture`);
+  }
+}
+
+test("package support can be architecture-scoped but never empty, duplicated or unknown", () => {
+  checkArchitectures(["amd64"], "native candidate");
+  checkArchitectures(["amd64", "arm64"], "multi-architecture package");
+  for (const architectures of [undefined, [], ["amd64", "amd64"], ["riscv64"]]) {
+    assert.throws(() => checkArchitectures(architectures, "invalid package"));
+  }
+});
+
 function checkDeclaredIds(manifest, label) {
   for (const field of ["data", "endpoints", "images"]) {
     const key = field === "images" ? "service" : "id";
@@ -135,8 +151,9 @@ test("every first-party package satisfies the reusable package boundary", async 
     const endpoints = new Map((manifest.endpoints ?? []).map((entry) => [entry.id, entry]));
 
     assert.equal(manifest.support.tier, "official", `${label}: first-party support tier`);
-    assert.ok(manifest.support.architectures.includes("amd64"), `${label}: amd64 support`);
-    assert.ok(manifest.support.architectures.includes("arm64"), `${label}: arm64 support`);
+    // Source-lock checks prove every declared architecture; package support
+    // must not advertise an unqualified platform merely to satisfy this test.
+    checkArchitectures(manifest.support.architectures, label);
 
     assert.ok(manifest.presentation?.icon, `${label}: packaged application icon`);
     const lockedIcon = iconLock.icons[directory];

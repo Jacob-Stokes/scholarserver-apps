@@ -21,7 +21,7 @@ async function fixture() {
   await writeFile(path.join(root, "compose.yaml"), `services:\n  fixture-image:\n    image: ${manifestReference}\n`);
   await writeFile(
     path.join(root, "scholarserver-app.yaml"),
-    `images:\n  - service: fixture-image\n    reference: ${manifestReference}\n`
+    `support:\n  architectures: [amd64, arm64]\nimages:\n  - service: fixture-image\n    reference: ${manifestReference}\n`
   );
   const recipe = {
     name: "fixture-image",
@@ -63,6 +63,7 @@ async function withFixture(callback) {
 async function currentFingerprint(root, recipe) {
   const fingerprint = await fingerprintRecipe(root, recipe);
   fingerprint.manifestReference = "ghcr.io/jacob-stokes/scholarserver-fixture@sha256:" + "b".repeat(64);
+  fingerprint.packageArchitectures = ["amd64", "arm64"];
   return fingerprint;
 }
 
@@ -189,15 +190,103 @@ test("missing native architecture is reported as incomplete", async () => {
     const lock = lockFor(recipe, current.digest, ["amd64"]);
     assert.throws(
       () => validateSourceLock(lock, { recipes: [recipe] }, new Map([[recipe.name, current]])),
-      /incomplete source-lock record for recipe fixture-image: missing native architecture\(s\) arm64/
+      /incomplete source-lock record for recipe fixture-image: missing package architecture\(s\) arm64/
     );
   });
+});
+
+test("an AMD64-only package accepts an AMD64 source record", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const current = await currentFingerprint(root, recipe);
+    current.packageArchitectures = ["amd64"];
+    const lock = lockFor(recipe, current.digest, ["amd64"]);
+    assert.doesNotThrow(() => validateSourceLock(lock, { recipes: [recipe] }, new Map([[recipe.name, current]])));
+  });
+});
+
+test("a both-architecture package rejects an AMD64-only source record", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const current = await currentFingerprint(root, recipe);
+    const lock = lockFor(recipe, current.digest, ["amd64"]);
+    assert.throws(
+      () => validateSourceLock(lock, { recipes: [recipe] }, new Map([[recipe.name, current]])),
+      /missing package architecture\(s\) arm64/
+    );
+  });
+});
+
+test("direct source-lock callers without package metadata retain the full capability gate", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const current = await currentFingerprint(root, recipe);
+    delete current.packageArchitectures;
+    const lock = lockFor(recipe, current.digest, ["amd64"]);
+    assert.throws(
+      () => validateSourceLock(lock, { recipes: [recipe] }, new Map([[recipe.name, current]])),
+      /missing package architecture\(s\) arm64/
+    );
+  });
+});
+
+test("an AMD64-only package accepts a source record covering both recipe architectures", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const current = await currentFingerprint(root, recipe);
+    current.packageArchitectures = ["amd64"];
+    const lock = lockFor(recipe, current.digest, ["amd64", "arm64"]);
+    assert.doesNotThrow(() => validateSourceLock(lock, { recipes: [recipe] }, new Map([[recipe.name, current]])));
+  });
+});
+
+test("a package architecture outside the recipe capability is rejected from the manifest", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    await writeFile(
+      path.join(root, "scholarserver-app.yaml"),
+      `support:\n  architectures: [arm64]\nimages:\n  - service: fixture-image\n    reference: ghcr.io/jacob-stokes/scholarserver-fixture@sha256:${"b".repeat(64)}\n`
+    );
+    await assert.rejects(
+      () => readManifestImage(root, { ...recipe, nativeArchitectures: ["amd64"] }),
+      /promises unsupported architecture\(s\): arm64/
+    );
+  });
+});
+
+test("package architecture declarations reject missing, unknown, invalid and duplicate values", async () => {
+  await withFixture(async ({ root, recipe }) => {
+    const invalidDeclarations = [
+      { declaration: "", expectedError: /non-empty/ },
+      { declaration: "support: {}", expectedError: /non-empty/ },
+      { declaration: "support:\n  architectures: [riscv64]", expectedError: /invalid/ },
+      { declaration: "support:\n  architectures: [amd64, 1]", expectedError: /invalid/ },
+      { declaration: "support:\n  architectures: [amd64, amd64]", expectedError: /repeats/ }
+    ];
+    for (const { declaration, expectedError } of invalidDeclarations) {
+      await writeFile(
+        path.join(root, "scholarserver-app.yaml"),
+        `${declaration}\nimages:\n  - service: fixture-image\n    reference: ghcr.io/jacob-stokes/scholarserver-fixture@sha256:${"b".repeat(64)}\n`
+      );
+      await assert.rejects(() => readManifestImage(root, recipe), expectedError);
+    }
+  });
+});
+
+test("the full repository CLI checks package architecture scope", () => {
+  const result = spawnSync(
+    process.execPath,
+    ["scripts/check-image-source.mjs", "--inventory", "scripts/image-source-inventory.json", "--root", "."],
+    {
+      encoding: "utf8"
+    }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Validated 19 image recipes/);
 });
 
 test("image selection requires matching parsed package and Compose declarations", async () => {
   await withFixture(async ({ root, recipe }) => {
     assert.match(await readManifestImage(root, recipe), /@sha256:b{64}$/);
-    await writeFile(path.join(root, "scholarserver-app.yaml"), "images: []\n");
+    await writeFile(
+      path.join(root, "scholarserver-app.yaml"),
+      "support:\n  architectures: [amd64, arm64]\nimages: []\n"
+    );
     await assert.rejects(() => readManifestImage(root, recipe), /references disagree/);
     await writeFile(path.join(root, "compose.yaml"), "services: {}\nservices: {}\n");
     await assert.rejects(() => readManifestImage(root, recipe), /Invalid YAML/);
