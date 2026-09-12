@@ -104,6 +104,26 @@ Obsidian `create-research-note` remain withheld pending compatible real-app
 acceptance. No existing immutable package is overwritten and no stable channel
 is promoted by these image builds.
 
+## Final source and assembly checks
+
+The full apps `npm test` and `npm run lint` pass after the final pins and
+canonical-entry-point correction. All thirteen source-record regressions pass.
+Core `pnpm check` passes; its Linux-only release fixture remains a declared skip
+on this Mac, not a native Linux result.
+
+Core catalog assembly was also run against a clean Git export of apps `db094de`,
+without that export having `node_modules`. It executed all nineteen source checks
+using core's locked YAML dependency, copied seven versioned packages, and passed
+the core schema/Compose validator for every package. A separate exported fixture
+then changed the Obsidian controller source: assembly exited 1 for a stale record
+and did not create its output directory. The pre-fix skipped-check result is
+retained as failed evidence, not counted as final verification.
+
+This assembled local catalog is validation output, not a published release.
+The seven app project notes and their index in Jacob's Obsidian vault were updated
+and read back with matching hashes. They retain the account/device and deployment
+limits rather than presenting image publication as live acceptance.
+
 Core's Home/navigation/search/toast changes already had a private signed AMD64
 build and fresh-host acceptance at `bc80fcb` (`0.1.0-e2e.20260911.2`). Comparing
 that source to the pre-refresh core checkpoint `d3060f4` finds no later runtime
