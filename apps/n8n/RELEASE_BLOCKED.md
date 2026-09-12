@@ -10,9 +10,13 @@ checks, repeated synthetic research executions and restart. Missing runtime
 modules and stale catalog image content are resolved; they are not current gates.
 
 The official catalog package remains unpublished. Fresh installation through the
-final signed platform, real application-service grant enforcement and
-Manager-driven recovery of workflow credentials still need acceptance. The
-optional native editor's managed private-hostname lifecycle is also incomplete.
+final signed platform and real research-application service grants still need
+acceptance. Same-host ARM64 Manager-driven recovery now restores a credential-backed
+workflow that successfully executes after restoration; normal service identity
+setup and rejection of an undeclared action also passed. See the bounded
+[recovery check](recovery/README.md) and dated development notes. This is not
+off-site or cross-host acceptance. The optional native editor's managed
+private-hostname lifecycle is also incomplete.
 Image publication does not update Freelove. See the
 [refresh report](../../docs/package-refresh-20260912.md) for exact evidence.
 

@@ -683,3 +683,41 @@ stages bound to committed source and exact image receipts. These development
 tool changes do not alter app runtime inputs, immutable images or package
 versions; all nineteen image-source records still match. No release or live
 deployment was performed. The project-vault note records this same limited scope.
+
+## Manager credential recovery — 12 September 2026
+
+The complete beta.6 package passed a disposable native ARM64 installation through
+real Manager and executor built from core `a9ac8f3b71363f0fa1d48cf575b1bb7ca56f5f7f`.
+Package runtime inputs were the checked apps `ba6f7e1` source, with no controller
+overlay or manifest permission changes. Manager ran non-root without the Docker
+socket. Normal setup issued the service identity; real service discovery returned
+200, a missing credential returned 401 and an undeclared action returned 403.
+No real Zotero/Obsidian action target was installed, so that is not research-grant
+acceptance.
+
+A real n8n workflow executed an authenticated HTTP request using a synthetic
+encrypted credential. Manager created an application backup. Changing the workflow
+through its allowed update API made execution fail; Manager restore recovered the
+workflow and encrypted credential and authenticated execution succeeded again.
+The persisted restore operation reported `succeeded`. The initial harness tried
+deletion, which correctly returned 403 because the key does not have deletion
+scopes; the check was corrected without expanding permissions.
+
+The successful first scope was `n8n-proof-de6feba3`. Its containers, Linux data
+volume and networks were removed and absence verified, as were the two earlier
+failed-harness scopes `n8n-proof-dafcde8c` and `n8n-proof-487bc36a`. Personal n8n,
+Supabase, vault/library data and Freelove were untouched. No paid server was used.
+The repeatable operator entry point and its limits are in
+[`recovery/README.md`](recovery/README.md). It does not enter any app image recipe.
+
+Same-host ARM64 Manager credential recovery is now evidenced for beta.6. Final
+signed-install acceptance, real connected research targets and the optional native
+editor's managed hostname lifecycle remain open. No catalog package, new runtime
+image or live deployment was published in this pass.
+
+The final reusable check then passed again as `n8n-proof-069de833`, including
+verified container/volume/network deletion. A preflight-version bug in its first
+generalized run (`n8n-proof-4388c291`) was fixed before acceptance; that scope was
+also deleted. Full locked `scripts/check-source.sh` passed, all nineteen existing
+image-source records still match, and the project-vault note and app index were
+updated through Jacob Gateway with the same evidence boundaries.
