@@ -18,7 +18,10 @@ async function fixture() {
   await writeFile(path.join(root, "ui.ts"), "export const ui = 'old';\n");
   await writeFile(path.join(root, "vendor.ts"), "export const vendor = 'old';\n");
   await writeFile(path.join(root, "compose.yaml"), `services:\n  fixture-image:\n    image: ${manifestReference}\n`);
-  await writeFile(path.join(root, "scholarserver-app.yaml"), `images:\n  - service: fixture-image\n    reference: ${manifestReference}\n`);
+  await writeFile(
+    path.join(root, "scholarserver-app.yaml"),
+    `images:\n  - service: fixture-image\n    reference: ${manifestReference}\n`
+  );
   const recipe = {
     name: "fixture-image",
     dockerfile: "Dockerfile",

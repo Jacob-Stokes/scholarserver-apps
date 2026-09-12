@@ -1,5 +1,7 @@
 import importlib.util
 import io
+import shutil
+import subprocess
 from pathlib import Path
 import tarfile
 import unittest
@@ -21,6 +23,19 @@ def layer(files):
 
 
 class ImageContentTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("zstd"), "zstd tool is required for a real compressed fixture")
+    def test_zstandard_layers_receive_the_same_prohibited_content_checks(self):
+        allowed = layer({"app/ordinary.txt": b"synthetic allowed file"}).read()
+        prohibited = layer({"app/obsidian-headless/cli.js": b"synthetic prohibited path"}).read()
+        for content, rejected in [(allowed, False), (prohibited, True)]:
+            compressed = subprocess.run(["zstd", "--stdout", "--quiet"], input=content,
+                                        stdout=subprocess.PIPE, check=True).stdout
+            if rejected:
+                with self.assertRaisesRegex(ValueError, "Prohibited Headless"):
+                    audit.inspect_layer(io.BytesIO(compressed))
+            else:
+                audit.inspect_layer(io.BytesIO(compressed))
+
     def test_metadata_and_open_source_dependencies_are_allowed(self):
         audit.inspect_layer(layer({"app/official-client.mjs": b"download metadata only",
                                    "app/node_modules/commander/package.json": b'{"name":"commander"}'}))

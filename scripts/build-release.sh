@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+node scripts/check-image-source.mjs --lock catalog/image-source-lock.json
+
 rm -rf catalog/dist
 mkdir -p catalog/dist
 index=catalog/dist/index.json

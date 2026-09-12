@@ -6,6 +6,7 @@ from the distributed artifact. This checks known content, not all licensing.
 
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -15,6 +16,25 @@ HEADLESS_CLI_SHA256 = "c6307dc72c00bcf6f22093fb3e0eb91fdc417fc9dd05884ff2c36e5a1
 
 
 def inspect_layer(stream):
+    magic = stream.read(4)
+    stream.seek(0)
+    if magic != b"\x28\xb5\x2f\xfd":
+        inspect_tar_layer(stream)
+        return
+    if not shutil.which("zstd"):
+        raise ValueError("A Zstandard image layer requires the zstd tool; no content verdict is available")
+    # New containerd-backed Docker exports may retain upstream Zstandard layers.
+    # Decode the entire layer, then apply exactly the same content checks.
+    with tempfile.TemporaryFile() as compressed, tempfile.TemporaryFile() as decoded:
+        shutil.copyfileobj(stream, compressed)
+        compressed.seek(0)
+        subprocess.run(["zstd", "--decompress", "--stdout", "--quiet"],
+                       stdin=compressed, stdout=decoded, check=True)
+        decoded.seek(0)
+        inspect_tar_layer(decoded)
+
+
+def inspect_tar_layer(stream):
     with tarfile.open(fileobj=stream, mode="r|*") as layer:
         for member in layer:
             if "obsidian-headless" in member.name.lower():

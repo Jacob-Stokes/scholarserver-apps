@@ -13,6 +13,11 @@ revision/fingerprint, and checks image contents before pushing. It builds only
 the host's native architecture. Hosted builds remain manual; this does not enable
 paid GitHub Actions or publish a package automatically.
 
+Layer inspection also supports Zstandard-compressed upstream layers exported by
+new containerd-backed Docker versions. Install the `zstd` command on such builders.
+The scanner decompresses and checks those layers with the same prohibited-content
+rules; a missing decompressor or missing layer fails closed.
+
 After both native images and the exact package configuration have been qualified,
 record each immutable reference in `catalog/image-source-lock.json`:
 

@@ -26,6 +26,8 @@ jobs:
           node-version: '24'
       - name: Install locked source-verification dependencies
         run: npm ci --ignore-scripts
+      - name: Install image-layer decoder
+        run: sudo apt-get update && sudo apt-get install -y zstd
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
