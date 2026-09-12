@@ -1,14 +1,44 @@
 import { readCatalog } from "./catalog.mjs";
 import { assertRequiredApplications, requirementsForScope } from "./requirements.mjs";
+import { noteOutputFolder, researchKinds } from "./research-access.mjs";
 
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
+
+export function researchWindow(kind, now) {
+  const until = new Date(now.getTime());
+  if (!Number.isFinite(until.getTime())) throw new Error("Invalid research time");
+  let days;
+  switch (kind) {
+    case "reading-notes":
+      days = 7;
+      break;
+    case "research-digest":
+    case "reference-audit":
+    case "bibliography":
+      until.setUTCHours(0, 0, 0, 0);
+      days = 1;
+      break;
+    case "weekly-roundup": {
+      until.setUTCHours(0, 0, 0, 0);
+      const daysSinceMonday = (until.getUTCDay() + 6) % 7;
+      until.setUTCDate(until.getUTCDate() - daysSinceMonday);
+      days = 7;
+      break;
+    }
+    default:
+      throw new Error("This research connection cannot read papers");
+  }
+  const since = new Date(until.getTime() - days * 86400000);
+  return { since: since.toISOString(), until: until.toISOString() };
+}
 
 // Only these reviewed operations cross the application boundary. The workflow
 // cannot supply a URL, action name, workspace, application ID or output root.
 export class ResearchBridge {
-  constructor({ managerConnection, fetchImplementation = fetch }) {
+  constructor({ managerConnection, fetchImplementation = fetch, now = () => new Date() }) {
     this.managerConnection = managerConnection;
     this.fetch = fetchImplementation;
+    this.now = now;
   }
 
   async request(route, input) {
@@ -71,27 +101,18 @@ export class ResearchBridge {
 
   async execute(scope, operation, input = {}) {
     await this.validateScope(scope);
-    if (["reading-notes", "research-digest"].includes(scope.kind)) {
+    if (scope.kind !== "convert-pdfs" && researchKinds.includes(scope.kind)) {
       if (operation === "papers") {
-        const until = new Date();
-        let days = 7;
-        if (scope.kind === "research-digest") {
-          until.setUTCHours(0, 0, 0, 0);
-          days = 1;
-        }
-        const since = new Date(until.getTime() - days * 86400000);
-        const result = await this.action(scope, "zotero", "research-items", {
-          since: since.toISOString(),
-          until: until.toISOString()
-        });
-        return { ...result, date: since.toISOString().slice(0, 10) };
+        const window = researchWindow(scope.kind, this.now());
+        const result = await this.action(scope, "zotero", "research-items", window);
+        return { ...result, date: window.since.slice(0, 10), periodEnd: window.until };
       }
       if (operation === "note") {
         const pattern = scope.kind === "reading-notes" ? /^zotero-[A-Z0-9]{8}\.md$/ : /^digest-\d{4}-\d{2}-\d{2}\.md$/;
         if (typeof input.filename !== "string" || !pattern.test(input.filename))
           throw new Error("Invalid note identity");
         return this.action(scope, "obsidian", "create-research-note", {
-          folder: scope.folder,
+          folder: noteOutputFolder(scope),
           filename: input.filename,
           content: input.content
         });

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { type AppRequirement, availableForRole } from "./automation-types";
 
-export type ResearchKind = "reading-notes" | "research-digest" | "convert-pdfs";
+export type ResearchKind =
+  | "reading-notes"
+  | "research-digest"
+  | "convert-pdfs"
+  | "weekly-roundup"
+  | "reference-audit"
+  | "bibliography";
 export type ResearchBindings = {
   workspaceId: string;
   zotero: string;
@@ -10,6 +16,22 @@ export type ResearchBindings = {
   folder: string;
 };
 type Application = { id: string; workspaceId: string; packageId: string; actions: string[] };
+
+const reportSubfolders: Partial<Record<ResearchKind, string>> = {
+  "weekly-roundup": "Weekly roundups",
+  "reference-audit": "Reference checks",
+  bibliography: "Bibliographies"
+};
+
+export function reportSubfolderFor(kind: ResearchKind) {
+  return reportSubfolders[kind] ?? null;
+}
+
+function defaultFolderFor(kind: ResearchKind) {
+  if (kind === "convert-pdfs") return "";
+  if (reportSubfolderFor(kind)) return "Research";
+  return "Research/Reading";
+}
 
 export function ResearchSettings({
   kind,
@@ -26,8 +48,9 @@ export function ResearchSettings({
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
-  const [folder, setFolder] = useState(kind === "convert-pdfs" ? "" : "Research/Reading");
+  const [folder, setFolder] = useState(() => defaultFolderFor(kind));
   const destination = kind === "convert-pdfs" ? "docling" : "obsidian";
+  const reportSubfolder = reportSubfolderFor(kind);
   const sourceRole = requirements.find((requirement) => requirement.binding === "zotero");
   const targetRole = requirements.find((requirement) => requirement.binding === destination);
   const sources = applications.filter((app) => sourceRole && availableForRole(app, sourceRole));
@@ -52,9 +75,10 @@ export function ResearchSettings({
   }, []);
 
   useEffect(() => {
+    const resultingFolder = reportSubfolder ? `${folder}/${reportSubfolder}` : folder;
     const validFolder =
       folder.length > 0 &&
-      folder.length <= 200 &&
+      resultingFolder.length <= 200 &&
       folder.split("/").every((part) => part && !part.startsWith(".") && !/[\\\x00-\x1f]/.test(part));
     if (!selectedSource || !selectedTarget || !validFolder) {
       onChange(null);
@@ -66,7 +90,17 @@ export function ResearchSettings({
       [destination]: selectedTarget.id,
       folder
     });
-  }, [selectedSource, selectedTarget, folder, destination, onChange]);
+  }, [selectedSource, selectedTarget, folder, destination, onChange, reportSubfolder]);
+
+  let folderLabel = "Notes folder";
+  let folderPlaceholder = "Research/Reading";
+  if (reportSubfolder) {
+    folderLabel = "Report root folder";
+    folderPlaceholder = "Research";
+  } else if (destination === "docling") {
+    folderLabel = "Shared PDF folder";
+    folderPlaceholder = "Papers";
+  }
 
   return (
     <fieldset className="ss-stack" disabled={busy}>
@@ -102,21 +136,28 @@ export function ResearchSettings({
         </select>
       </label>
       <label>
-        {destination === "docling" ? "Shared PDF folder" : "Notes folder"}
+        {folderLabel}
         <input
           className="ss-input"
           value={folder}
           maxLength={200}
           onChange={(event) => setFolder(event.target.value)}
-          placeholder={destination === "docling" ? "Papers" : "Research/Reading"}
+          placeholder={folderPlaceholder}
           required
         />
       </label>
-      <p>
-        {destination === "docling"
-          ? "Use the same relative folder in Zotero's linked attachments and Docling's Research documents. Existing conversion results are reused."
-          : "Allows reading recent Zotero metadata and creating notes only in this folder. Existing notes are not replaced."}
-      </p>
+      {reportSubfolder ? (
+        <p>
+          Reports are written under the selected root in the fixed “{reportSubfolder}” subfolder. Existing reports are
+          not replaced.
+        </p>
+      ) : (
+        <p>
+          {destination === "docling"
+            ? "Use the same relative folder in Zotero's linked attachments and Docling's Research documents. Existing conversion results are reused."
+            : "Allows reading recent Zotero metadata and creating notes only in this folder. Existing notes are not replaced."}
+        </p>
+      )}
       {!error && sources.length === 0 ? (
         <p>
           Zotero is not available to this platform with the required actions. Check installation, running state, package

@@ -5,7 +5,8 @@ import { defineConfig } from "vite";
 const uiRoot = fileURLToPath(new URL("../../apps/n8n/ui/", import.meta.url));
 
 function developmentIdentityPlugin(sourceIdentity, backendIdentity) {
-  const label = `HMR UI · source ${sourceIdentity} · pinned backend ${backendIdentity}`;
+  const mode = backendIdentity.startsWith("local candidate ") ? "backend" : "pinned backend";
+  const label = `HMR UI · source ${sourceIdentity} · ${mode} ${backendIdentity}`;
   return {
     name: "scholarserver-n8n-development-identity",
     transformIndexHtml() {

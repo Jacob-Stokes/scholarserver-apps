@@ -121,17 +121,49 @@ try {
   await page.goto("http://127.0.0.1:18232");
   await page.getByRole("button", { name: "Browse automation catalog" }).click();
   await page.getByRole("heading", { name: "Create reading-note starters" }).waitFor();
+  await page.getByRole("heading", { name: "Automatically convert new Zotero PDFs" }).waitFor();
   const cards = page.locator(".automation-template");
-  assert.equal(await cards.count(), 3);
+  assert.equal(await cards.count(), 6);
+  const cardNames = [
+    "Create reading-note starters",
+    "Create a weekly reading roundup",
+    "Check references for missing details",
+    "Create a Markdown bibliography",
+    "Create a daily list of new papers",
+    "Automatically convert new Zotero PDFs"
+  ];
+  for (const cardName of cardNames) {
+    assert.equal(
+      await cards.filter({ has: page.getByRole("heading", { name: cardName, exact: true }) }).count(),
+      1,
+      `catalog should contain ${cardName}`
+    );
+  }
+  const newResearchTemplates = templates.filter((template) =>
+    ["weekly-roundup", "reference-audit", "bibliography"].includes(template.research)
+  );
+  assert.equal(newResearchTemplates.length, 3);
+  await page.locator(".catalog-tag-picker summary").click();
+  for (const template of newResearchTemplates) {
+    const card = cards.filter({ has: page.getByRole("heading", { name: template.name, exact: true }) });
+    for (const tag of template.presentation?.tags ?? []) {
+      assert.equal(await card.getByText(tag, { exact: true }).count(), 1, `${template.name} should show ${tag}`);
+      assert.equal(await page.getByRole("checkbox", { name: tag, exact: true }).count(), 1);
+    }
+  }
+  await page.keyboard.press("Escape");
   const positions = await cards.evaluateAll((elements) =>
     elements.map((element) => element.getBoundingClientRect().top)
   );
   assert.ok(
-    positions.every((top) => top === positions[0]),
-    "desktop catalog should have three columns"
+    positions.filter((top) => top === positions[0]).length >= 3,
+    "desktop catalog should retain its multi-column layout"
   );
   assert.equal(await page.getByLabel("Run every (hours)").count(), 0, "setup fields should not be on browse cards");
   await page.screenshot({ path: new URL("catalog-desktop.png", output).pathname, fullPage: true });
+  await page.getByRole("searchbox", { name: "Search automations" }).fill("weekly reading");
+  assert.equal(await cards.count(), 1);
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search automations" }).fill("reading-note");
   assert.equal(await cards.count(), 1);
   await page.getByLabel("Application", { exact: true }).selectOption("org.scholarserver.docling");
@@ -140,9 +172,9 @@ try {
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await page.locator(".catalog-tag-picker summary").click();
   await page.getByRole("checkbox", { name: "Reading", exact: true }).check();
-  assert.equal(await cards.count(), 1);
+  assert.equal(await cards.count(), 2);
   await page.getByRole("checkbox", { name: "PDFs", exact: true }).check();
-  assert.equal(await cards.count(), 2, "tags use OR within the selection");
+  assert.equal(await cards.count(), 3, "tags use OR within the selection");
   await page.locator(".catalog-tag-picker summary").click();
   await page.screenshot({ path: new URL("catalog-filtered.png", output).pathname, fullPage: true });
   await page.getByRole("button", { name: "Remove Reading filter" }).click();
@@ -153,13 +185,41 @@ try {
   await page.getByLabel("Sort by", { exact: true }).selectOption("name");
   assert.deepEqual(await cards.locator("h2").allTextContents(), [...descending].reverse());
   assert.equal(await page.getByRole("heading", { name: "Check automation execution" }).count(), 0);
+  for (const [cardName, subfolder] of [
+    ["Create a weekly reading roundup", "Weekly roundups"],
+    ["Check references for missing details", "Reference checks"],
+    ["Create a Markdown bibliography", "Bibliographies"]
+  ]) {
+    const card = cards.filter({ has: page.getByRole("heading", { name: cardName, exact: true }) });
+    await card.getByRole("button", { name: "Set up", exact: true }).click();
+    assert.equal(await page.getByLabel("Report root folder", { exact: true }).inputValue(), "Research");
+    await page
+      .getByText(
+        `Reports are written under the selected root in the fixed “${subfolder}” subfolder. Existing reports are not replaced.`,
+        {
+          exact: true
+        }
+      )
+      .waitFor();
+    if (subfolder === "Weekly roundups") {
+      await page.screenshot({ path: new URL("catalog-selected-setup.png", output).pathname, fullPage: true });
+    }
+    await page.getByRole("button", { name: "Back to catalog", exact: true }).click();
+  }
+  const daily = cards.filter({
+    has: page.getByRole("heading", { name: "Create a daily list of new papers", exact: true })
+  });
+  await daily.getByRole("button", { name: "Set up", exact: true }).click();
+  assert.equal(await page.getByLabel("Notes folder", { exact: true }).inputValue(), "Research/Reading");
+  await page.getByRole("button", { name: "Back to catalog", exact: true }).click();
   const reading = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Create reading-note starters", exact: true }) });
   await reading.getByRole("button", { name: "Set up", exact: true }).click();
   await page.getByRole("button", { name: "Back to catalog", exact: true }).click();
-  assert.equal(await cards.count(), 3);
+  assert.equal(await cards.count(), 6);
   await reading.getByRole("button", { name: "Set up", exact: true }).click();
+  assert.equal(await page.getByLabel("Notes folder", { exact: true }).inputValue(), "Research/Reading");
   await page.getByLabel("Automation name", { exact: true }).fill("My reading notes");
   await page.getByLabel("Zotero library").selectOption("personal/library");
   await page.getByLabel("Obsidian vault").selectOption("notes");
@@ -209,6 +269,7 @@ try {
     .filter({ has: page.getByRole("heading", { name: "Automatically convert new Zotero PDFs", exact: true }) });
   await pdf.getByRole("button", { name: "Set up", exact: true }).click();
   assert.equal(await page.getByLabel("Check every (minutes)").inputValue(), "1");
+  assert.equal(await page.getByLabel("Shared PDF folder", { exact: true }).inputValue(), "");
   await page.getByLabel("Automation name", { exact: true }).fill("PDF watcher");
   await page.getByLabel("Zotero library").selectOption("personal/library");
   await page.getByLabel("Docling installation").selectOption("converter");

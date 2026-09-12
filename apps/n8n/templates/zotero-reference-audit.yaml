@@ -1,0 +1,184 @@
+schemaVersion: 1
+id: zotero-reference-audit
+version: 1
+name: Check references for missing details
+description: Check papers added during the previous UTC day for empty titles, authors or publication dates. A missing DOI is allowed. No issues create no note; existing dated reports are left unchanged. No AI service is used.
+research: reference-audit
+presentation:
+  tags: [References, Notes]
+  summary: "Flag only empty paper titles, authors or publication dates from the previous UTC day. Missing DOIs are allowed."
+  maturity: preview
+  effects: "Creates notes in Reference checks only when missing details are found; existing files are not replaced."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Read paper metadata"
+    actions: [research-items]
+  - binding: obsidian
+    packageId: org.scholarserver.obsidian
+    name: Obsidian
+    role: "Create notes"
+    actions: [create-research-note]
+configuration:
+  scheduleNode: schedule
+workflow:
+  nodes:
+    - id: audit-stage
+      name: Collect papers for checking
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [-80, -220]
+      parameters:
+        content: "## 1 · Collect papers\nRead the previous UTC day. Check only title, authors and publication date; DOI is optional."
+        width: 1360
+        height: 560
+        color: 4
+    - id: format-stage
+      name: Format missing details
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [1340, -220]
+      parameters:
+        content: "## 2 · Format findings\nCreate a deterministic review list. No paper-content summary or AI service is used. No findings means no note."
+        width: 760
+        height: 560
+        color: 5
+    - id: save-stage
+      name: Save reference check
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [2160, -220]
+      parameters:
+        content: "## 3 · Save without replacing\nWrite digest-${date}.md in the fixed Reference checks subfolder only when issues exist."
+        width: 560
+        height: 560
+        color: 4
+    - id: manual
+      name: Run now
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 180]
+      parameters: {}
+    - id: schedule
+      name: Every 24 hours
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - {field: hours, hoursInterval: 24}
+    - id: papers
+      name: Read yesterday's Zotero papers
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/papers
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '{}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+    - id: format
+      name: Format the reference audit
+      type: n8n-nodes-base.code
+      typeVersion: 2
+      position: [1440, 0]
+      parameters:
+        jsCode: |
+          const firstInput = $input.first();
+          const payload = firstInput && firstInput.json && typeof firstInput.json === 'object' ? firstInput.json : {};
+          const date = typeof payload.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.date) ? payload.date : '';
+          const periodEnd = typeof payload.periodEnd === 'string' && Number.isFinite(Date.parse(payload.periodEnd)) ? payload.periodEnd : '';
+          if (!date || !periodEnd || !Array.isArray(payload.items) || payload.items.length === 0) return [];
+
+          function plain(value) {
+            if (value === null || value === undefined || typeof value === 'object') return '';
+            return String(value).trim();
+          }
+
+          function markdown(value) {
+            return plain(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_{}\[\]()<>#!|~]/g, '\\$&');
+          }
+
+          function authors(paper) {
+            if (Array.isArray(paper.authors)) return paper.authors.map(plain).filter(Boolean);
+            const singleAuthor = plain(paper.authors);
+            return singleAuthor ? [singleAuthor] : [];
+          }
+
+          function zoteroUrl(paper) {
+            return typeof paper.zoteroUrl === 'string' && /^zotero:\/\/select\/library\/items\/[A-Z0-9]{8}$/.test(paper.zoteroUrl)
+              ? paper.zoteroUrl
+              : '';
+          }
+
+          function titleMarkup(paper) {
+            const title = markdown(plain(paper.title) || 'Untitled paper');
+            const url = zoteroUrl(paper);
+            return url ? `[${title}](${url})` : title;
+          }
+
+          const papers = payload.items
+            .map((paper, index) => ({paper, index}))
+            .filter(({paper}) => paper && typeof paper === 'object' && !Array.isArray(paper))
+            .sort((left, right) => {
+              const leftKey = plain(left.paper.key) || plain(left.paper.title);
+              const rightKey = plain(right.paper.key) || plain(right.paper.title);
+              if (leftKey < rightKey) return -1;
+              if (leftKey > rightKey) return 1;
+              return left.index - right.index;
+            })
+            .map(({paper}) => paper);
+
+          const issues = papers.map((paper) => {
+            const missing = [];
+            if (!plain(paper.title)) missing.push('title');
+            if (authors(paper).length === 0) missing.push('authors');
+            if (!plain(paper.date)) missing.push('date');
+            return {paper, missing};
+          }).filter(({missing}) => missing.length > 0);
+
+          if (issues.length === 0) return [];
+          const entries = issues.map(({paper, missing}) => `- ${titleMarkup(paper)} — missing: ${missing.join(', ')}`);
+          return [{json: {
+            filename: `digest-${date}.md`,
+            content: [
+              `# Reference details to review — ${date}`,
+              '',
+              `Papers added from ${date} until ${periodEnd} (exclusive UTC).`,
+              'This check flags only empty or whitespace-only title, authors and publication-date fields. DOI is optional and is not checked.',
+              '',
+              ...entries,
+              ''
+            ].join('\n')
+          }}];
+    - id: save
+      name: Create reference check without overwriting
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [2240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/note
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '={{ $json }}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+  connections:
+    Run now:
+      main: [[{node: Read yesterday's Zotero papers, type: main, index: 0}]]
+    Every 24 hours:
+      main: [[{node: Read yesterday's Zotero papers, type: main, index: 0}]]
+    Read yesterday's Zotero papers:
+      main: [[{node: Format the reference audit, type: main, index: 0}]]
+    Format the reference audit:
+      main: [[{node: Create reference check without overwriting, type: main, index: 0}]]
+  settings: {executionOrder: v1, executionTimeout: 3600, saveDataSuccessExecution: none, saveDataErrorExecution: none}

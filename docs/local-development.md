@@ -73,3 +73,27 @@ reset command. Inspect `.dev/n8n/vite.log` if the source UI does not start.
 This workflow proves local UI/backend integration only. It does not qualify image
 contents, native release architectures, package publication, a signed Manager
 installation, private editor routing, backup/restore or live research grants.
+
+### Explicit local integration candidates
+
+Template and bridge changes require rebuilding the integration image; HMR alone
+only updates the UI. To test unpublished backend source, build a native local
+image from a committed revision with `org.opencontainers.image.revision` and
+`com.scholarserver.source-digest` labels. Obtain the digest with
+`node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe n8n-app`.
+Select its exact local `sha256:` image ID explicitly:
+
+```sh
+N8N_CANDIDATE_IMAGE=sha256:YOUR_LOCAL_IMAGE_ID npm run dev:n8n -- use-candidate
+npm run dev:n8n -- status
+```
+
+Selection checks the native architecture, source fingerprint and existing Compose
+ownership before starting. The UI identifies this backend as a local candidate,
+not a published package. Start, initialize and status reject a candidate whose
+runtime inputs have since changed. Rebuild and reselect after such changes.
+The package's n8n runtime stays pinned, and state volumes are preserved.
+
+`npm run dev:n8n -- use-package` explicitly restores the package-selected backend.
+Neither command updates package manifests, accepted image-source locks or core
+pins. Candidate selection is private local state in `.dev/n8n/candidate.json`.

@@ -13,8 +13,8 @@ import { WorkflowInstallations } from "./workflows.mjs";
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
 const scope = { kind: "convert-pdfs", workspaceId: "personal", zotero: "zotero", docling: "docling", folder: "Papers" };
 
-test("catalog contains four unique native workflows with disabled-by-default creation", () => {
-  assert.equal(templates.length, 4);
+test("catalog contains seven unique native workflows with disabled-by-default creation", () => {
+  assert.equal(templates.length, 7);
   for (const template of templates) {
     assert.equal(template.workflow.active, undefined);
     assert.ok(template.workflow.nodes.some((node) => node.type === "n8n-nodes-base.manualTrigger"));

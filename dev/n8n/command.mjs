@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "yaml";
 import { packageTestImages } from "../../apps/n8n/check-package.mjs";
+import { assertCandidateMatches, candidateDefinition, candidateSourceDigest } from "./candidate.mjs";
 
 export const developmentProject = "scholarserver-n8n-dev";
 export const developmentPorts = Object.freeze({ frontend: 18320, integration: 18321, nativeEditor: 18322 });
@@ -19,6 +20,7 @@ const passwordFile = path.join(localStateDirectory, "owner-password");
 const vitePidFile = path.join(localStateDirectory, "vite.pid");
 const viteIdentityFile = path.join(localStateDirectory, "vite-identity");
 const viteLogFile = path.join(localStateDirectory, "vite.log");
+const candidateFile = path.join(localStateDirectory, "candidate.json");
 const maximumSetupResponseBytes = 16 * 1024;
 const ownedVolumes = [
   { name: "scholarserver-n8n-dev-state", composeName: "n8n-state" },
@@ -459,6 +461,7 @@ function printIdentity(definition) {
   console.log(`Current package: ${definition.packageVersion}`);
   console.log(`Expected n8n:    ${definition.n8nImage}`);
   console.log(`Expected app:    ${definition.integrationImage}`);
+  if (definition.candidate) console.log(`Backend mode:    ${definition.backendIdentity}`);
 }
 
 export function backendContainerIdentity(inspected, expectedImage) {
@@ -482,7 +485,7 @@ function reportBackendContainer(name, expectedImage) {
   console.log(`  configured image: ${identity.configuredImage}`);
   console.log(`  image ID:         ${identity.imageId}`);
   console.log(
-    `  current package:  ${identity.matchesCurrentPackage ? "match" : `MISMATCH; expected ${expectedImage}`}`
+    `  selected backend: ${identity.matchesCurrentPackage ? "match" : `MISMATCH; expected ${expectedImage}`}`
   );
   return identity.matchesCurrentPackage;
 }
@@ -494,6 +497,7 @@ function reportBackendIdentities(definition) {
 }
 
 async function startCommand(definition) {
+  if (definition.candidate) assertCandidateMatches(definition.candidate, await candidateSourceDigest(repositoryRoot));
   const hostArchitecture = requireDocker();
   assertExistingComposeOwnership();
   requireNativeImage(definition.n8nImage, hostArchitecture);
@@ -501,13 +505,51 @@ async function startCommand(definition) {
   const result = runCompose(definition, ["up", "--detach", "--wait", "--wait-timeout", "120"]);
   if (result.status !== 0) throw new Error("The pinned n8n development backends did not become healthy.");
   if (!reportBackendIdentities(definition)) {
-    throw new Error("A running backend does not match the current package image selection.");
+    throw new Error("A running backend does not match the selected image.");
   }
   // Refresh the injected identity after a checkout or package-selection change.
   await stopVite();
   await startVite(definition);
   printIdentity(definition);
-  console.log("The HMR UI and pinned native backends are running. Run initialize explicitly for a fresh volume.");
+  console.log("The HMR UI and selected native backends are running. Run initialize explicitly for a fresh volume.");
+}
+
+async function useCandidateCommand(packageDefinition) {
+  const architecture = requireDocker();
+  assertExistingComposeOwnership();
+  const imageId = process.env.N8N_CANDIDATE_IMAGE;
+  if (!/^sha256:[a-f0-9]{64}$/.test(imageId ?? ""))
+    throw new Error("Set N8N_CANDIDATE_IMAGE to an exact local image ID.");
+  requireNativeImage(imageId, architecture);
+  const inspection = run("docker", ["image", "inspect", imageId, "--format", "{{json .Config.Labels}}"], {
+    env: validatedDockerEnvironment,
+    stdio: "pipe"
+  });
+  if (inspection.status !== 0) throw new Error("Could not read candidate build labels.");
+  const labels = JSON.parse(inspection.stdout);
+  const candidate = {
+    schemaVersion: 1,
+    imageId,
+    sourceDigest: labels?.["com.scholarserver.source-digest"],
+    sourceRevision: labels?.["org.opencontainers.image.revision"]
+  };
+  const definition = candidateDefinition(packageDefinition, candidate);
+  assertCandidateMatches(candidate, await candidateSourceDigest(repositoryRoot));
+  await ensureLocalStateDirectory();
+  const temporary = `${candidateFile}.tmp`;
+  await writeFile(temporary, JSON.stringify(candidate), { mode: 0o600 });
+  await rename(temporary, candidateFile);
+  await chmod(candidateFile, 0o600);
+  return startCommand(definition);
+}
+
+async function selectedDefinition(packageDefinition) {
+  try {
+    return candidateDefinition(packageDefinition, JSON.parse(await readPrivateFile(candidateFile)));
+  } catch (error) {
+    if (error.code === "ENOENT") return packageDefinition;
+    throw error;
+  }
 }
 
 async function readIntegrationStatus() {
@@ -546,10 +588,11 @@ process.exit(4);
 `;
 
 async function initializeCommand(definition) {
+  if (definition.candidate) assertCandidateMatches(definition.candidate, await candidateSourceDigest(repositoryRoot));
   requireDocker();
   assertExistingComposeOwnership();
   if (!reportBackendIdentities(definition)) {
-    throw new Error("Initialization refused because a running backend differs from the current package.");
+    throw new Error("Initialization refused because a running backend differs from the selected image.");
   }
   let currentStatus;
   try {
@@ -648,12 +691,13 @@ async function statusCommand(definition) {
   const composeResult = runCompose(definition, ["ps"]);
   if (composeResult.status !== 0) throw new Error("Could not read the n8n development backend status.");
   if (!reportBackendIdentities(definition)) {
-    throw new Error("Running backend image selection differs from the current package.");
+    throw new Error("Running backend image selection differs from the selected images.");
   }
   if (await endpointAvailable(`http://127.0.0.1:${developmentPorts.integration}/health`)) {
     const integrationStatus = await readIntegrationStatus().catch(() => null);
     console.log(`Setup state:   ${integrationStatus?.phase ?? "unavailable"}`);
   }
+  if (definition.candidate) assertCandidateMatches(definition.candidate, await candidateSourceDigest(repositoryRoot));
 }
 
 async function stopCommand(definition) {
@@ -670,11 +714,17 @@ async function stopCommand(definition) {
 }
 
 function usage() {
-  console.log("Usage: node dev/n8n/command.mjs <start|initialize|status|stop>");
+  console.log("Usage: node dev/n8n/command.mjs <start|initialize|status|stop|use-candidate|use-package>");
 }
 
 export async function main(command = process.argv[2]) {
-  const definition = await loadDevelopmentDefinition();
+  const packageDefinition = await loadDevelopmentDefinition();
+  if (command === "use-candidate") return useCandidateCommand(packageDefinition);
+  if (command === "use-package") {
+    await rm(candidateFile, { force: true });
+    return startCommand(packageDefinition);
+  }
+  const definition = await selectedDefinition(packageDefinition);
   switch (command) {
     case "start":
       return startCommand(definition);

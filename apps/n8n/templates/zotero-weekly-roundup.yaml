@@ -1,0 +1,182 @@
+schemaVersion: 1
+id: zotero-weekly-roundup
+version: 1
+name: Create a weekly reading roundup
+description: Create an Obsidian metadata roundup for the previous completed UTC Monday-to-Monday week. Empty weeks create no note; existing dated roundups are left unchanged. No AI service is used.
+research: weekly-roundup
+presentation:
+  tags: [Reading, Notes]
+  summary: "Collect paper metadata from the previous completed UTC week in one note. Empty weeks create no note."
+  maturity: preview
+  effects: "Creates notes in Weekly roundups; existing files are not replaced."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Read paper metadata"
+    actions: [research-items]
+  - binding: obsidian
+    packageId: org.scholarserver.obsidian
+    name: Obsidian
+    role: "Create notes"
+    actions: [create-research-note]
+configuration:
+  scheduleNode: schedule
+workflow:
+  nodes:
+    - id: roundup-stage
+      name: Collect weekly papers
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [-80, -220]
+      parameters:
+        content: "## 1 · Collect weekly papers\nRead the previous completed UTC Monday-to-Monday week. Check every 24 hours by default."
+        width: 1360
+        height: 560
+        color: 4
+    - id: format-stage
+      name: Format metadata roundup
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [1340, -220]
+      parameters:
+        content: "## 2 · Format metadata\nCreate deterministic Markdown metadata only. This workflow does not summarise paper content or call an AI service."
+        width: 760
+        height: 560
+        color: 5
+    - id: save-stage
+      name: Save weekly roundup
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [2160, -220]
+      parameters:
+        content: "## 3 · Save without replacing\nWrite digest-${date}.md in the fixed Weekly roundups subfolder. Empty weeks produce no write."
+        width: 520
+        height: 560
+        color: 4
+    - id: manual
+      name: Run now
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 180]
+      parameters: {}
+    - id: schedule
+      name: Every 24 hours
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - {field: hours, hoursInterval: 24}
+    - id: papers
+      name: Read the completed UTC week
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/papers
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '{}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+    - id: format
+      name: Format the weekly roundup
+      type: n8n-nodes-base.code
+      typeVersion: 2
+      position: [1440, 0]
+      parameters:
+        jsCode: |
+          const firstInput = $input.first();
+          const payload = firstInput && firstInput.json && typeof firstInput.json === 'object' ? firstInput.json : {};
+          const date = typeof payload.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.date) ? payload.date : '';
+          const periodEnd = typeof payload.periodEnd === 'string' && Number.isFinite(Date.parse(payload.periodEnd)) ? payload.periodEnd : '';
+          if (!date || !periodEnd || !Array.isArray(payload.items) || payload.items.length === 0) return [];
+
+          function plain(value) {
+            if (value === null || value === undefined || typeof value === 'object') return '';
+            return String(value).trim();
+          }
+
+          function markdown(value) {
+            return plain(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_{}\[\]()<>#!|~]/g, '\\$&');
+          }
+
+          function authors(paper) {
+            if (Array.isArray(paper.authors)) return paper.authors.map(plain).filter(Boolean);
+            const singleAuthor = plain(paper.authors);
+            return singleAuthor ? [singleAuthor] : [];
+          }
+
+          function zoteroUrl(paper) {
+            return typeof paper.zoteroUrl === 'string' && /^zotero:\/\/select\/library\/items\/[A-Z0-9]{8}$/.test(paper.zoteroUrl)
+              ? paper.zoteroUrl
+              : '';
+          }
+
+          function titleMarkup(paper) {
+            const title = markdown(plain(paper.title) || 'Untitled paper');
+            const url = zoteroUrl(paper);
+            return url ? `[${title}](${url})` : title;
+          }
+
+          const papers = payload.items
+            .map((paper, index) => ({paper, index}))
+            .filter(({paper}) => paper && typeof paper === 'object' && !Array.isArray(paper))
+            .sort((left, right) => {
+              const leftKey = plain(left.paper.key) || plain(left.paper.title);
+              const rightKey = plain(right.paper.key) || plain(right.paper.title);
+              if (leftKey < rightKey) return -1;
+              if (leftKey > rightKey) return 1;
+              return left.index - right.index;
+            })
+            .map(({paper}) => paper);
+
+          if (papers.length === 0) return [];
+          const entries = papers.map((paper) => {
+            const authorText = authors(paper).map(markdown).join(', ') || 'Authors not provided';
+            const dateText = markdown(paper.date) || 'Publication date not provided';
+            const doiText = markdown(paper.doi);
+            const doiPart = doiText ? `; DOI: ${doiText}` : '';
+            return `- ${titleMarkup(paper)} — ${authorText}; date: ${dateText}${doiPart}`;
+          });
+          return [{json: {
+            filename: `digest-${date}.md`,
+            content: [
+              `# Weekly reading roundup — ${date}`,
+              '',
+              `Papers added from ${date} until ${periodEnd} (exclusive UTC).`,
+              'This is a metadata roundup; it does not summarise paper content.',
+              '',
+              ...entries,
+              ''
+            ].join('\n')
+          }}];
+    - id: save
+      name: Create weekly roundup without overwriting
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [2240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/note
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '={{ $json }}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+  connections:
+    Run now:
+      main: [[{node: Read the completed UTC week, type: main, index: 0}]]
+    Every 24 hours:
+      main: [[{node: Read the completed UTC week, type: main, index: 0}]]
+    Read the completed UTC week:
+      main: [[{node: Format the weekly roundup, type: main, index: 0}]]
+    Format the weekly roundup:
+      main: [[{node: Create weekly roundup without overwriting, type: main, index: 0}]]
+  settings: {executionOrder: v1, executionTimeout: 3600, saveDataSuccessExecution: none, saveDataErrorExecution: none}

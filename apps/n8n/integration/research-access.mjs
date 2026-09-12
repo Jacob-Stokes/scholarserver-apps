@@ -4,7 +4,29 @@ import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { AutomationConfigurationError } from "./configuration.mjs";
 
-export const researchKinds = ["reading-notes", "research-digest", "convert-pdfs"];
+export const researchKinds = [
+  "reading-notes",
+  "research-digest",
+  "convert-pdfs",
+  "weekly-roundup",
+  "reference-audit",
+  "bibliography"
+];
+
+export function noteOutputFolder(scope) {
+  // Fixed report subfolders keep different templates from claiming the same
+  // dated filename. They can only narrow the user-approved output root.
+  switch (scope.kind) {
+    case "weekly-roundup":
+      return `${scope.folder}/Weekly roundups`;
+    case "reference-audit":
+      return `${scope.folder}/Reference checks`;
+    case "bibliography":
+      return `${scope.folder}/Bibliographies`;
+    default:
+      return scope.folder;
+  }
+}
 
 export function researchConfiguration(template, settings) {
   if (!template.research) return null;
@@ -31,6 +53,9 @@ export function researchConfiguration(template, settings) {
     folder.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part))
   ) {
     throw new AutomationConfigurationError("Choose a relative folder, without hidden folders or parent paths");
+  }
+  if (noteOutputFolder({ kind: template.research, folder }).length > 200) {
+    throw new AutomationConfigurationError("Choose a shorter folder to leave room for the report subfolder");
   }
   return { kind: template.research, ...bindings };
 }

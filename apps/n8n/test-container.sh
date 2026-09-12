@@ -109,4 +109,14 @@ if [ "${SCHOLARSERVER_CHECK_RESEARCH:-0}" = 1 ]; then
     node apps/n8n/integration/check-research-execute.mjs "$prefix-app" "$workflow_id"
   done
   docker exec "$prefix-integration" node -e 'fetch("http://manager:8080/verify").then(async r => { const result = await r.json(); if (!r.ok) throw Error(JSON.stringify(result)); console.log(result); }).catch(error => { console.error(error); process.exit(1); })'
+  report_ids=$(docker exec "$prefix-integration" node -e 'console.log(JSON.parse(require("fs").readFileSync("/runtime/report-test-ids.json")).join(" "))')
+  for scenario in empty denied; do
+    docker exec "$prefix-integration" node -e 'fetch("http://manager:8080/scenario/" + process.argv[1], {method:"POST"}).then(r => {if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))' "$scenario"
+    expected=success
+    if [ "$scenario" = denied ]; then expected=denied; fi
+    for workflow_id in $report_ids; do
+      node apps/n8n/integration/check-research-execute.mjs "$prefix-app" "$workflow_id" "$expected"
+    done
+    docker exec "$prefix-integration" node -e 'fetch("http://manager:8080/verify-no-writes").then(async r => {if(!r.ok)throw Error("Unexpected report writes"); console.log(await r.json())}).catch(()=>process.exit(1))'
+  done
 fi

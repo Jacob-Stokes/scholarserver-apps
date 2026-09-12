@@ -22,7 +22,8 @@ export function scheduleConfiguration(template) {
     validateMinutes(intervals[0].minutesInterval);
     return { minutesInterval: intervals[0].minutesInterval, minimum: 1, maximum: 60 };
   }
-  const maximum = template.research === "research-digest" ? 24 : 168;
+  const dailyReport = ["research-digest", "reference-audit", "bibliography"].includes(template.research);
+  const maximum = dailyReport ? 24 : 168;
   validateHours(intervals[0].hoursInterval, maximum);
   return { hoursInterval: intervals[0].hoursInterval, minimum: 1, maximum };
 }

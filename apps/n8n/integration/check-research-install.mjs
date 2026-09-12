@@ -10,6 +10,8 @@ const templates = (await (await fetch("http://localhost:8080/api/automations")).
   (template) => template.research
 );
 const ids = [];
+const reportIds = [];
+assert.equal(templates.length, 6, "All six reviewed research templates must be available");
 for (const template of templates) {
   const destination = template.research === "convert-pdfs" ? "docling" : "obsidian";
   const response = await fetch("http://localhost:8080/api/install", {
@@ -47,6 +49,9 @@ for (const template of templates) {
     settings: workflow.settings
   });
   ids.push(workflow.id);
+  if (["weekly-roundup", "reference-audit", "bibliography"].includes(template.research)) {
+    reportIds.push(workflow.id);
+  }
 }
 // A second configured copy has its own credential and receipt. Reusing the
 // request identity must return the same copy, never create a third one.
@@ -105,6 +110,8 @@ assert.equal((await client.getWorkflow(firstCopy.workflowId)).active, false);
 const customised = await (await fetch("http://localhost:8080/api/automations")).json();
 assert.equal(customised.installations[duplicateId].editing, "customised");
 await writeFile("/runtime/research-test-ids.json", JSON.stringify(ids));
+assert.equal(reportIds.length, 3);
+await writeFile("/runtime/report-test-ids.json", JSON.stringify(reportIds));
 console.log(
-  "Three templates and a second reading copy: independent identity, enable/disable, native edit detection and no overwrite passed."
+  "Six templates and a second reading copy: independent identity, enable/disable, native edit detection and no overwrite passed."
 );

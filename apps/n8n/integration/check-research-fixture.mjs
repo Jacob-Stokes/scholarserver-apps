@@ -1,12 +1,15 @@
 // Disposable native acceptance only. This is not packaged in any runtime image.
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, readFile } from "node:fs/promises";
+import { appendFile, mkdtemp, readdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createResearchNote } from "/research-note.mjs";
 
 const vault = await mkdtemp("/tmp/research-vault-");
 const serviceConnection = JSON.parse(await readFile("/runtime/manager-connection.json", "utf8"));
 const operations = [];
+const noteResults = [];
+let scenario = "populated";
+let writesBeforeScenario = 0;
 const packages = [
   {
     id: "org.scholarserver.zotero",
@@ -52,27 +55,49 @@ createServer(async (request, response) => {
   let status = 200;
   let result;
   try {
-    if (request.url === "/api/v1/service/actions") {
+    if (request.url === "/scenario/empty" && request.method === "POST") {
+      scenario = "empty";
+      writesBeforeScenario = noteResults.length;
+      result = { scenario };
+    } else if (request.url === "/scenario/denied" && request.method === "POST") {
+      scenario = "denied";
+      writesBeforeScenario = noteResults.length;
+      result = { scenario };
+    } else if (request.url === "/verify-no-writes") {
+      assert.notEqual(scenario, "populated");
+      assert.equal(noteResults.length, writesBeforeScenario);
+      result = { checked: true, scenario, additionalWrites: 0 };
+    } else if (request.url === "/api/v1/service/actions") {
       assert.equal(request.headers.authorization, `Bearer ${serviceConnection.token}`);
       result = {
         applications: packages.map((app) => ({
           id: app.id.split(".").at(-1),
           packageId: app.id,
           workspaceId: "personal",
-          actionIds: app.onboarding.actions.map((action) => action.id)
+          actionIds: scenario === "denied" ? [] : app.onboarding.actions.map((action) => action.id)
         }))
       };
     } else if (request.url === "/verify") {
       const notes = await readdir(`${vault}/Research`);
       assert.ok(notes.includes("zotero-PAPER123.md"));
       assert.ok(notes.some((name) => /^digest-\d{4}-\d{2}-\d{2}\.md$/.test(name)));
-      assert.equal(notes.length, 3);
+      assert.equal(notes.filter((name) => name.endsWith(".md")).length, 3);
+      for (const folder of ["Weekly roundups", "Reference checks", "Bibliographies"]) {
+        const reports = await readdir(`${vault}/Research/${folder}`);
+        assert.equal(reports.length, 1);
+        assert.match(reports[0], /^digest-\d{4}-\d{2}-\d{2}\.md$/);
+        const content = await readFile(`${vault}/Research/${folder}/${reports[0]}`, "utf8");
+        assert.match(content, /PAPER12[34]/);
+        assert.match(content, /User edit preserved/);
+        assert.ok(noteResults.some((result) => result.folder === `Research/${folder}` && result.state === "existing"));
+      }
       assert.equal(attached.size, 1);
       assert.ok(statusChecks >= 5, "The pending branch and repeat execution must check the conversion again");
       const note = await readFile(`${vault}/Research/zotero-PAPER123.md`, "utf8");
       assert.match(note, /zotero:\/\/select\/library\/items\/PAPER123/);
       assert.match(note, /## Key points/);
-      result = { checked: true, notes: notes.length, attachments: attached.size, operations };
+      assert.match(note, /User edit preserved/);
+      result = { checked: true, reportTypes: 3, attachments: attached.size, operations };
     } else {
       const match = request.url.match(
         /^\/api\/v1\/service\/instances\/personal\/(zotero|obsidian|docling)\/actions\/([a-z-]+)$/
@@ -86,10 +111,16 @@ createServer(async (request, response) => {
       operations.push(action);
       switch (action) {
         case "research-items":
-          result = { items: papers };
+          assert.ok(Date.parse(input.until) > Date.parse(input.since));
+          assert.ok(Date.parse(input.until) - Date.parse(input.since) <= 7 * 86400000);
+          result = { items: scenario === "empty" ? [] : papers };
           break;
         case "create-research-note":
           result = await createResearchNote(vault, input);
+          noteResults.push({ folder: input.folder, state: result.state });
+          if (result.state === "created") {
+            await appendFile(`${vault}/${input.folder}/${input.filename}`, "\nUser edit preserved\n");
+          }
           break;
         case "discover":
           result = {

@@ -1,0 +1,188 @@
+schemaVersion: 1
+id: zotero-bibliography
+version: 1
+name: Create a Markdown bibliography
+description: Create a plain Markdown metadata bibliography for papers added during the previous UTC day. Empty days create no note; existing dated bibliographies are left unchanged. This is not a CSL, APA or other style-formatted export, and no AI service is used.
+research: bibliography
+presentation:
+  tags: [References, Notes]
+  summary: "Collect the previous UTC day's paper metadata as a plain Markdown bibliography. Empty days create no note."
+  maturity: preview
+  effects: "Creates notes in Bibliographies; existing files are not replaced."
+  ai: none
+requirements:
+  - binding: zotero
+    packageId: org.scholarserver.zotero
+    name: Zotero
+    role: "Read paper metadata"
+    actions: [research-items]
+  - binding: obsidian
+    packageId: org.scholarserver.obsidian
+    name: Obsidian
+    role: "Create notes"
+    actions: [create-research-note]
+configuration:
+  scheduleNode: schedule
+workflow:
+  nodes:
+    - id: bibliography-stage
+      name: Collect bibliography papers
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [-80, -220]
+      parameters:
+        content: "## 1 · Collect papers\nRead the previous UTC day. Empty days produce no note."
+        width: 1360
+        height: 560
+        color: 4
+    - id: format-stage
+      name: Format Markdown metadata
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [1340, -220]
+      parameters:
+        content: "## 2 · Format metadata\nCreate a plain Markdown metadata export. It is not claimed as CSL, APA or another citation style, and it does not summarise paper content."
+        width: 760
+        height: 560
+        color: 5
+    - id: save-stage
+      name: Save bibliography
+      type: n8n-nodes-base.stickyNote
+      typeVersion: 1
+      position: [2160, -220]
+      parameters:
+        content: "## 3 · Save without replacing\nWrite digest-${date}.md in the fixed Bibliographies subfolder."
+        width: 520
+        height: 560
+        color: 4
+    - id: manual
+      name: Run now
+      type: n8n-nodes-base.manualTrigger
+      typeVersion: 1
+      position: [0, 180]
+      parameters: {}
+    - id: schedule
+      name: Every 24 hours
+      type: n8n-nodes-base.scheduleTrigger
+      typeVersion: 1.2
+      position: [0, 0]
+      parameters:
+        rule:
+          interval:
+            - {field: hours, hoursInterval: 24}
+    - id: papers
+      name: Read yesterday's Zotero papers
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/papers
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '{}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+    - id: format
+      name: Format the Markdown bibliography
+      type: n8n-nodes-base.code
+      typeVersion: 2
+      position: [1440, 0]
+      parameters:
+        jsCode: |
+          const firstInput = $input.first();
+          const payload = firstInput && firstInput.json && typeof firstInput.json === 'object' ? firstInput.json : {};
+          const date = typeof payload.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.date) ? payload.date : '';
+          const periodEnd = typeof payload.periodEnd === 'string' && Number.isFinite(Date.parse(payload.periodEnd)) ? payload.periodEnd : '';
+          if (!date || !periodEnd || !Array.isArray(payload.items) || payload.items.length === 0) return [];
+
+          function plain(value) {
+            if (value === null || value === undefined || typeof value === 'object') return '';
+            return String(value).trim();
+          }
+
+          function markdown(value) {
+            return plain(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_{}\[\]()<>#!|~]/g, '\\$&');
+          }
+
+          function authors(paper) {
+            if (Array.isArray(paper.authors)) return paper.authors.map(plain).filter(Boolean);
+            const singleAuthor = plain(paper.authors);
+            return singleAuthor ? [singleAuthor] : [];
+          }
+
+          function zoteroUrl(paper) {
+            return typeof paper.zoteroUrl === 'string' && /^zotero:\/\/select\/library\/items\/[A-Z0-9]{8}$/.test(paper.zoteroUrl)
+              ? paper.zoteroUrl
+              : '';
+          }
+
+          function titleText(paper) {
+            return markdown(plain(paper.title) || 'Untitled paper');
+          }
+
+          const papers = payload.items
+            .map((paper, index) => ({paper, index}))
+            .filter(({paper}) => paper && typeof paper === 'object' && !Array.isArray(paper))
+            .sort((left, right) => {
+              const leftKey = plain(left.paper.key) || plain(left.paper.title);
+              const rightKey = plain(right.paper.key) || plain(right.paper.title);
+              if (leftKey < rightKey) return -1;
+              if (leftKey > rightKey) return 1;
+              return left.index - right.index;
+            })
+            .map(({paper}) => paper);
+
+          if (papers.length === 0) return [];
+          const entries = papers.flatMap((paper, index) => {
+            const authorText = authors(paper).map(markdown).join(', ') || 'Authors not provided';
+            const dateText = markdown(paper.date) || 'Publication date not provided';
+            const doiText = markdown(paper.doi) || 'Not provided';
+            const url = zoteroUrl(paper);
+            const zoteroText = url ? `[Open in Zotero](${url})` : 'Link unavailable';
+            return [
+              `## ${index + 1}. ${titleText(paper)}`,
+              `- Authors: ${authorText}`,
+              `- Date: ${dateText}`,
+              `- DOI: ${doiText}`,
+              `- Zotero: ${zoteroText}`,
+              ''
+            ];
+          });
+          return [{json: {
+            filename: `digest-${date}.md`,
+            content: [
+              `# Markdown bibliography — ${date}`,
+              '',
+              `Papers added from ${date} until ${periodEnd} (exclusive UTC).`,
+              'Plain Markdown metadata is provided here; this is not a CSL, APA or other style-formatted bibliography.',
+              'This note does not summarise paper content.',
+              '',
+              ...entries
+            ].join('\n')
+          }}];
+    - id: save
+      name: Create bibliography without overwriting
+      type: n8n-nodes-base.httpRequest
+      typeVersion: 4.2
+      position: [2240, 0]
+      parameters:
+        method: POST
+        url: http://integration:8081/research/note
+        authentication: genericCredentialType
+        genericAuthType: httpHeaderAuth
+        sendBody: true
+        specifyBody: json
+        jsonBody: '={{ $json }}'
+        options: {timeout: 120000, redirect: {redirect: {followRedirects: false}}}
+  connections:
+    Run now:
+      main: [[{node: Read yesterday's Zotero papers, type: main, index: 0}]]
+    Every 24 hours:
+      main: [[{node: Read yesterday's Zotero papers, type: main, index: 0}]]
+    Read yesterday's Zotero papers:
+      main: [[{node: Format the Markdown bibliography, type: main, index: 0}]]
+    Format the Markdown bibliography:
+      main: [[{node: Create bibliography without overwriting, type: main, index: 0}]]
+  settings: {executionOrder: v1, executionTimeout: 3600, saveDataSuccessExecution: none, saveDataErrorExecution: none}

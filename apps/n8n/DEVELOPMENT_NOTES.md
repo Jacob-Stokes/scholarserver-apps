@@ -1,5 +1,22 @@
 # n8n integration — development record
 
+## Three research-report candidates — 12 September 2026
+
+The source catalog adds a completed-UTC-week reading roundup, a previous-UTC-day
+missing-reference-details check, and a plain Markdown bibliography. The audit
+checks only empty titles, authors and publication dates; DOI is optional. These
+use the existing scoped Zotero metadata and Obsidian create-only actions, without
+AI. Fixed subfolders beneath the selected root prevent cross-template filename
+collisions. Empty inputs produce no notes; an issue-free audit produces no note.
+Schedules default to 24 hours and installation remains disabled until enabled.
+
+These are unpublished integration-image changes. Do not advance an accepted
+image-source lock or package digest on the strength of source checks. Local
+candidate selection is explicit and fingerprint-checked; see
+[local development](../../docs/local-development.md). Native fixture and browser
+results will be recorded separately from connected-library or signed-release
+acceptance. Existing published package versions remain immutable.
+
 ## Image refresh checkpoint — 12 September 2026
 
 Candidate `0.1.0-beta.6` selects new immutable AMD64/ARM64 runtime and integration
