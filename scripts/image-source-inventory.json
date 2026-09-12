@@ -216,9 +216,13 @@
         "apps/n8n/ui/index.html",
         "apps/n8n/ui/package-lock.json",
         "apps/n8n/ui/package.json",
+        "apps/n8n/ui/public",
         "apps/n8n/ui/src",
         "apps/n8n/ui/tsconfig.json",
         "apps/n8n/ui/vite.config.ts",
+        "apps/zotero/package/assets/icons/zotero.webp",
+        "apps/obsidian/package/assets/icons/obsidian.webp",
+        "apps/docling/package/assets/icons/docling.webp",
         "packages/controller-runtime/files.mjs",
         "packages/controller-runtime/package.json",
         "vendor/scholarserver-ui"

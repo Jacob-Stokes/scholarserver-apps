@@ -16,6 +16,10 @@ try {
   await page.getByRole("searchbox", { name: "Search automations" }).waitFor();
   await page.getByRole("heading", { name: "Automatically convert new Zotero PDFs" }).waitFor();
   assert.equal(await cards.count(), 6);
+  const appImages = cards.locator(".automation-roles img");
+  assert.equal(await appImages.count(), 12);
+  await appImages.evaluateAll((images) => Promise.all(images.map((image) => image.decode())));
+  assert.equal(await cards.locator(".automation-initial").count(), 0);
   const cardNames = [
     "Create reading-note starters",
     "Create a weekly reading roundup",
@@ -46,6 +50,7 @@ try {
     }
   }
   await page.keyboard.press("Escape");
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: new URL("native-catalog-desktop.png", output).pathname, fullPage: true });
   await page.getByRole("searchbox", { name: "Search automations" }).fill("weekly reading");
   assert.equal(await cards.count(), 1);

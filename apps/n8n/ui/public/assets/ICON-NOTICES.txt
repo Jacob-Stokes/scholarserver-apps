@@ -1,0 +1,6 @@
+Zotero, Obsidian and Docling icons: selfh.st/icons, CC BY 4.0.
+Source: https://github.com/selfhst/icons/tree/4798f7b385ce4d9b18520e4f2091635be6370bc4
+License: https://creativecommons.org/licenses/by/4.0/
+These WebP files are reused without modification from ScholarServer's pinned
+catalog assets. Exact file hashes and provenance are recorded in icons.lock.json.
+Product names and trademarks belong to their respective owners.

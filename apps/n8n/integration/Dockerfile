@@ -6,6 +6,9 @@ WORKDIR /source/apps/n8n/ui
 COPY apps/n8n/ui/package.json apps/n8n/ui/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY apps/n8n/ui ./
+COPY apps/zotero/package/assets/icons /source/apps/zotero/package/assets/icons
+COPY apps/obsidian/package/assets/icons /source/apps/obsidian/package/assets/icons
+COPY apps/docling/package/assets/icons /source/apps/docling/package/assets/icons
 RUN npm run build
 WORKDIR /source/apps/n8n/integration
 COPY apps/n8n/integration/package.json apps/n8n/integration/package-lock.json ./

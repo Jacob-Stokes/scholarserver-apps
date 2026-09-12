@@ -1,5 +1,20 @@
 # n8n integration — development record
 
+## Bundled automation-card icons — 12 September 2026
+
+The shared app-role presentation now bundles the catalog's pinned Zotero,
+Obsidian and Docling WebP icons, used on catalog cards, setup and installed
+automation cards. They do not depend on Manager overview availability or remote
+image hosts. Unknown apps retain the existing Manager-icon/name fallback.
+The native build explicitly copies these assets; the image-source inventory
+tracks their bytes and the bundled CC BY attribution notice. No workflow,
+credential, grant or package-version changes are involved.
+
+Browser regression checks deliberately make Manager's catalog unavailable and
+require all twelve card images to decode, with no letter placeholders. Native
+browser checks assert the same against the packaged UI. Publication remains
+separate from rebuilding and selecting an unpublished local candidate.
+
 ## Three research-report candidates — 12 September 2026
 
 The source catalog adds a completed-UTC-week reading roundup, a previous-UTC-day

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { readCatalog } from "../integration/catalog.mjs";
 import { scheduleConfiguration } from "../integration/configuration.mjs";
@@ -66,19 +66,9 @@ try {
     const endpoint = url.pathname;
     let data;
     if (endpoint === "/api/status") data = { connected: true, phase: "ready" };
-    else if (endpoint === "/api/v1/overview")
-      data = {
-        catalog: ["zotero", "obsidian", "docling"].map((id) => ({
-          id: `org.scholarserver.${id}`,
-          icon: { url: `/api/v1/catalog/${id}/test/icon` }
-        }))
-      };
-    else if (endpoint.startsWith("/api/v1/catalog/")) {
-      const id = endpoint.split("/")[4];
-      return route.fulfill({
-        contentType: "image/webp",
-        body: await readFile(new URL(`../../${id}/package/assets/icons/${id}.webp`, import.meta.url))
-      });
+    else if (endpoint === "/api/v1/overview" || endpoint.startsWith("/api/v1/catalog/")) {
+      // Standalone n8n has no Manager catalog; bundled icons must still load.
+      return route.fulfill({ status: 503, json: { error: "Manager unavailable" } });
     } else if (endpoint === "/api/automations") data = { templates, installations, workflows, moreAvailable: false };
     else if (endpoint === "/api/research-applications") data = unavailable ? [] : applications;
     else if (endpoint === "/api/install") {
@@ -124,6 +114,10 @@ try {
   await page.getByRole("heading", { name: "Automatically convert new Zotero PDFs" }).waitFor();
   const cards = page.locator(".automation-template");
   assert.equal(await cards.count(), 6);
+  const appImages = cards.locator(".automation-roles img");
+  assert.equal(await appImages.count(), 12);
+  await appImages.evaluateAll((images) => Promise.all(images.map((image) => image.decode())));
+  assert.equal(await cards.locator(".automation-initial").count(), 0);
   const cardNames = [
     "Create reading-note starters",
     "Create a weekly reading roundup",
@@ -160,6 +154,7 @@ try {
     "desktop catalog should retain its multi-column layout"
   );
   assert.equal(await page.getByLabel("Run every (hours)").count(), 0, "setup fields should not be on browse cards");
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: new URL("catalog-desktop.png", output).pathname, fullPage: true });
   await page.getByRole("searchbox", { name: "Search automations" }).fill("weekly reading");
   assert.equal(await cards.count(), 1);
