@@ -1,5 +1,23 @@
 # Zotero development notes
 
+## Corrected controller image — 13 September 2026
+
+AMD64-only candidate `0.5.10-guided.20260913.1` selects the corrected controller
+image `sha256:0ed9f3cd05ec458ab612dee695245d8da6e931a7a1c46cc2bbd075bacaa630b2`,
+built natively on Resolution from `eb86267`. Registry configuration, layers,
+architecture and source labels match the qualified build. Other images are
+unchanged. Actual image HTTP tests verified JS/CSS MIME types and exact bytes,
+HEAD, nested routes, health and missing-asset 404s, using an isolated online-mode
+runtime. This is not five-service or real-account/sync acceptance: the full
+packaging harness lacked the unchanged desktop image locally. Earlier failed
+trials were harness file-permission/network errors. No personal profile was used.
+Evidence: `/var/lib/scholar-ci-builds/guided-20260913-1/apps-evidence` on Resolution.
+Full `npm test` passed on Resolution after installing both the root workspace
+and the independently locked Obsidian sync-controller dependencies. The earlier
+missing-`tar` failure was an incomplete test workspace, not an image defect.
+Official catalog publication, signed installation and account acceptance remain
+separate. Project-vault documentation remains pending; no personal vault access.
+
 ## Disposable-host correction — 12 September 2026
 
 The user-installed instance on disposable host `599936240` initially had an

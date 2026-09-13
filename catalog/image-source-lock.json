@@ -137,8 +137,8 @@
     },
     {
       "recipe": "zotero-controller",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:4aaba97608f8ce3cfe41d633a14b44a9e593de5867928f894a1b7f56182ad8dc",
-      "sourceDigest": "sha256:8a140cf36458ef2395999c07a67606ac82ea504de5c48f9131c16dcabf470739",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:0ed9f3cd05ec458ab612dee695245d8da6e931a7a1c46cc2bbd075bacaa630b2",
+      "sourceDigest": "sha256:44bca00aa0e6dad411dd5a9d63e7394b76eba57d1bc6d0f34be2277bc139da96",
       "nativeArchitectures": [
         "amd64"
       ]
