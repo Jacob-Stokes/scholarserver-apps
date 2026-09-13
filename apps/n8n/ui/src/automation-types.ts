@@ -16,6 +16,7 @@ export type Template = {
   research?: ResearchKind | null;
   requirements: AppRequirement[];
   presentation: { summary: string; maturity: string; effects: string; ai: string; tags?: string[] } | null;
+  kind?: "automation" | "diagnostic";
 };
 export type Receipt = {
   templateId: string;
@@ -27,6 +28,7 @@ export type Receipt = {
   researchAccess?: string;
   bindings?: ResearchBindings;
   editing?: "guided" | "customised" | "unavailable" | "unknown";
+  allowedActions?: string[];
 };
 export type Workflow = {
   id: string;

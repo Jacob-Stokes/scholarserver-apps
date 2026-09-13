@@ -24,6 +24,7 @@ COPY apps/n8n/templates ../templates
 COPY apps/n8n/integration/configuration.mjs ./
 COPY apps/n8n/integration/requirements.mjs apps/n8n/integration/inventory.mjs ./
 COPY apps/n8n/integration/manager-connection.mjs ./
+COPY apps/n8n/integration/automation-contract.mjs ./
 COPY apps/n8n/integration/catalog.mjs apps/n8n/integration/research-access.mjs apps/n8n/integration/research-bridge.mjs ./
 COPY apps/n8n/integration/bootstrap-client.mjs apps/n8n/integration/password-setup.mjs apps/n8n/integration/setup-actions.mjs ./
 USER 1000:1000

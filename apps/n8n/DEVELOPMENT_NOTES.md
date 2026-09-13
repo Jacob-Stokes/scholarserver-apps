@@ -1,5 +1,37 @@
 # n8n integration — development record
 
+## Manager automation contract projection — 14 September 2026
+
+The app API now adds the non-breaking `kind` template field and projects
+`allowedActions` on each returned receipt after workflow inventory, editing
+inspection and research-grant resolution. The projection exposes only actions
+valid for the observed state; route handlers retain their existing validation.
+Legacy `research`, editing and receipt fields remain present for older clients.
+Pure contract tests cover installed, customised, disconnected, rejected and
+unconfirmed states. This is source/test evidence; Manager consumption and
+browser acceptance are separate.
+
+## Manager-embedded automation setup — 14 September 2026
+
+The app now advertises `automationInterfaceVersion: 1` from `/api/status` and
+supports Manager setup URLs with `managerSetup=1`, an optional `templateId`, and
+an optional `automationId`. A URL without IDs opens engine connection setup;
+an automation retry requires a matching template and rejected receipt. Embedded mode hides the standalone application
+header, tabs, catalog navigation and My automations screen. It reuses the
+app-owned connection setup, research bindings, template configuration and
+receipt-aware rejected-install retry. Missing or invalid IDs, and existing
+automations that are not rejected, fail closed without creating a new copy.
+
+Successful embedded setup reports that the automation was added with its
+schedule disabled and tells the researcher to close the window; Manager owns
+the surrounding modal and refresh. No postMessage, credential logic, workflow
+execution logic or native editor requirement was added. Focused parser,
+resolution and existing integration tests pass; UI typecheck passes. This is
+source/test evidence, not Manager browser or published-image acceptance.
+The project-vault documentation update is pending; this pass does not access
+personal native Mac applications or vaults. Source changes require a new qualified
+integration image before publication; existing immutable package pins are unchanged.
+
 ## Guided candidate — 12 September 2026
 
 AMD64-only package `0.1.0-guided.20260912.1` now selects a new immutable

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { projectReceipt } from "./automation-contract.mjs";
 import { SetupError } from "./bootstrap-client.mjs";
 import { readCatalog } from "./catalog.mjs";
 import {
@@ -100,7 +101,7 @@ createServer(async (request, response) => {
         return json(response, 403, { error: "Use the application setup form" });
       }
       if (request.method === "GET" && url.pathname === "/api/status")
-        return json(response, 200, await passwordSetup.status());
+        return json(response, 200, { ...(await passwordSetup.status()), automationInterfaceVersion: 1 });
       if (request.method === "GET" && url.pathname === "/api/automations") {
         const state = await installations.read();
         const inventory = await completeWorkflowInventory(await requiredClient());
@@ -127,6 +128,13 @@ createServer(async (request, response) => {
             receipt.editing = "unknown";
           }
         }
+        const projectedInstallations = Object.fromEntries(
+          Object.entries(state.installations).map(([automationId, receipt]) => {
+            const template = templates.find((candidate) => candidate.id === receipt.templateId);
+            const workflow = inventory.find((candidate) => candidate.id === receipt.workflowId);
+            return [automationId, projectReceipt(receipt, template, workflow)];
+          })
+        );
         return json(response, 200, {
           templates: templates.map((template) => ({
             id: template.id,
@@ -135,9 +143,10 @@ createServer(async (request, response) => {
             research: template.research ?? null,
             requirements: template.requirements ?? [],
             presentation: template.presentation ?? null,
-            schedule: scheduleConfiguration(template)
+            schedule: scheduleConfiguration(template),
+            kind: template.research ? "automation" : "diagnostic"
           })),
-          installations: state.installations,
+          installations: projectedInstallations,
           workflows: inventory.map((workflow) => ({
             id: workflow.id,
             name: workflow.name,

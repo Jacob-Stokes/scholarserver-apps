@@ -35,7 +35,7 @@ assert.ok(response, "Password action must complete within its deadline");
 assert.equal(response.ok, true, response.error);
 assert.equal(JSON.stringify(response).includes(password), false);
 assert.equal(JSON.stringify(response).includes(serviceCredential.token), false);
-assert.deepEqual(await status(), { connected: true, phase: "ready" });
+assert.deepEqual(await status(), { connected: true, phase: "ready", automationInterfaceVersion: 1 });
 await assert.rejects(readFile(requestPath), { code: "ENOENT" });
 await rm(responsePath);
 for (const file of ["setup.json", "connection.json", "manager-connection.json"]) {

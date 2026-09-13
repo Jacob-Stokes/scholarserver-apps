@@ -43,7 +43,7 @@ try {
   });
   assert.equal(removedKeyRoute.status, 404);
   const status = await (await fetch("http://localhost:18231/api/status")).json();
-  assert.deepEqual(status, { connected: true, phase: "ready" });
+  assert.deepEqual(status, { connected: true, phase: "ready", automationInterfaceVersion: 1 });
   console.log(
     "Native app UI passed: configured workflow, enable/disable, reload, history, Ready configuration, mobile and request boundaries."
   );

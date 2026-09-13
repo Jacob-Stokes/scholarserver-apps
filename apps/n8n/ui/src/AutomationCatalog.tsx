@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppRoles } from "./AppRoles";
 import { type Application, type Template } from "./automation-types";
 import { CatalogToolbar } from "./CatalogToolbar";
@@ -10,23 +10,47 @@ export function AutomationCatalog({
   applications,
   icons,
   busy,
-  onInstall
+  onInstall,
+  initialTemplateId,
+  initialAutomationId,
+  initialRetryOperationId,
+  initialName
 }: {
   templates: Template[];
   applications: Application[] | null;
   icons: Record<string, string>;
   busy: boolean;
-  onInstall: (templateId: string, automationId: string, name: string, settings: AutomationSettings) => Promise<boolean>;
+  onInstall: (
+    templateId: string,
+    automationId: string,
+    name: string,
+    settings: AutomationSettings,
+    retryOperationId?: string
+  ) => Promise<boolean>;
+  initialTemplateId?: string;
+  initialAutomationId?: string;
+  initialRetryOperationId?: string;
+  initialName?: string;
 }) {
   const [selected, setSelected] = useState<{ template: Template; id: string } | null>(null);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
   const [filters, setFilters] = useState(emptyCatalogFilters);
+  useEffect(() => {
+    if (!initialTemplateId || selected) return;
+    const template = templates.find((candidate) => candidate.id === initialTemplateId);
+    if (!template) return;
+    setSelected({ template, id: initialAutomationId ?? crypto.randomUUID() });
+    setName(initialName ?? template.name);
+  }, [initialAutomationId, initialName, initialTemplateId, selected, templates]);
+  if (initialTemplateId && !selected) return <p role="status">Loading automation setup…</p>;
   if (selected) {
     return (
       <section className="ss-card ss-stack">
-        <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => setSelected(null)}>
-          Back to catalog
-        </button>
+        {!initialTemplateId ? (
+          <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => setSelected(null)}>
+            Back to catalog
+          </button>
+        ) : null}
         <h2>{selected.template.name}</h2>
         <p>{selected.template.description}</p>
         <AppRoles requirements={selected.template.requirements} icons={icons} />
@@ -46,9 +70,11 @@ export function AutomationCatalog({
           research={selected.template.research}
           requirements={selected.template.requirements}
           expanded
-          retry={false}
+          retry={Boolean(initialRetryOperationId)}
           busy={busy || !name.trim()}
-          onInstall={(settings) => void onInstall(selected.template.id, selected.id, name.trim(), settings)}
+          onInstall={(settings) =>
+            void onInstall(selected.template.id, selected.id, name.trim(), settings, initialRetryOperationId)
+          }
         />
       </section>
     );

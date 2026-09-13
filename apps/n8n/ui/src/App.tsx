@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AutomationCatalog } from "./AutomationCatalog";
 import type { Application, Inventory, Run } from "./automation-types";
 import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
+import { parseEmbeddedSetup, resolveEmbeddedSetup } from "./embedded-setup";
 import { InstallAutomation } from "./InstallAutomation";
 import { MyAutomations } from "./MyAutomations";
 
@@ -25,6 +26,7 @@ async function request<T>(route: string, body?: unknown): Promise<T> {
 }
 
 export function App() {
+  const embeddedSetup = parseEmbeddedSetup(window.location.search);
   const [tab, setTab] = useState("automations");
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
   const connected = connection?.connected;
@@ -34,6 +36,7 @@ export function App() {
   const [icons, setIcons] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [embeddedCompleted, setEmbeddedCompleted] = useState(false);
 
   async function refresh() {
     const status = await request<ConnectionStatus>("status");
@@ -50,23 +53,25 @@ export function App() {
     }
   }
   useEffect(() => {
-    // Display only packaged same-origin icons, never arbitrary remote image URLs.
-    void fetch("/api/v1/overview")
-      .then(async (response) => {
-        if (!response.ok) return;
-        const overview = await response.json();
-        const available: Record<string, string> = {};
-        for (const app of overview.catalog ?? []) {
-          if (typeof app.icon?.url === "string" && app.icon.url.startsWith("/api/v1/catalog/"))
-            available[app.id] = app.icon.url;
-        }
-        setIcons(available);
-      })
-      .catch(() => undefined);
+    if (!embeddedSetup.enabled) {
+      // Display only packaged same-origin icons, never arbitrary remote image URLs.
+      void fetch("/api/v1/overview")
+        .then(async (response) => {
+          if (!response.ok) return;
+          const overview = await response.json();
+          const available: Record<string, string> = {};
+          for (const app of overview.catalog ?? []) {
+            if (typeof app.icon?.url === "string" && app.icon.url.startsWith("/api/v1/catalog/"))
+              available[app.id] = app.icon.url;
+          }
+          setIcons(available);
+        })
+        .catch(() => undefined);
+    }
     void refresh().catch(() => {
       setError("Could not check the saved n8n connection.");
     });
-  }, []);
+  }, [embeddedSetup.enabled]);
   useEffect(() => {
     if (connection?.phase !== "setting-up") return;
     const timer = window.setInterval(() => {
@@ -116,6 +121,87 @@ export function App() {
   }
   const diagnostics = inventory?.templates.filter((template) => !template.research) ?? [];
 
+  if (embeddedSetup.enabled) {
+    const resolution = inventory
+      ? resolveEmbeddedSetup(embeddedSetup, inventory.templates, inventory.installations)
+      : null;
+    const template = resolution?.kind === "new" || resolution?.kind === "retry" ? resolution.template : null;
+    const receipt = resolution?.kind === "retry" ? resolution.receipt : undefined;
+    const setupError =
+      resolution?.kind === "invalid" ? `${resolution.message} Refresh Manager and open setup again.` : null;
+    if (embeddedCompleted) {
+      return (
+        <main className="embedded-setup ss-stack">
+          <section className="ss-card ss-stack">
+            <h1>Automation added</h1>
+            <p>Your automation was added with its schedule disabled. Review it in My automations before enabling it.</p>
+            <p>Close this window to return to Automations.</p>
+          </section>
+        </main>
+      );
+    }
+    return (
+      <main className="embedded-setup ss-stack">
+        {error ? <p role="alert">{error}</p> : null}
+        {connection && !connected ? (
+          <ConnectionSetup
+            status={connection}
+            busy={busy}
+            onSetup={finishSetup}
+            onRefresh={() => void act(refresh, false)}
+          />
+        ) : null}
+        {!connection && !error ? <p role="status">Checking n8n status…</p> : null}
+        {!connection && error ? (
+          <button className="ss-button" disabled={busy} onClick={() => void act(refresh, false)}>
+            Refresh status
+          </button>
+        ) : null}
+        {connected && setupError ? (
+          <section className="ss-card ss-stack">
+            <h1>Automation setup needs attention</h1>
+            <p>{setupError}</p>
+            {receipt ? <p>Existing automation status: {receipt.state}.</p> : null}
+            <button className="ss-button" disabled={busy} onClick={() => void act(refresh, false)}>
+              Refresh status
+            </button>
+          </section>
+        ) : null}
+        {connected && resolution?.kind === "engine" ? (
+          <section className="ss-card ss-stack">
+            <h1>n8n is ready</h1>
+            <p>Your n8n connection is ready. Return to Automations to choose an automation.</p>
+          </section>
+        ) : null}
+        {connected && inventory && template && !setupError ? (
+          <AutomationCatalog
+            templates={[template]}
+            applications={applications}
+            icons={icons}
+            busy={busy}
+            initialTemplateId={template.id}
+            initialAutomationId={embeddedSetup.automationId ?? undefined}
+            initialRetryOperationId={receipt?.operationId}
+            initialName={receipt?.name}
+            onInstall={async (templateId, automationId, name, settings, retryOperationId) => {
+              const succeeded = await act(async () => {
+                const result = await request<{ state: string }>("install", {
+                  templateId,
+                  automationId,
+                  name,
+                  settings,
+                  ...(retryOperationId ? { retryOperationId } : {})
+                });
+                if (result.state === "installed") setEmbeddedCompleted(true);
+              });
+              return succeeded;
+            }}
+          />
+        ) : null}
+      </main>
+    );
+  }
+
   return (
     <ApplicationScreen
       name="Automations"
@@ -152,8 +238,10 @@ export function App() {
               applications={applications}
               icons={icons}
               busy={busy}
-              onInstall={async (templateId, automationId, name, settings) => {
-                const succeeded = await act(() => request("install", { templateId, automationId, name, settings }));
+              onInstall={async (templateId, automationId, name, settings, retryOperationId) => {
+                const succeeded = await act(() =>
+                  request("install", { templateId, automationId, name, settings, retryOperationId })
+                );
                 if (succeeded) setTab("automations");
                 return succeeded;
               }}

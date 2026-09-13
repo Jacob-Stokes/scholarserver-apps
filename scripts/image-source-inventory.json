@@ -195,6 +195,7 @@
       "licenseCheck": "scripts/check-image-contents.py",
       "sourceInputs": [
         "apps/n8n/integration/Dockerfile",
+        "apps/n8n/integration/automation-contract.mjs",
         "apps/n8n/integration/bootstrap-client.mjs",
         "apps/n8n/integration/catalog.mjs",
         "apps/n8n/integration/client.mjs",
