@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppRoles } from "./AppRoles";
+import type { AppIcons } from "./app-icons";
 import { type Application, type Template } from "./automation-types";
 import { CatalogToolbar } from "./CatalogToolbar";
 import { emptyCatalogFilters, filterTemplates, requiredAppAccess } from "./catalog-discovery";
@@ -19,7 +20,7 @@ export function AutomationCatalog({
 }: {
   templates: Template[];
   applications: Application[] | null;
-  icons: Record<string, string>;
+  icons: AppIcons;
   busy: boolean;
   onInstall: (
     templateId: string,

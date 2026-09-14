@@ -1,5 +1,30 @@
 # n8n integration — development record
 
+## Editorial icon source candidate — 14 September 2026
+
+New unpublished source identity `0.1.0-guided.20260912.2.editorial.20260914.1` adds an app-owned
+`artwork/editorial.svg` and a locked transparent PNG declaration under
+`presentation.editorialIcon`, with separate ScholarServer CC BY 4.0 attribution.
+The prior `0.1.0-guided.20260912.1` package identity is not rewritten. Original
+icon bytes, image pins, Compose, app capabilities, grants and data/setup contracts
+are preserved. The explicit release block remains until compatible-core/package
+and changed native-image/browser acceptance are qualified; no publication or
+retained-host update is implied. See [artwork, source versions, checks and deployment
+options](../../docs/editorial-icons.md).
+
+The shared vendor snapshot now matches main's reviewed canonical runtime files,
+including editorial typography/themes and the browser-local icon preference.
+n8n role presentation consumes that shared preference and catalog raster assets,
+with packaged original/editorial fallbacks and named fallback after load errors.
+Its integration image needs a new native build and immutable pin before release.
+
+Bounded asset/package and n8n UI checks pass; the seven packages also pass the
+current core loader/schema check. Full `npm test`, final-image and authenticated
+browser acceptance remain main-owned gates. All six app UI typechecks and the
+n8n UI build pass; the build emits original/editorial rasters as separate files.
+This checkpoint was appended to the existing project-vault app note through
+Jacob Gateway; the app index was updated with the same source-only boundaries.
+
 ## App-owned automation form presentation — 14 September 2026
 
 The selected setup form now groups research app selectors into two columns when

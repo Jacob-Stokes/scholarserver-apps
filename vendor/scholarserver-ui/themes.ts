@@ -1,5 +1,5 @@
 export const colourThemes = [
-  { id: "original", name: "Original", primary: "#194c32", paper: "#fcfaf6", accent: "#5b9d87" },
+  { id: "original", name: "Original", primary: "#285641", paper: "#fbfaf5", accent: "#285641" },
   { id: "euler", name: "Euler", primary: "#234e90", paper: "#cddfff", accent: "#b48b42" },
   { id: "darwin", name: "Darwin", primary: "#526020", paper: "#e4ebc3", accent: "#896446" },
   { id: "du-bois", name: "Du Bois", primary: "#84213f", paper: "#f4cadb", accent: "#d4a72c" },
@@ -43,6 +43,32 @@ function mix(first: string, second: string, weight: number) {
 
 export function themeTokens(id: ColourTheme, dark: boolean): Record<string, string> {
   const theme = colourThemes.find((candidate) => candidate.id === id) ?? colourThemes[0];
+  // Match the CSS default when Original is restored after a custom palette or dark mode.
+  if (theme.id === "original" && !dark) {
+    return {
+      background: "#fffefa",
+      foreground: "#253d32",
+      card: "#fffefa",
+      "card-foreground": "#253d32",
+      primary: theme.primary,
+      "primary-foreground": "#ffffff",
+      secondary: "#e9eee5",
+      "secondary-foreground": "#253d32",
+      muted: "#f0f2e9",
+      "muted-foreground": "#647069",
+      accent: "#e9eee5",
+      "accent-foreground": "#253d32",
+      destructive: "#b83b3b",
+      border: "#dcded3",
+      input: "#829084",
+      ring: theme.primary,
+      page: theme.paper,
+      sidebar: "#f3f3ea",
+      "sidebar-accent": "#e3e8da",
+      "sidebar-accent-foreground": theme.primary,
+      "theme-ornament": theme.accent
+    };
+  }
   const primary = dark ? mix(theme.primary, "#ffffff", 0.54) : theme.primary;
   // Keep the palette visible across large surfaces, with quieter cards for reading.
   const page = dark ? mix(theme.primary, "#101413", 0.6) : theme.paper;

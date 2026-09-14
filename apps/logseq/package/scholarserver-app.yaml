@@ -2,6 +2,14 @@ schemaVersion: 1
 id: org.scholarserver.logseq
 name: Logseq (Beta)
 presentation:
+  editorialIcon:
+    path: assets/icons/logseq-editorial.png
+    mediaType: image/png
+    attribution:
+      name: ScholarServer editorial marks
+      url: https://github.com/Jacob-Stokes/scholarserver-apps
+      license: CC-BY-4.0
+      licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
     tags: [Notes, Knowledge graphs, Sync]
   icon:
@@ -12,7 +20,7 @@ presentation:
       url: https://selfh.st/icons/
       license: CC-BY-4.0
       licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
-packageVersion: 0.1.0-beta.3
+packageVersion: 0.1.0-beta.4.editorial.20260914.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1

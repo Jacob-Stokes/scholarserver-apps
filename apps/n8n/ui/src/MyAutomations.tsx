@@ -1,4 +1,5 @@
 import { AppRoles } from "./AppRoles";
+import type { AppIcons } from "./app-icons";
 import type { Inventory, Run } from "./automation-types";
 import { InstallAutomation } from "./InstallAutomation";
 
@@ -12,7 +13,7 @@ export function MyAutomations({
   onCatalog
 }: {
   inventory: Inventory;
-  icons: Record<string, string>;
+  icons: AppIcons;
   busy: boolean;
   runs: { automationId: string; values: Run[] } | null;
   onAction: (route: string, body: unknown) => void;

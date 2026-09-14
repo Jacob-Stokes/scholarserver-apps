@@ -139,7 +139,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   font-display: swap;
 }
 :root {
-  --ss-font-heading: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --ss-font-heading: Georgia, "Source Serif 4", "Times New Roman", serif;
   --ss-font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   font-optical-sizing: auto;
   font-kerning: normal;

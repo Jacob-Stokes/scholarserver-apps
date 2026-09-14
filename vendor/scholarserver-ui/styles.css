@@ -32,27 +32,27 @@ SOFTWARE.
 
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #18211d;
-  --card: #ffffff;
-  --card-foreground: #18211d;
-  --primary: #194c32;
+  --background: #fffefa;
+  --foreground: #253d32;
+  --card: #fffefa;
+  --card-foreground: #253d32;
+  --primary: #285641;
   --primary-foreground: #ffffff;
-  --secondary: #edf3ef;
-  --secondary-foreground: #25483c;
-  --muted: #f0f2ef;
-  --muted-foreground: #60635e;
-  --accent: #e9f1ed;
-  --accent-foreground: #23483b;
+  --secondary: #e9eee5;
+  --secondary-foreground: #253d32;
+  --muted: #f0f2e9;
+  --muted-foreground: #647069;
+  --accent: #e9eee5;
+  --accent-foreground: #253d32;
   --destructive: #b83b3b;
-  --border: #dedbd2;
-  --input: #d5ddd8;
-  --ring: #5b9d87;
-  --page: #fcfaf6;
-  --sidebar: #f5f4ed;
-  --sidebar-accent: #eaf1ed;
-  --sidebar-accent-foreground: #194c32;
-  --radius: 0.75rem;
+  --border: #dcded3;
+  --input: #829084;
+  --ring: #285641;
+  --page: #fbfaf5;
+  --sidebar: #f3f3ea;
+  --sidebar-accent: #e3e8da;
+  --sidebar-accent-foreground: #285641;
+  --radius: 0.25rem;
   font-family: var(--ss-font-sans);
 }
 
@@ -68,6 +68,12 @@ body {
   color: var(--foreground);
   text-rendering: optimizeLegibility;
   overflow-wrap: anywhere;
+}
+
+/* Editorial marks use transparent ink artwork; lift that ink on dark paper.
+   Original application logos keep their own colours. */
+:root[data-mode="dark"] .ss-editorial-icon {
+  filter: brightness(1.8) saturate(.8);
 }
 
 /* Shared by the dashboard and app-owned screens: keyboard and motion preferences. */
@@ -86,7 +92,7 @@ body {
 }
 
 @media (pointer: coarse) {
-  button, summary, .ss-button, .ss-tab {
+  button, summary, .ss-button, .ss-tab, .ss-pressable {
     min-height: 44px;
   }
   input, select, textarea {
@@ -144,8 +150,7 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   top: 0;
   z-index: 20;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--page) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--page);
 }
 .ss-app-header-inner {
   width: min(1120px, calc(100% - 2rem));
@@ -179,12 +184,14 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   width: 2.25rem;
   height: 2.25rem;
   place-items: center;
-  border-radius: 0.65rem;
+  border-radius: var(--radius);
   object-fit: contain;
 }
 .ss-brand-title {
   margin: 0;
-  font-weight: 650;
+  font-family: var(--ss-font-heading);
+  font-size: 1.3rem;
+  font-weight: 400;
   letter-spacing: -0.015em;
   white-space: nowrap;
 }
@@ -206,11 +213,12 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   margin-bottom: 1.5rem;
 }
 .ss-page-heading h1 {
-  font-family: var(--ss-font-sans);
-  font-weight: 600;
+  font-family: var(--ss-font-heading);
+  font-weight: 400;
   margin: 0;
-  font-size: clamp(1.75rem, 3vw, 2rem);
-  letter-spacing: -.025em;
+  font-size: clamp(2.125rem, 3.5vw, 2.75rem);
+  line-height: 1.15;
+  letter-spacing: -.035em;
   font-kerning: normal;
 }
 .ss-page-heading p {
@@ -252,11 +260,13 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   border-radius: var(--radius);
   background: var(--card);
   padding: 1.25rem;
-  box-shadow: 0 1px 2px rgb(20 42 34 / 4%);
 }
 .ss-card h2,
 .ss-card h3 {
   margin: 0;
+  font-family: var(--ss-font-heading);
+  font-weight: 400;
+  line-height: 1.3;
   letter-spacing: -0.015em;
 }
 .ss-card-description {
@@ -288,13 +298,13 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   width: 100%;
   min-height: 2.55rem;
   border: 1px solid var(--input);
-  border-radius: 0.55rem;
+  border-radius: var(--radius);
   background: var(--background);
   color: var(--foreground);
   padding: 0.55rem 0.7rem;
 }
 .ss-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--ring) 50%, transparent);
+  outline: 2px solid var(--ring);
   outline-offset: 1px;
 }
 .ss-button {
@@ -304,11 +314,11 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   justify-content: center;
   gap: 0.45rem;
   border: 1px solid transparent;
-  border-radius: 0.55rem;
+  border-radius: var(--radius);
   padding: 0.5rem 0.85rem;
   background: var(--primary);
   color: var(--primary-foreground);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   text-decoration: none;
 }
@@ -319,7 +329,14 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 }
 .ss-button-ghost {
   background: transparent;
-  color: var(--foreground);
+  color: var(--primary);
+}
+.ss-button:not(:disabled):not([aria-disabled="true"]):hover {
+  background: color-mix(in srgb, var(--primary) 90%, var(--foreground));
+}
+.ss-button-secondary:not(:disabled):not([aria-disabled="true"]):hover,
+.ss-button-ghost:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--accent);
 }
 .ss-button:disabled {
   cursor: not-allowed;
@@ -329,7 +346,7 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  border-radius: 999px;
+  border-radius: var(--radius);
   padding: 0.25rem 0.55rem;
   background: var(--secondary);
   color: var(--secondary-foreground);
@@ -351,7 +368,7 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 }
 .ss-alert {
   border: 1px solid var(--border);
-  border-radius: 0.65rem;
+  border-radius: var(--radius);
   padding: 0.8rem 1rem;
   font-size: 0.875rem;
 }
@@ -394,7 +411,16 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 .ss-table th {
   color: var(--muted-foreground);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
+}
+.ss-table thead th {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.ss-table tbody tr:hover,
+.ss-table tbody tr:focus-within {
+  background: var(--accent);
 }
 .ss-muted {
   color: var(--muted-foreground);
@@ -418,32 +444,29 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   grid-auto-columns: minmax(7.5rem, 1fr);
   gap: 0.35rem;
   margin: 0 0 1rem;
-  padding: 0.45rem;
+  padding: 0.5rem 0;
   overflow-x: auto;
   list-style: none;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  border-block: 1px solid var(--border);
 }
 .ss-setup-stage {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 0.55rem;
+  border-radius: var(--radius);
   padding: 0.55rem 0.65rem;
   color: var(--muted-foreground);
   font-size: 0.75rem;
   white-space: nowrap;
 }
 .ss-setup-stage-active {
-  background: var(--background);
+  background: var(--accent);
   color: var(--primary);
-  font-weight: 650;
-  box-shadow: 0 1px 3px rgb(20 42 34 / 8%);
+  font-weight: 600;
 }
 .ss-setup-stage-complete {
-  color: #16613f;
+  color: var(--primary);
 }
 .ss-setup-stage-number {
   display: grid;
@@ -457,21 +480,25 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   font-size: 0.7rem;
 }
 .ss-setup-stage-complete .ss-setup-stage-number {
-  border-color: #bce5cc;
-  background: #effaf3;
+  border-color: var(--primary);
+  background: var(--accent);
 }
 .ss-setup-panel {
   width: min(42rem, 100%);
   margin: 0 auto;
   padding: 0;
   overflow: hidden;
+  border: 0;
+  border-block: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 .ss-setup-panel-header {
   padding: 1.5rem 1.5rem 1rem;
 }
 .ss-setup-panel-header h2 {
   margin-top: 0.75rem;
-  font-size: 1.4rem;
+  font-size: 1.75rem;
 }
 .ss-setup-panel-body {
   display: grid;
@@ -533,7 +560,6 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   .workspace-application-card:hover,
   .workspace-application-card:focus-within {
     border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-    box-shadow: 0 3px 12px color-mix(in srgb, var(--foreground) 5%, transparent);
   }
 }
 /* These use CSS so Radix can finish its exit lifecycle without remounting forms. */

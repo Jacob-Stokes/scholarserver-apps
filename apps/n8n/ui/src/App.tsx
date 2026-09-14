@@ -2,6 +2,7 @@ import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { EmbeddedSetupSurface } from "@scholarserver/ui/embedded-setup";
 import { useEffect, useState } from "react";
 import { AutomationCatalog } from "./AutomationCatalog";
+import { type AppIcons, catalogAppIcons } from "./app-icons";
 import type { Application, Inventory, Run } from "./automation-types";
 import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
 import { parseEmbeddedSetup, resolveEmbeddedSetup } from "./embedded-setup";
@@ -34,7 +35,7 @@ export function App() {
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [runs, setRuns] = useState<{ automationId: string; values: Run[] } | null>(null);
   const [applications, setApplications] = useState<Application[] | null>(null);
-  const [icons, setIcons] = useState<Record<string, string>>({});
+  const [icons, setIcons] = useState<AppIcons>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [embeddedCompleted, setEmbeddedCompleted] = useState(false);
@@ -54,21 +55,23 @@ export function App() {
     }
   }
   useEffect(() => {
-    if (!embeddedSetup.enabled) {
-      // Display only packaged same-origin icons, never arbitrary remote image URLs.
-      void fetch("/api/v1/overview")
-        .then(async (response) => {
-          if (!response.ok) return;
-          const overview = await response.json();
-          const available: Record<string, string> = {};
-          for (const app of overview.catalog ?? []) {
-            if (typeof app.icon?.url === "string" && app.icon.url.startsWith("/api/v1/catalog/"))
-              available[app.id] = app.icon.url;
-          }
-          setIcons(available);
-        })
-        .catch(() => undefined);
-    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    // Browser-session metadata only; no service identity and no effect on setup readiness.
+    void fetch("/api/v1/catalog", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const catalog = await response.json();
+        if (!controller.signal.aborted) setIcons(catalogAppIcons(catalog?.applications));
+      })
+      .catch(() => undefined)
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, []);
+  useEffect(() => {
     void refresh().catch(() => {
       setError("Could not check the saved n8n connection.");
     });

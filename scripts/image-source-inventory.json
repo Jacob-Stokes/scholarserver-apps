@@ -222,8 +222,11 @@
         "apps/n8n/ui/tsconfig.json",
         "apps/n8n/ui/vite.config.ts",
         "apps/zotero/package/assets/icons/zotero.webp",
+        "apps/zotero/package/assets/icons/zotero-editorial.png",
         "apps/obsidian/package/assets/icons/obsidian.webp",
+        "apps/obsidian/package/assets/icons/obsidian-editorial.png",
         "apps/docling/package/assets/icons/docling.webp",
+        "apps/docling/package/assets/icons/docling-editorial.png",
         "packages/controller-runtime/files.mjs",
         "packages/controller-runtime/package.json",
         "vendor/scholarserver-ui"

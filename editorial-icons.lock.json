@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "size": 256,
+  "attribution": {
+    "name": "ScholarServer editorial marks",
+    "url": "https://github.com/Jacob-Stokes/scholarserver-apps",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "icons": {
+    "docling": {
+      "source": "apps/docling/artwork/editorial.svg",
+      "path": "apps/docling/package/assets/icons/docling-editorial.png",
+      "sourceSha256": "4e540f4db8a25ec99b704c58a6b53a89674f6d6db94856d556fd02d1762d5f68",
+      "sha256": "de52ac58344d72b164c2b708cc2edf4d816bf463dca125df640925b4ead25d2b"
+    },
+    "files": {
+      "source": "apps/files/artwork/editorial.svg",
+      "path": "apps/files/package/assets/icons/files-editorial.png",
+      "sourceSha256": "a00ee723de1179ff16aefbba31cbb8e7b92a0b239d6615b5b45e3b324b03cbcb",
+      "sha256": "b77348d368121adfce2e6f1db9f16340340afb867136fd2bc580ccb3048cc199"
+    },
+    "freshrss": {
+      "source": "apps/freshrss/artwork/editorial.svg",
+      "path": "apps/freshrss/package/assets/icons/freshrss-editorial.png",
+      "sourceSha256": "97aa97d66116d56f57ea670bde4cadc2a7cfab0b4f1ba3bd78d2e0301cd07868",
+      "sha256": "7bc9b6070bb519c41d6760e3dc5e9b4c8605f5a8b407d8ee7e279dc091cc3ff3"
+    },
+    "logseq": {
+      "source": "apps/logseq/artwork/editorial.svg",
+      "path": "apps/logseq/package/assets/icons/logseq-editorial.png",
+      "sourceSha256": "a74c77be2c0ce8f0f172414f2d5da0c2f57fe529dcf1b1d0e5e9da78da05c074",
+      "sha256": "45e2cd03ce370d1e470f596b0887e008f11fc84dc11e390b53650ffe8afa2837"
+    },
+    "n8n": {
+      "source": "apps/n8n/artwork/editorial.svg",
+      "path": "apps/n8n/package/assets/icons/n8n-editorial.png",
+      "sourceSha256": "24045a4fbb923d43538badf244b1023d3ee04cc79f170d7e39c7d2561a777f91",
+      "sha256": "971e432469f5679a456411a16e9dac7ccea6fe08c38e7aa2a8f6180638ed0c99"
+    },
+    "obsidian": {
+      "source": "apps/obsidian/artwork/editorial.svg",
+      "path": "apps/obsidian/package/assets/icons/obsidian-editorial.png",
+      "sourceSha256": "90c407b4aab2e8ced886cf359237468785ae6b4d2d919ccfc56102730b62d2e8",
+      "sha256": "c049a51c1e91126c4ddcc685da521ad15e1107fa03438751a9264e55d2b62a05"
+    },
+    "zotero": {
+      "source": "apps/zotero/artwork/editorial.svg",
+      "path": "apps/zotero/package/assets/icons/zotero-editorial.png",
+      "sourceSha256": "76dcc2ed28588d7bd068fcc40225093b764fb67c0c8712d4cfa52c953c084d13",
+      "sha256": "10e6b3d299b1b58a3a0b7c03373f76f61d084d3d1ccdd2e087f4b9bdbc5365b6"
+    }
+  }
+}

@@ -1,9 +1,4 @@
-export type EndpointAccessTransport =
-  | "tailscale"
-  | "cloudflare"
-  | "tailscale-funnel"
-  | "caddy"
-  | "external-proxy";
+export type EndpointAccessTransport = "tailscale" | "cloudflare" | "tailscale-funnel" | "caddy" | "external-proxy";
 
 export interface EndpointAccessOption {
   id: string;

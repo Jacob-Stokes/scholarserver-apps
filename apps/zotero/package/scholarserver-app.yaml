@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.10-guided.20260913.1
+packageVersion: 0.5.10-guided.20260913.2.editorial.20260914.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -156,6 +156,14 @@ ui:
   endpoint: app-ui
   defaultPath: /overview
 presentation:
+  editorialIcon:
+    path: assets/icons/zotero-editorial.png
+    mediaType: image/png
+    attribution:
+      name: ScholarServer editorial marks
+      url: https://github.com/Jacob-Stokes/scholarserver-apps
+      license: CC-BY-4.0
+      licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
     tags: [References, Notes, Documents, Files]
   icon:

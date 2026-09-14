@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>FreshRSS editorial feed mark</title>
+  <desc>ScholarServer: an ochre feed dot and two broadcast arcs.</desc>
+  <path fill="#a06a2f" d="M30 26A72 72 0 0 1 102 98H94A64 64 0 0 0 30 34ZM30 51A47 47 0 0 1 77 98H69A39 39 0 0 0 30 59Z"/>
+  <circle cx="35" cy="93" r="7" fill="#a06a2f"/>
+</svg>

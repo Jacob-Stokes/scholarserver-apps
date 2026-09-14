@@ -108,6 +108,24 @@ release checklist or proof that a particular application is ready.
 
 ## Keeping these notes useful
 
+### Package assets and browser presentation — 14 September 2026
+
+Editorial and original icons are independent package-owned raster declarations,
+with editable SVG sources outside the served asset contract and separate attribution.
+Do not inject a new asset into an immutable installed package to make a UI-only
+override look like a package update. Explicit editorial source candidates remain
+release-blocked until compatible-core/package validation and changed native-image
+qualification are complete. A browser-local style preference never owns grants or
+setup state. n8n can prefer catalog assets while retaining packaged fallbacks when
+that authenticated browser catalog is unavailable; no engine service credential is
+needed. See [the source checkpoint and release gates](editorial-icons.md).
+
+When synchronising shared UI, compare the complete canonical runtime/font set,
+merge new exports/dependencies, and retain vendor-only exports/peers and files.
+Do not replace the vendor package manifest wholesale: the folder picker currently
+has extra app-side dependencies. The shared snapshot check verifies canonical
+runtime bytes without pretending that the dirty source is a published package.
+
 ### Source and image drift, 12 September 2026
 
 A signed core bundle authenticates its selected catalog; it does not establish

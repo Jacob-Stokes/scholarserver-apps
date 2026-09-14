@@ -1,5 +1,29 @@
 # Zotero development notes
 
+## Editorial icon source candidate — 14 September 2026
+
+New unpublished source identity `0.5.10-guided.20260913.2.editorial.20260914.1` adds an app-owned
+`artwork/editorial.svg` and a locked transparent PNG declaration under
+`presentation.editorialIcon`, with separate ScholarServer CC BY 4.0 attribution.
+The prior `0.5.10-guided.20260913.1` package identity is not rewritten. Original
+icon bytes, image pins, Compose, app capabilities, grants and data/setup contracts
+are preserved. The explicit release block remains until compatible-core/package
+and changed native-image/browser acceptance are qualified; no publication or
+retained-host update is implied. See [artwork, source versions, checks and deployment
+options](../../docs/editorial-icons.md).
+
+The shared vendor snapshot now matches main's reviewed canonical runtime files,
+including editorial typography/themes and the browser-local icon preference.
+Any image incorporating the changed shared UI must be rebuilt and qualified;
+the preserved pin must not be described as containing these source changes.
+
+Bounded asset/package and n8n UI checks pass; the seven packages also pass the
+current core loader/schema check. Full `npm test`, final-image and authenticated
+browser acceptance remain main-owned gates. All six app UI typechecks and the
+n8n UI build pass; the build emits original/editorial rasters as separate files.
+This checkpoint was appended to the existing project-vault app note through
+Jacob Gateway; the app index was updated with the same source-only boundaries.
+
 ## Corrected controller image — 13 September 2026
 
 AMD64-only candidate `0.5.10-guided.20260913.1` selects the corrected controller

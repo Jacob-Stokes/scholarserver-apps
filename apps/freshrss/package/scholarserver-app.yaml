@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.freshrss
 name: FreshRSS (Beta)
-packageVersion: 0.1.0-beta.6
+packageVersion: 0.1.0-beta.7.editorial.20260914.1
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: FreshRSS, version: 1.29.1, license: AGPL-3.0 }
 support: { tier: official, architectures: [amd64, arm64] }
@@ -70,6 +70,14 @@ endpoints:
       credentialFile: service-token
 ui: { mode: standalone, endpoint: app-ui, defaultPath: /configuration }
 presentation:
+  editorialIcon:
+    path: assets/icons/freshrss-editorial.png
+    mediaType: image/png
+    attribution:
+      name: ScholarServer editorial marks
+      url: https://github.com/Jacob-Stokes/scholarserver-apps
+      license: CC-BY-4.0
+      licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
     tags: [News & feeds]
   icon:

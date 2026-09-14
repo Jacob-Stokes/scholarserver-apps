@@ -4,3 +4,10 @@ License: https://creativecommons.org/licenses/by/4.0/
 These WebP files are reused without modification from ScholarServer's pinned
 catalog assets. Exact file hashes and provenance are recorded in icons.lock.json.
 Product names and trademarks belong to their respective owners.
+
+Editorial Zotero, Obsidian and Docling marks: ScholarServer, CC BY 4.0.
+Source: https://github.com/Jacob-Stokes/scholarserver-apps
+License: https://creativecommons.org/licenses/by/4.0/
+These are ScholarServer's stylized editorial marks, not upstream product logos.
+Editable SVGs live beside each app in artwork/editorial.svg; PNG provenance and
+hashes are recorded in editorial-icons.lock.json. No fonts are embedded.
