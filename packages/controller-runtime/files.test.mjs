@@ -16,7 +16,9 @@ test("concurrent state writes are complete, ordered, private and leave no tempor
     assert.equal((await stat(file)).mode & 0o777, 0o600);
     assert.deepEqual(await readdir(dir), ["state.json"]);
     await atomicWrite(file, "public status", 0o644);
-    assert.equal((await stat(file)).mode & 0o777, 0o644);
+    // The caller's umask may further restrict a non-secret status file.
+    const effectivePublicMode = 0o644 & ~process.umask();
+    assert.equal((await stat(file)).mode & 0o777, effectivePublicMode);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
