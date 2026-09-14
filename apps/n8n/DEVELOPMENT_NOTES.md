@@ -1,5 +1,18 @@
 # n8n integration — development record
 
+## Official upstream registry — 14 September 2026
+
+GitHub native build `34868769152` started on both standard hosted architectures,
+then failed fetching n8n from `docker.n8n.io` with an anonymous Docker pull-rate
+limit. This was not a GitHub minutes/billing failure. The runtime Dockerfile now
+uses n8n's official `ghcr.io/n8n-io/n8n` package with the **same** upstream index
+digest. Anonymous reads returned HTTP 200 for that index and both architecture
+manifests; hashing the response bytes reproduced all three pinned digests.
+This changes the download source, not the upstream version or image content.
+No installed package pin, image-source lock or Freelove service was changed.
+Fresh native qualification/publication is still required for the rebuilt wrapper.
+The project-vault note update is pending; this build repair did not access a vault.
+
 ## Editorial icon source candidate — 14 September 2026
 
 Purpose-copy follow-up: `presentation.details.description` now reads

@@ -1,7 +1,7 @@
 name: Native multi-architecture images
 
 on:
-  # Paid hosted builds are opt-in. Routine checks run on Resolution.
+  # Image publication is opt-in. These standard public-repository runners are free.
   workflow_dispatch:
 
 permissions:

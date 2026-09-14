@@ -1,4 +1,4 @@
-FROM docker.n8n.io/n8nio/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
+FROM ghcr.io/n8n-io/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8
 # Reviewed deployment defaults belong in the immutable image, not arbitrary
 # catalog environment settings. Upstream owns the application and its entrypoint.
 ENV N8N_DIAGNOSTICS_ENABLED=false \

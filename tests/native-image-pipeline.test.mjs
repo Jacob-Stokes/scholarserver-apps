@@ -21,6 +21,14 @@ const rootfsDiffId = `sha256:${"d".repeat(64)}`;
 const registry = "registry.example/scholarserver";
 const architecture = process.arch === "arm64" ? "arm64" : "amd64";
 
+test("n8n uses its official GHCR mirror without changing the reviewed upstream image", async () => {
+  const dockerfile = await readFile(path.join(repositoryRoot, "apps/n8n/Dockerfile"), "utf8");
+  assert.equal(
+    dockerfile.split("\n")[0],
+    "FROM ghcr.io/n8n-io/n8n@sha256:9f21fbf422982bbdddc31085c180bef82d59cc608ba16dfec4fc48611d0b51b8"
+  );
+});
+
 async function makeExecutable(filePath, contents) {
   await writeFile(filePath, contents);
   await chmod(filePath, 0o755);
