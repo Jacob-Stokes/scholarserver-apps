@@ -817,3 +817,14 @@ Embedded Manager setup uses the shared `EmbeddedSetupSurface`. It measures only
 its intrinsic content and reports the versioned height to the same-origin parent;
 it accepts measurement requests only from that parent. It carries no credentials,
 actions or RPC surface, and standalone n8n rendering remains unchanged.
+
+### Freelove development acceptance — 14 September 2026
+
+The integration UI from `aa8351c` is deployed on retained Freelove with core
+`fc5a162`, using an explicit private development image override. Formatting-only
+follow-up `ad60c54` rebuilt to identical UI bytes. Actual HTTPS desktop/mobile
+checks passed for catalog, responsive embedded setup, loaded icons, reachable
+controls and reload, without workflow writes. Native n8n, existing workflows
+and credential files were preserved. This is not a published package update,
+research-grant acceptance, OAuth login test or desktop sync proof. The project
+vault note and security-review remediation follow-up record these boundaries.
