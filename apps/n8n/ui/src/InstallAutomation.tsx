@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { AppRequirement } from "./automation-types";
 import { type ResearchBindings, type ResearchKind, ResearchSettings } from "./ResearchSettings";
 
@@ -10,6 +10,7 @@ export function InstallAutomation({
   research,
   retry,
   busy,
+  disabledReason = null,
   requirements = [],
   expanded = false,
   onInstall
@@ -18,6 +19,7 @@ export function InstallAutomation({
   research?: ResearchKind | null;
   retry: boolean;
   busy: boolean;
+  disabledReason?: string | null;
   requirements?: AppRequirement[];
   expanded?: boolean;
   onInstall: (settings: AutomationSettings) => void;
@@ -26,16 +28,24 @@ export function InstallAutomation({
   const minutes = schedule?.minutesInterval !== undefined;
   const [interval, setInterval] = useState(String(schedule?.minutesInterval ?? schedule?.hoursInterval ?? 1));
   const [bindings, setBindings] = useState<ResearchBindings | null>(null);
+  const feedbackId = useId();
+  const scheduleErrorId = useId();
   const value = Number(interval);
   const validSchedule =
     !schedule || (Number.isInteger(value) && value >= schedule.minimum && value <= schedule.maximum);
   const valid = validSchedule && (!research || bindings !== null);
+  let unavailableReason = disabledReason;
+  if (busy) {
+    unavailableReason = "Wait for the current request to finish.";
+  } else if (!unavailableReason && validSchedule && research && !bindings) {
+    unavailableReason = "Choose compatible research apps and enter a valid folder.";
+  }
   const form = (
     <form
-      className="ss-stack"
+      className="automation-install-form ss-stack"
       onSubmit={(event) => {
         event.preventDefault();
-        if (valid) {
+        if (valid && !busy && !disabledReason) {
           const settings: AutomationSettings = {};
           if (schedule && minutes) settings.minutesInterval = value;
           else if (schedule) settings.hoursInterval = value;
@@ -48,28 +58,54 @@ export function InstallAutomation({
         <ResearchSettings kind={research} requirements={requirements} busy={busy} onChange={setBindings} />
       ) : null}
       {schedule ? (
-        <label>
-          {minutes ? "Check every (minutes)" : "Run every (hours)"}
-          <input
-            className="ss-input"
-            type="number"
-            min={schedule.minimum}
-            max={schedule.maximum}
-            step="1"
-            value={interval}
-            onChange={(event) => setInterval(event.target.value)}
-            required
-            disabled={busy}
-          />
-        </label>
+        <fieldset className="automation-setup-group automation-schedule">
+          <legend>Schedule</legend>
+          <div className="automation-field-grid">
+            <label>
+              {minutes ? "Check every (minutes)" : "Run every (hours)"}
+              <input
+                className="ss-input"
+                type="number"
+                min={schedule.minimum}
+                max={schedule.maximum}
+                step="1"
+                value={interval}
+                onChange={(event) => setInterval(event.target.value)}
+                required
+                disabled={busy}
+                aria-invalid={!validSchedule}
+                aria-describedby={!validSchedule ? scheduleErrorId : undefined}
+              />
+            </label>
+            {!validSchedule ? (
+              <p className="automation-field-hint" id={scheduleErrorId} role="status">
+                Enter a whole number from {schedule.minimum} to {schedule.maximum} {minutes ? "minutes" : "hours"}.
+              </p>
+            ) : null}
+          </div>
+        </fieldset>
       ) : null}
-      <p>The workflow is added with its schedule disabled. Review it before enabling it.</p>
-      {retry ? (
-        <p>The previous request was rejected. Retry sends a new installation request with these settings.</p>
-      ) : null}
-      <button className="ss-button" disabled={busy || !valid}>
-        {retry ? "Retry installation" : "Add automation"}
-      </button>
+      <div className="automation-submit">
+        <div className="ss-stack">
+          <p>The automation is added with its schedule disabled. Review it before enabling it.</p>
+          {retry ? (
+            <p>The previous request was rejected. Retry sends a new installation request with these settings.</p>
+          ) : null}
+          {unavailableReason ? (
+            <p id={feedbackId} role="status">
+              {unavailableReason}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="submit"
+          className="ss-button"
+          disabled={busy || !valid || Boolean(disabledReason)}
+          aria-describedby={unavailableReason ? feedbackId : undefined}
+        >
+          {retry ? "Retry installation" : "Add automation"}
+        </button>
+      </div>
     </form>
   );
   if (!research || expanded) return form;

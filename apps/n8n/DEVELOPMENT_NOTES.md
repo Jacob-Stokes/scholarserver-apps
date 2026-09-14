@@ -1,5 +1,49 @@
 # n8n integration — development record
 
+## App-owned automation form presentation — 14 September 2026
+
+The selected setup form now groups research app selectors into two columns when
+its own available width is at least 36rem, with a full-width folder field and a
+separate schedule group. Narrow forms stack the same controls. The app-owned
+Add automation action sits beside its disabled-schedule explanation on desktop
+and below it on narrow screens; it is not fixed and adds no scroll container.
+Manager owns modal width, scrolling and closing; shared theme, motion and
+embedded-surface sizing are a separate change. No UI protocol or parent action
+RPC was added.
+
+Disabled-action guidance now distinguishes an empty name, a pending request,
+invalid schedule and incomplete research settings. An empty name still blocks
+submission but no longer disables unrelated editable fields. Folder validation
+and hints have accessible descriptions, and loading app discovery is distinct
+from a completed check with no available apps. Existing folder restrictions,
+same-workspace/action requirements, minute/hour payloads and bounds, fixed report
+subfolders, privacy/data-write warnings and rejected-request retry copy remain.
+Draft ownership and request paths are unchanged; no success is inferred from
+these presentation changes.
+
+Review refinement removes always-visible schedule range/interval help. The exact
+whole-number range appears beside and is associated with the schedule field only
+when invalid; native min/max/step validation and the schedule-disabled warning
+remain. Folder errors show only the relevant missing-folder, length or path-rule
+message, without listing every constraint for an empty field.
+
+Bounded verification: all 16 n8n UI source tests and native-schedule configuration
+unit tests pass, as do UI typecheck and scoped formatting/lint checks. The new
+presentation regressions inspect source structure and guidance; they do not
+prove browser layout or interactive draft recovery. Subsequent computer-use checks
+with real Manager and app UI against synthetic responses verified desktop grouping,
+dependent selections, inline schedule validation, draft retention after an explicit
+rejection and restored opener focus on close. The dialog measured 960px wide in
+the actual 1185px viewport. Browser viewport overrides were not applied, so phone
+layout and constrained-height scrolling acceptance remain pending. Full suites,
+production builds, package qualification and Freelove deployment remain pending
+unavailable Tailscale connectivity. No real automation was created.
+
+The project-vault note update remains pending: vault access was unavailable in
+the preceding pass and was not retried within this UI-only write scope. Update
+`Projects/AcademicSystem/Apps/n8n/n8n.md` with the presentation changes and these
+evidence limits when vault access and documentation writes are authorised.
+
 ## Manager automation contract projection — 14 September 2026
 
 The app API now adds the non-breaking `kind` template field and projects

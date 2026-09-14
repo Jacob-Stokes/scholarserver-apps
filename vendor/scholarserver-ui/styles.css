@@ -111,9 +111,27 @@ body:has(.ss-embedded-setup-surface) {
 .ss-embedded-setup-surface {
   display: grid;
   gap: 1rem;
-  width: min(100%, 48rem);
+  width: min(100%, 56rem);
   margin: 0 auto;
   padding: 4px 4px 8px;
+}
+
+/* The modal owns scrolling; the measured frame keeps its natural content height. */
+.ss-setup-scroll {
+  scrollbar-gutter: stable;
+  padding: .25rem .75rem .75rem .25rem;
+}
+html:has(body[data-scroll-locked]) { overflow: hidden; }
+
+@media (max-width: 639px) {
+  .ss-automation-dialog {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+  }
 }
 
 .ss-app {
@@ -188,11 +206,11 @@ body:has(.ss-embedded-setup-surface) {
   margin-bottom: 1.5rem;
 }
 .ss-page-heading h1 {
-  font-family: var(--ss-font-heading);
-  font-weight: 400;
+  font-family: var(--ss-font-sans);
+  font-weight: 600;
   margin: 0;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  letter-spacing: normal;
+  font-size: clamp(1.75rem, 3vw, 2rem);
+  letter-spacing: -.025em;
   font-kerning: normal;
 }
 .ss-page-heading p {
@@ -507,6 +525,26 @@ body:has(.ss-embedded-setup-surface) {
 }
 :root[data-motion="on"] :where(.ss-button, .ss-pressable, .ss-app-card) {
   transition: background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out, transform 140ms ease-out;
+}
+:root[data-motion="on"] :where(.workspace-navigation a, .workspace-application-card) {
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+@media (hover: hover) {
+  .workspace-application-card:hover,
+  .workspace-application-card:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--foreground) 5%, transparent);
+  }
+}
+/* These use CSS so Radix can finish its exit lifecycle without remounting forms. */
+:root[data-motion="on"] .ss-dialog-overlay[data-state="open"] { animation: ss-dialog-fade 160ms ease-out; }
+:root[data-motion="on"] .ss-dialog-overlay[data-state="closed"] { animation: ss-dialog-fade 100ms ease-in reverse; }
+:root[data-motion="on"] .ss-dialog-content[data-state="open"] { animation: ss-dialog-arrive 180ms ease-out; }
+:root[data-motion="on"] .ss-dialog-content[data-state="closed"] { animation: ss-dialog-fade 100ms ease-in reverse; }
+@keyframes ss-dialog-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ss-dialog-arrive {
+  from { opacity: 0; transform: translateY(6px) scale(.99); }
+  to { opacity: 1; transform: none; }
 }
 @media (hover: hover) and (pointer: fine) {
   :root[data-motion="on"] .ss-app-card:hover { transform: translateY(-2px); }

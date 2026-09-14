@@ -48,7 +48,11 @@ export function AutomationCatalog({
   if (selected) {
     return (
       <section
-        className={embedded ? "automation-setup-form automation-setup-form-embedded ss-stack" : "ss-card ss-stack"}
+        className={
+          embedded
+            ? "automation-setup-form automation-setup-form-embedded ss-stack"
+            : "automation-setup-form ss-card ss-stack"
+        }
       >
         {!initialTemplateId ? (
           <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => setSelected(null)}>
@@ -75,7 +79,8 @@ export function AutomationCatalog({
           requirements={selected.template.requirements}
           expanded
           retry={Boolean(initialRetryOperationId)}
-          busy={busy || !name.trim()}
+          busy={busy}
+          disabledReason={!name.trim() ? "Enter an automation name." : null}
           onInstall={(settings) =>
             void onInstall(selected.template.id, selected.id, name.trim(), settings, initialRetryOperationId)
           }
