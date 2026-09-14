@@ -35,7 +35,10 @@ test("workflow retains only current native JSON receipts even after a failed gat
   assert.equal(upload.with["retention-days"], 14);
   assert.deepEqual(upload.with.path.trim().split("\n"), [
     ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.json",
-    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.qualified.json"
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.qualified.json",
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/summary.json",
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/logseq-native.json",
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/*.png"
   ]);
   const publish = steps.find((step) => step.run === "./scripts/publish-native-images.sh");
   assert.ok(steps.indexOf(upload) > steps.indexOf(publish));

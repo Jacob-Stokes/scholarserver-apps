@@ -196,7 +196,13 @@ try {
   if (process.env.SCHOLARSERVER_BROWSER_MODULES) {
     const require = createRequire(path.join(process.env.SCHOLARSERVER_BROWSER_MODULES, "package.json"));
     const { chromium } = require("playwright");
-    browser = await chromium.launch({ channel: "chrome", headless: true });
+    const browserOptions = { headless: true };
+    if (process.env.SCHOLARSERVER_BROWSER_EXECUTABLE) {
+      browserOptions.executablePath = process.env.SCHOLARSERVER_BROWSER_EXECUTABLE;
+    } else {
+      browserOptions.channel = "chrome";
+    }
+    browser = await chromium.launch(browserOptions);
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));

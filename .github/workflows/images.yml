@@ -41,6 +41,25 @@ jobs:
           REVISION: ${{ github.sha }}
           NATIVE_IMAGE_TEST_USE_SUDO: '1'
         run: ./scripts/test-native-images.sh
+      - name: Prepare isolated locked Playwright and native Chromium
+        run: |
+          browser_root=$(mktemp -d "$RUNNER_TEMP/scholarserver-browser.XXXXXX")
+          # Pin both Playwright and its exact playwright-core dependency in a temp lock.
+          npm install --prefix "$browser_root" --package-lock-only --ignore-scripts --save-exact --no-audit --no-fund playwright@1.58.2
+          npm ci --prefix "$browser_root" --ignore-scripts --no-audit --no-fund
+          export PLAYWRIGHT_BROWSERS_PATH="$browser_root/browsers"
+          node "$browser_root/node_modules/playwright/cli.js" install --with-deps chromium
+          browser_executable=$(node -e 'console.log(require(process.argv[1]).chromium.executablePath())' "$browser_root/node_modules/playwright")
+          echo "SCHOLARSERVER_BROWSER_MODULES=$browser_root/node_modules" >> "$GITHUB_ENV"
+          echo "SCHOLARSERVER_BROWSER_EXECUTABLE=$browser_executable" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
+      - name: Qualify Docling, Logseq and Zotero development images
+        timeout-minutes: 30
+        env:
+          REGISTRY: ghcr.io/jacob-stokes
+          ARCH: ${{ matrix.architecture }}
+          REVISION: ${{ github.sha }}
+        run: ./scripts/qualify-development-apps.sh
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -60,6 +79,9 @@ jobs:
           path: |
             .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.json
             .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.qualified.json
+            .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/summary.json
+            .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/logseq-native.json
+            .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.development.*/*.png
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
