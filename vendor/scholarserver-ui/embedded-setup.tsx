@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 export const EMBEDDED_SETUP_MESSAGE = "scholarserver:setup-size";
 export const MEASURE_SETUP_MESSAGE = "scholarserver:measure-setup";
@@ -59,5 +59,9 @@ export function EmbeddedSetupSurface({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <div ref={contentRef} className="ss-embedded-setup-surface">{children}</div>;
+  return (
+    <div ref={contentRef} className="ss-embedded-setup-surface">
+      {children}
+    </div>
+  );
 }
