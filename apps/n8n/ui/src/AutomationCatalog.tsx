@@ -14,7 +14,8 @@ export function AutomationCatalog({
   initialTemplateId,
   initialAutomationId,
   initialRetryOperationId,
-  initialName
+  initialName,
+  embedded = false
 }: {
   templates: Template[];
   applications: Application[] | null;
@@ -31,6 +32,7 @@ export function AutomationCatalog({
   initialAutomationId?: string;
   initialRetryOperationId?: string;
   initialName?: string;
+  embedded?: boolean;
 }) {
   const [selected, setSelected] = useState<{ template: Template; id: string } | null>(null);
   const [name, setName] = useState(initialName ?? "");
@@ -45,13 +47,15 @@ export function AutomationCatalog({
   if (initialTemplateId && !selected) return <p role="status">Loading automation setup…</p>;
   if (selected) {
     return (
-      <section className="ss-card ss-stack">
+      <section
+        className={embedded ? "automation-setup-form automation-setup-form-embedded ss-stack" : "ss-card ss-stack"}
+      >
         {!initialTemplateId ? (
           <button className="ss-button ss-button-secondary" disabled={busy} onClick={() => setSelected(null)}>
             Back to catalog
           </button>
         ) : null}
-        <h2>{selected.template.name}</h2>
+        {!embedded ? <h2>{selected.template.name}</h2> : null}
         <p>{selected.template.description}</p>
         <AppRoles requirements={selected.template.requirements} icons={icons} />
         <label>

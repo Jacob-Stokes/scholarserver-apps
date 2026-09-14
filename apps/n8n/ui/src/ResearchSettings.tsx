@@ -103,7 +103,7 @@ export function ResearchSettings({
   }
 
   return (
-    <fieldset className="ss-stack" disabled={busy}>
+    <fieldset className="research-bindings ss-stack" disabled={busy}>
       <legend>Connect research apps</legend>
       {error ? <p role="alert">{error}</p> : null}
       <label>

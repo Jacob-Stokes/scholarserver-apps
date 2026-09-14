@@ -24,8 +24,9 @@ automations that are not rejected, fail closed without creating a new copy.
 
 Successful embedded setup reports that the automation was added with its
 schedule disabled and tells the researcher to close the window; Manager owns
-the surrounding modal and refresh. No postMessage, credential logic, workflow
-execution logic or native editor requirement was added. Focused parser,
+the surrounding modal and refresh. The shared setup surface sends only versioned,
+same-origin intrinsic-height measurements; it has no credential logic, workflow
+execution logic or native editor requirement. Focused parser,
 resolution and existing integration tests pass; UI typecheck passes. This is
 source/test evidence, not Manager browser or published-image acceptance.
 The project-vault documentation update is pending; this pass does not access
@@ -810,3 +811,9 @@ generalized run (`n8n-proof-4388c291`) was fixed before acceptance; that scope w
 also deleted. Full locked `scripts/check-source.sh` passed, all nineteen existing
 image-source records still match, and the project-vault note and app index were
 updated through Jacob Gateway with the same evidence boundaries.
+### Embedded setup sizing
+
+Embedded Manager setup uses the shared `EmbeddedSetupSurface`. It measures only
+its intrinsic content and reports the versioned height to the same-origin parent;
+it accepts measurement requests only from that parent. It carries no credentials,
+actions or RPC surface, and standalone n8n rendering remains unchanged.

@@ -1,15 +1,34 @@
-.embedded-setup {
-  display: grid;
-  gap: 1rem;
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 1rem;
-}
-
 .automation-catalog {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: 1rem;
+}
+.automation-setup-form-embedded {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.ss-embedded-setup-surface label {
+  display: grid;
+  gap: .4rem;
+  font-weight: 600;
+}
+.ss-embedded-setup-surface .research-bindings {
+  display: grid;
+  gap: 1rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.ss-embedded-setup-surface .research-bindings legend {
+  padding: 0;
+  font-weight: 700;
+}
+.ss-embedded-setup-surface .research-bindings p {
+  margin: 0;
+  color: var(--muted-foreground);
 }
 .automation-catalog > .ss-card {
   display: flex;

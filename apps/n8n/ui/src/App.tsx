@@ -1,4 +1,5 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { EmbeddedSetupSurface } from "@scholarserver/ui/embedded-setup";
 import { useEffect, useState } from "react";
 import { AutomationCatalog } from "./AutomationCatalog";
 import type { Application, Inventory, Run } from "./automation-types";
@@ -131,17 +132,17 @@ export function App() {
       resolution?.kind === "invalid" ? `${resolution.message} Refresh Manager and open setup again.` : null;
     if (embeddedCompleted) {
       return (
-        <main className="embedded-setup ss-stack">
+        <EmbeddedSetupSurface>
           <section className="ss-card ss-stack">
             <h1>Automation added</h1>
             <p>Your automation was added with its schedule disabled. Review it in My automations before enabling it.</p>
             <p>Close this window to return to Automations.</p>
           </section>
-        </main>
+        </EmbeddedSetupSurface>
       );
     }
     return (
-      <main className="embedded-setup ss-stack">
+      <EmbeddedSetupSurface>
         {error ? <p role="alert">{error}</p> : null}
         {connection && !connected ? (
           <ConnectionSetup
@@ -183,6 +184,7 @@ export function App() {
             initialAutomationId={embeddedSetup.automationId ?? undefined}
             initialRetryOperationId={receipt?.operationId}
             initialName={receipt?.name}
+            embedded
             onInstall={async (templateId, automationId, name, settings, retryOperationId) => {
               const succeeded = await act(async () => {
                 const result = await request<{ state: string }>("install", {
@@ -198,7 +200,7 @@ export function App() {
             }}
           />
         ) : null}
-      </main>
+      </EmbeddedSetupSurface>
     );
   }
 

@@ -103,6 +103,18 @@ input, select, textarea {
   min-width: 0;
   max-width: 100%;
 }
+body:has(.ss-embedded-setup-surface) {
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+}
+.ss-embedded-setup-surface {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 48rem);
+  margin: 0 auto;
+  padding: 4px 4px 8px;
+}
 
 .ss-app {
   min-height: 100vh;
