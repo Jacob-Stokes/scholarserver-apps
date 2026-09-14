@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:48c4e461b86201a3b18d5d35dcf5ba9e6250e76fa697df1482871efcb413d68d
+    image: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:c0378ee646e6734cdf7194bdd4065201aa94544a67247142aad8e3e217ac5974
     restart: unless-stopped
     user: "1000:1000"
     read_only: true
@@ -22,7 +22,7 @@ services:
       start_period: 60s
       retries: 4
   integration:
-    image: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:95e321f56b33a8dc0d8741f13acfa2d90cf3e10be5ee106e7282aa2922ca32fd
+    image: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:aac963bd606cd206c282e89c931aad58dfe400cff35c3b620ba280734d8ccf65
     restart: unless-stopped
     user: "1000:1000"
     read_only: true

@@ -1,8 +1,14 @@
 # Editorial package icons — source candidates
 
-14 September 2026. Not published, signed, installed or deployed by this pass.
+14 September 2026. Catalog packages are not published, signed, installed or deployed by this pass.
 The new source identities below are deliberately marked `editorial`; they are
 not replacements for immutable old package archives or installed manifests.
+
+Native pin finalization supersedes the initial old-image statements below:
+[the full-source checkpoint](native-candidates-20260914.md) selects all 19 newly
+published, dual-native verified indexes and their source-lock records. Versions,
+metadata and runtime contracts are retained; release blocks remain. The earlier
+artwork and font sections record what those individual source passes changed.
 
 ## Artwork and safe asset contract
 
@@ -76,7 +82,7 @@ The standalone raster check additionally verifies the PNGs against current SVGs.
 Initial visual QA caught inherited SVG strokes disappearing in this ImageMagick
 renderer; Files/Feed now use filled outlines and the complete set was rechecked.
 
-## New source identities and release gate
+## Initial source identities and continuing release gate
 
 One final prerelease number is incremented per package, followed by an explicit
 editorial checkpoint suffix. Upstream software versions, image references,
@@ -94,19 +100,18 @@ Compose, capabilities, grants, data and setup declarations are unchanged.
 
 These remain source inputs outside the published catalog. Every app has an
 explicit `RELEASE_BLOCKED.md`, recognised by `scripts/build-release.sh`;
-existing n8n/Obsidian gates are preserved. No `catalog/dist` archive/index or
-accepted `catalog/image-source-lock.json` record is updated. Locally available
+existing n8n/Obsidian gates are preserved. The initial artwork pass updated no
+`catalog/dist` archive/index or accepted source-lock record. Locally available
 source history was used for identities, not a claim of fresh registry inventory.
 
 Before publication, main must select a released core minimum that actually
 supports `presentation.editorialIcon`; the inherited `>=0.1.0` is **not**
 evidence that old cores accept this new field. Qualify the exact new package,
-its assets/attribution and authenticated browser delivery. Rebuild and qualify
-native images for changed UI source/shared snapshot inputs, then select new
-immutable image pins and source-lock records. Retain unchanged image pins where
-no runtime input changed, such as the Files worker. The current old image pins
-are intentionally not evidence that this pass is in a runtime image. The n8n
-source-lock check rejects its previous record as stale, as expected.
+its assets/attribution and authenticated browser delivery. The native rebuild,
+qualification and immutable pin/source-lock selection are now recorded in the
+full-source checkpoint above. Its checks do not establish authenticated package
+migration or remove the other release gates. Further runtime or shared-snapshot
+changes would require fresh native qualification before selecting new pins.
 
 For a separately authorised retained-host UI-only override, leave installed
 package records and catalog archives untouched. Manager can use original icons

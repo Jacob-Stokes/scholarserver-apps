@@ -1,5 +1,17 @@
 # n8n integration — development record
 
+## Finalized native candidate pins — 14 September 2026
+
+The current unpublished editorial candidate now selects its exact verified
+images from successful dual-native run 34878253357, source 2917a0a. This supersedes
+the earlier source-only/old-pin limitation, not the package release block.
+Version, descriptions, tags, icons, variants, permissions and data/setup remain
+unchanged; n8n and Zotero now advertise qualified ARM64 as well as AMD64.
+No runtime input or vendor bytes changed. Full npm tests, lint and all 19 source
+locks pass. See [native evidence, snapshot ownership and remaining gates](../../docs/native-candidates-20260914.md).
+Development archives are not an official release or a deployment.
+The project-vault note/index update is pending under this apps-only scope.
+
 ## Native restart contract regression — 14 September 2026
 
 GitHub run `34869166096`, source `f7790094`, built all 19 images on AMD64 and ARM64.
