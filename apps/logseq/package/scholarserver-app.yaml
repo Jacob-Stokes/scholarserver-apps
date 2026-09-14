@@ -11,6 +11,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: An outliner for connected notes and knowledge.
     tags: [Notes, Knowledge graphs, Sync]
   icon:
     path: assets/icons/logseq.webp

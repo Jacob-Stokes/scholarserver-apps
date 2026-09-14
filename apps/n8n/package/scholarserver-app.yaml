@@ -81,6 +81,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Connect tools and automate routine work.
     tags: [Automation]
   icon:
     path: assets/icons/n8n.webp

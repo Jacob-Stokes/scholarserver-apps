@@ -79,6 +79,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Follow news and research feeds in one reader.
     tags: [News & feeds]
   icon:
     path: assets/icons/freshrss.webp

@@ -165,6 +165,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Organise your references and research papers.
     tags: [References, Notes, Documents, Files]
   icon:
     path: assets/icons/zotero.webp

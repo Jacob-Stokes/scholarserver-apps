@@ -82,6 +82,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Convert PDFs into Markdown for your research.
     tags: [Documents, PDF conversion]
   icon:
     path: assets/icons/docling.webp

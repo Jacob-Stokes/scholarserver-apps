@@ -90,6 +90,40 @@ function checkCatalogTags(manifest, label) {
   unique(normalizedTags, `${label}: catalog tags`);
 }
 
+function checkCatalogDescription(description, label) {
+  assert.equal(typeof description, "string", `${label}: purpose description is required`);
+  assert.ok(description.length > 0 && description.length <= 120, `${label}: concise purpose description`);
+  assert.equal(description, description.trim(), `${label}: no surrounding whitespace`);
+  assert.doesNotMatch(description, /[\r\n<>]/, `${label}: single-line plain text`);
+}
+
+test("purpose descriptions reject missing, empty, multiline, markup and overlong copy", () => {
+  checkCatalogDescription("Organise your references and research papers.", "valid package");
+  for (const description of [
+    undefined,
+    null,
+    42,
+    "",
+    " ",
+    " Padded.",
+    "Padded. ",
+    "Two\nlines",
+    "Two\rlines",
+    "<b>Notes</b>",
+    "x".repeat(121)
+  ]) {
+    assert.throws(() => checkCatalogDescription(description, "invalid package"));
+  }
+});
+
+test("every first-party package declares a concise plain-text purpose description", async () => {
+  const discovered = await packages();
+  assert.ok(discovered.length > 0, "at least one first-party package must be discovered");
+  for (const { directory, manifest } of discovered) {
+    checkCatalogDescription(manifest.presentation?.details?.description, directory);
+  }
+});
+
 test("package discovery rejects incomplete packages but allows source-only directories", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "scholarserver-package-contract-"));
   t.after(() => rm(root, { recursive: true, force: true }));

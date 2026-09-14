@@ -85,6 +85,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Read and manage files in the folders you share.
     tags: [Files]
   icon:
     path: assets/icons/files.webp

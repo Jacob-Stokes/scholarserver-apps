@@ -2,6 +2,12 @@
 
 ## Editorial icon source candidate — 14 September 2026
 
+Purpose-copy follow-up: `presentation.details.description` now reads
+“Follow news and research feeds in one reader.” Existing tags, unpublished candidate
+version and image pins are unchanged. This describes purpose, not setup or new
+capabilities. The two canonical font files were also mirrored into vendor.
+Vault-note follow-up is pending under this pass's no-remote-changes boundary.
+
 New unpublished source identity `0.1.0-beta.7.editorial.20260914.1` adds an app-owned
 `artwork/editorial.svg` and a locked transparent PNG declaration under
 `presentation.editorialIcon`, with separate ScholarServer CC BY 4.0 attribution.

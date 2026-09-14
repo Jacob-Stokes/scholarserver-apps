@@ -6,6 +6,22 @@ not replacements for immutable old package archives or installed manifests.
 
 ## Artwork and safe asset contract
 
+### Purpose-copy and font follow-up
+
+The seven still-unpublished candidates now declare concise, single-line
+`presentation.details.description` copy describing each app's purpose rather than
+its setup choices. Tags, package versions, image pins and all other manifest fields
+are unchanged. The runtime catalog is untouched. Only canonical `fonts.ts` and
+`typography.css` were mirrored for this follow-up: system font is the default,
+while an explicit Source Sans 3 preference is preserved.
+
+Full `npm test` (512 MiB JavaScript heap limit), `npm run lint`, twelve focused
+package/asset tests, parsed-manifest preservation checks and shared vendor parity
+pass. A direct vendored-font check also confirms the default and explicit Source
+preference. These are source checks, not new image or browser acceptance.
+The seven vault-note follow-ups are pending under the no-remote-changes boundary;
+each app's development notes records the exact copy. Existing release gates remain.
+
 Each app owns `artwork/editorial.svg`, an editable 128-unit path drawing without
 fonts, scripts, external references or embedded bitmaps. Only the generated
 256×256 transparent PNG under `package/assets/icons/<app>-editorial.png` is

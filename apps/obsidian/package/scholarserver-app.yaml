@@ -155,6 +155,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
+    description: Connect your notes in a Markdown vault.
     tags: [Notes, Vaults, Sync]
   icon:
     path: assets/icons/obsidian.webp
