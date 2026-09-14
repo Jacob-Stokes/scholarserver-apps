@@ -65,7 +65,7 @@ for attempt in $(seq 1 30); do
 done
 docker exec "$prefix-integration" node --input-type=module -e '
   import assert from "node:assert/strict";
-  assert.deepEqual(await (await fetch("http://localhost:8080/api/status")).json(), { connected: true, phase: "ready" });
+  assert.deepEqual(await (await fetch("http://localhost:8080/api/status")).json(), { connected: true, phase: "ready", automationInterfaceVersion: 1 });
   const { ManagerConnection } = await import("/app/integration/manager-connection.mjs");
   await new ManagerConnection("/runtime").read();
 '

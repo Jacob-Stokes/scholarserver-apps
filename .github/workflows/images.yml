@@ -52,6 +52,17 @@ jobs:
           ARCH: ${{ matrix.architecture }}
           REVISION: ${{ github.sha }}
         run: ./scripts/publish-native-images.sh
+      - name: Retain native build and qualification receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-image-receipts-${{ github.sha }}-${{ matrix.architecture }}
+          path: |
+            .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.json
+            .dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.qualified.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
 
   manifest:
     needs: build

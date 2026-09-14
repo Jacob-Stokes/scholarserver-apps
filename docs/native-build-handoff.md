@@ -48,6 +48,17 @@ Obsidian, FreshRSS and n8n scopes. It is removed before those gates start. A mis
 stale or differently scoped qualification blocks publication before any registry
 operation.
 
+Each GitHub architecture job always attempts to upload its two exact JSON paths
+as `native-image-receipts-<revision>-<architecture>`, retained for 14 days. Hidden
+files are explicitly included because the receipts live under `.dev`; no broader
+workspace, runtime, credentials or Docker configuration is uploaded. An early
+build failure may leave neither file; a failed qualification leaves only the
+completed build receipt. Missing files produce a warning, not fabricated evidence.
+The upload does not change the success-only publication gate. Download with
+`gh run download RUN_ID --name native-image-receipts-REVISION-ARCH --dir NEW_DIR`.
+An artifact is evidence to inspect, not proof that images were published or that
+the qualification receipt exists and matches the build receipt.
+
 ## Local handoff commands
 
 Run these commands only on the native architecture named by `ARCH`. They build

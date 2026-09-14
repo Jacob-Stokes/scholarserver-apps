@@ -11,6 +11,28 @@ function packageDocuments() {
   };
 }
 
+test("native restart assertion requires the current status contract without accepting extra fields", async () => {
+  const harness = readFileSync(new URL("../test-container.sh", import.meta.url), "utf8");
+  const assertion = harness.match(
+    /^  assert\.deepEqual\(await \(await fetch\("http:\/\/localhost:8080\/api\/status"\)\)\.json\(\),.*\);$/m
+  )?.[0];
+  assert.ok(assertion, "the native restart gate must keep a strict status assertion");
+  // Execute the actual shell-embedded assertion with a synthetic HTTP response.
+  const checkStatus = new Function("assert", "fetch", `return (async () => { ${assertion} })();`);
+  const ready = { connected: true, phase: "ready", automationInterfaceVersion: 1 };
+  const check = (status) => checkStatus(assert, async () => ({ json: async () => status }));
+  await check(ready);
+  for (const status of [
+    { connected: true, phase: "ready" },
+    { ...ready, connected: false },
+    { ...ready, phase: "password-required" },
+    { ...ready, automationInterfaceVersion: 2 },
+    { ...ready, apiKey: "synthetic-unexpected-secret" }
+  ]) {
+    await assert.rejects(() => check(status), { code: "ERR_ASSERTION" });
+  }
+});
+
 test("native package acceptance selects exactly the two manifest image digests", () => {
   const { manifest, compose } = packageDocuments();
   assert.deepEqual(packageTestImages(manifest, compose), {

@@ -5,6 +5,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { fingerprintRecipe } from "../scripts/check-image-source.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
@@ -20,6 +21,27 @@ const configDigest = `sha256:${"c".repeat(64)}`;
 const rootfsDiffId = `sha256:${"d".repeat(64)}`;
 const registry = "registry.example/scholarserver";
 const architecture = process.arch === "arm64" ? "arm64" : "amd64";
+
+test("workflow retains only current native JSON receipts even after a failed gate", async () => {
+  const workflow = parse(await readFile(path.join(repositoryRoot, ".github/workflows/images.yml"), "utf8"));
+  const steps = workflow.jobs.build.steps;
+  const uploads = steps.filter((step) => step.uses === "actions/upload-artifact@v4");
+  assert.equal(uploads.length, 1);
+  const upload = uploads[0];
+  assert.equal(upload.if, "always()");
+  assert.equal(upload.with.name, "native-image-receipts-${{ github.sha }}-${{ matrix.architecture }}");
+  assert.equal(upload.with["include-hidden-files"], true);
+  assert.equal(upload.with["if-no-files-found"], "warn");
+  assert.equal(upload.with["retention-days"], 14);
+  assert.deepEqual(upload.with.path.trim().split("\n"), [
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.json",
+    ".dev/native-images/${{ github.sha }}-${{ matrix.architecture }}.qualified.json"
+  ]);
+  const publish = steps.find((step) => step.run === "./scripts/publish-native-images.sh");
+  assert.ok(steps.indexOf(upload) > steps.indexOf(publish));
+  assert.equal(publish.if, undefined, "publication must keep its default success-only condition");
+  assert.equal(publish["continue-on-error"], undefined);
+});
 
 test("n8n uses its official GHCR mirror without changing the reviewed upstream image", async () => {
   const dockerfile = await readFile(path.join(repositoryRoot, "apps/n8n/Dockerfile"), "utf8");

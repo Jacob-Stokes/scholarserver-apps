@@ -1,5 +1,24 @@
 # n8n integration — development record
 
+## Native restart contract regression — 14 September 2026
+
+GitHub run `34869166096`, source `f7790094`, built all 19 images on AMD64 and ARM64.
+Files, Obsidian and FreshRSS native gates passed. n8n declared setup passed, then
+both jobs failed the restart test because its strict expected status omitted the
+already-supported `automationInterfaceVersion: 1`. The actual response reported
+`connected: true` and `phase: ready`. Publication was skipped on both architectures.
+
+The native expectation now includes that required field and remains strict about
+the entire response. A regression executes the actual embedded assertion against
+synthetic responses; it rejects missing/wrong protocol versions, disconnected or
+wrong-phase status and unexpected fields. It reproduced the CI failure before
+the correction. Runtime code, readiness checks, credential-preservation checks,
+image pins and package versions are unchanged. Native rerun remains main-owned;
+source tests are not a completed container qualification or deployment.
+Full `npm test` (512 MiB JavaScript heap limit), 111 focused integration/pipeline/
+source-record tests, `npm run lint` and native-harness shell syntax checks pass.
+The project-vault follow-up is pending within this apps-only build-repair scope.
+
 ## Official upstream registry — 14 September 2026
 
 GitHub native build `34868769152` started on both standard hosted architectures,
