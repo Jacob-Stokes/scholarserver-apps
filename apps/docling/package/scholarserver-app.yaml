@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.docling
 name: Docling
-packageVersion: 0.3.5-beta.4.editorial.20260914.1
+packageVersion: 0.3.5-beta.4.editorial.20260915.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -128,7 +128,7 @@ onboarding:
         - { id: folder, type: string, secret: false, required: true }
         - { id: limit, type: number, secret: false, required: true }
     - id: browse-folders
-      data: documents
+      data: runtime
       timeoutSeconds: 60
       fields:
         - { id: path, type: string, secret: false, required: true }
