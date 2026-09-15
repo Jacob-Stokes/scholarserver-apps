@@ -11,9 +11,14 @@ export function packageTestImages(manifest, compose) {
   assert.equal(manifest.id, "org.scholarserver.n8n");
   const setup = manifest.onboarding.actions.find((action) => action.id === "setup");
   assert.equal(setup?.provisionServiceAccess, true, "Native setup must exercise the Manager service credential");
+  assert.equal(
+    manifest.onboarding.actions.filter((action) => action.provisionServiceAccess).length,
+    1,
+    "Only one action may provision application service access"
+  );
   assert.deepEqual(
     setup.fields.filter((field) => field.required).map((field) => field.id),
-    ["password"],
+    [],
     "Update native acceptance when required setup fields change"
   );
   const references = new Map();

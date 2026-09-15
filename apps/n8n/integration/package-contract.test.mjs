@@ -61,3 +61,9 @@ test("native package acceptance refuses mutable or mismatched images and duplica
   duplicate.manifest.images.push(duplicate.manifest.images[0]);
   assert.throws(() => packageTestImages(duplicate.manifest, duplicate.compose), /Duplicate/);
 });
+
+test("package refuses multiple service-access provisioning actions", () => {
+  const { manifest, compose } = packageDocuments();
+  manifest.onboarding.actions.push({ id: "second", provisionServiceAccess: true, fields: [] });
+  assert.throws(() => packageTestImages(manifest, compose), /Only one action/);
+});

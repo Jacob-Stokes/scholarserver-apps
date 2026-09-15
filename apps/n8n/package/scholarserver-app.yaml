@@ -104,11 +104,6 @@ onboarding:
       timeoutSeconds: 90
       provisionServiceAccess: true
       fields:
-        - { id: password, type: string, secret: true, required: true }
+        - { id: password, type: string, secret: true, required: false }
         - { id: email, type: string, secret: false, required: false }
         - { id: mfaCode, type: string, secret: true, required: false }
-    - id: connect-research
-      data: runtime
-      timeoutSeconds: 90
-      provisionServiceAccess: true
-      fields: []

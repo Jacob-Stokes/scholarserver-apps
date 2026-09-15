@@ -28,7 +28,7 @@ test("research access preserves an existing account and refuses unfinished sign-
     t.after(stop);
     const name = `${"e".repeat(32)}.json`;
     await atomicJson(path.join(directory, "requests", name), {
-      action: "connect-research",
+      action: "setup",
       input: { scholarserverService: { token: "test-only" } }
     });
     let result;
