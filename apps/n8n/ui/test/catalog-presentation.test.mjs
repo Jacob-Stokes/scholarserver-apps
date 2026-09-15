@@ -59,7 +59,7 @@ test("schedule presentation preserves units, whole-number limits and disabled in
   );
   assert.match(install, /Enter a whole number from \{schedule.minimum\} to \{schedule.maximum\}/);
   assert.doesNotMatch(install, /Every \{schedule.minimum\}|not a daily start time|not a time of day|scheduleHintId/);
-  assert.match(install, /added with its schedule disabled\. Review it before enabling it/);
+  assert.match(install, /Choose how often this runs\. It starts paused; turn on automatic runs from Manage/);
   assert.match(install, /previous request was rejected\. Retry sends a new installation request/);
 });
 

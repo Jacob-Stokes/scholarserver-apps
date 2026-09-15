@@ -109,7 +109,9 @@ export function InstallAutomation({
       ) : null}
       <div className="automation-submit">
         <div className="ss-stack">
-          <p>The automation is added with its schedule disabled. Review it before enabling it.</p>
+          <p>
+            Choose how often this runs. It starts paused; turn on automatic runs from Manage when you&apos;re ready.
+          </p>
           {retry ? (
             <p>The previous request was rejected. Retry sends a new installation request with these settings.</p>
           ) : null}

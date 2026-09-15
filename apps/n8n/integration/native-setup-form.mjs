@@ -217,7 +217,7 @@ export class N8nNativeSetupForm {
     return {
       version: nativeSetupFormVersion,
       description: template.description,
-      notice: "The automation is added with its schedule disabled. Review it before enabling it.",
+      notice: "Choose how often this runs. It starts paused; turn on automatic runs from Manage when you're ready.",
       fields,
       canSubmit: fields.every((field) => !field.error) && Boolean(selectedSource && selectedTarget)
     };

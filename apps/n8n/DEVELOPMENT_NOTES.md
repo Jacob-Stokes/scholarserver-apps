@@ -1,5 +1,27 @@
 # n8n integration — development record
 
+## App-owned saved schedule editing — 15 September 2026
+
+Source adds bounded read/edit endpoints for the one reviewed native minute or
+hour trigger in an installed automation. Reads expose the saved interval even
+when the workflow is active, customised or awaiting reconciliation. Writes are
+limited to paused, current-template, fingerprint-matching workflows and preserve
+the supported workflow fields, including credentials, connections, settings,
+node groups, static data and pinned data. The app never pauses or enables a
+workflow as part of an edit. An intent receipt is saved before the single n8n PUT;
+`updating` and uncertain results block further changes until a GET reconciles the
+recorded fingerprint. The enable route shares the same app lock and refuses a
+pending schedule edit.
+
+Pinned n8n 2.38.1 describes `versionId` as an optimistic-lock identifier, but its
+public update DTO marks that field read-only and the public controller does not
+accept an expected version for conditional writes. The integration therefore
+checks the version, active state and full guided fingerprint again immediately
+before PUT. A direct external editor can still race that final check and write;
+this source does not claim upstream CAS protection. Package `0.1.0-guided.20260915.2`
+and its immutable image remain unchanged. Source tests use synthetic workflows;
+the live enabled PDF workflow was not mutated.
+
 ## Native Manager setup form candidate — 15 September 2026
 
 Unpublished package candidate `0.1.0-guided.20260915.2` adds the bounded

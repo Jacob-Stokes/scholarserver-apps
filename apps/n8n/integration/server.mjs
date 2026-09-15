@@ -23,6 +23,7 @@ import {
 import { PasswordSetup } from "./password-setup.mjs";
 import { ResearchAccess } from "./research-access.mjs";
 import { ResearchBridge } from "./research-bridge.mjs";
+import { ScheduleManagement, ScheduleRequestError, scheduleEditIsPending } from "./schedule-management.mjs";
 import { N8nSetup } from "./setup.mjs";
 import { startSetupActions } from "./setup-actions.mjs";
 import { assertWorkflowUnchanged, WorkflowEditConflict } from "./templates.mjs";
@@ -45,6 +46,9 @@ const client = {
   },
   async getWorkflow(id) {
     return (await requiredClient()).getWorkflow(id);
+  },
+  async updateWorkflow(id, workflow) {
+    return (await requiredClient()).updateWorkflow(id, workflow);
   },
   async createCredential(credential) {
     return (await requiredClient()).createCredential(credential);
@@ -69,6 +73,7 @@ const installations = new WorkflowInstallations({
   }
 });
 const nativeSetupForm = new N8nNativeSetupForm({ templates, researchBridge, installations, requiredClient });
+const scheduleManagement = new ScheduleManagement({ installations, templates, requiredClient });
 
 async function requiredClient() {
   const connected = await setup.client();
@@ -225,30 +230,57 @@ createServer(async (request, response) => {
         const input = await body(request);
         if (typeof input.enabled !== "boolean")
           return json(response, 400, { error: "Choose whether to enable the schedule" });
-        const receipt = (await installations.read()).installations[input.automationId ?? input.templateId];
-        if (receipt?.state !== "installed")
-          return json(response, 409, { error: "Resolve the installation before changing its schedule" });
-        const upstream = await requiredClient();
-        let versionId;
-        if (input.enabled) {
-          const template = templates.find((candidate) => candidate.id === receipt.templateId);
-          if (template?.research && (await researchAccess.read(receipt.operationId)).state !== "ready") {
-            return json(response, 409, {
-              error: "Research access is disconnected. Review the connection before enabling this workflow."
-            });
+        const result = await installations.serialise(async () => {
+          const receipt = (await installations.read()).installations[input.automationId ?? input.templateId];
+          if (receipt?.state !== "installed") {
+            throw new WorkflowEditConflict("Resolve the installation before changing its schedule");
           }
-          if (template?.research) {
-            const grant = await researchAccess.read(receipt.operationId);
-            await researchBridge.validateScope(grant.scope);
+          const schedulePending = scheduleEditIsPending(receipt.scheduleEdit);
+          if (input.enabled && schedulePending) {
+            throw new WorkflowEditConflict("Reconcile the schedule change before turning on automatic runs");
           }
-          const workflow = await upstream.getWorkflow(receipt.workflowId);
-          assertWorkflowUnchanged(workflow, receipt.fingerprint);
-          versionId = workflow.versionId;
-          if (typeof versionId !== "string" || !versionId) throw new Error("Cannot verify the workflow version");
+          const upstream = await requiredClient();
+          let versionId;
+          if (input.enabled) {
+            const template = templates.find((candidate) => candidate.id === receipt.templateId);
+            if (template?.research && (await researchAccess.read(receipt.operationId)).state !== "ready") {
+              throw new WorkflowEditConflict(
+                "Research access is disconnected. Review the connection before enabling this workflow."
+              );
+            }
+            if (template?.research) {
+              const grant = await researchAccess.read(receipt.operationId);
+              await researchBridge.validateScope(grant.scope);
+            }
+            const workflow = await upstream.getWorkflow(receipt.workflowId);
+            assertWorkflowUnchanged(workflow, receipt.fingerprint);
+            versionId = workflow.versionId;
+            if (typeof versionId !== "string" || !versionId) throw new Error("Cannot verify the workflow version");
+          }
+          // Publish the version we inspected, not a newer draft edited concurrently.
+          await upstream.setEnabled(receipt.workflowId, input.enabled, versionId);
+          return { enabled: (await upstream.getWorkflow(receipt.workflowId)).active };
+        });
+        return json(response, 200, result);
+      }
+      if (request.method === "GET" && url.pathname === "/api/schedule") {
+        return json(response, 200, await scheduleManagement.read(url.searchParams.get("automationId")));
+      }
+      if (request.method === "POST" && url.pathname === "/api/schedule") {
+        const input = await body(request);
+        if (
+          !input ||
+          Array.isArray(input) ||
+          typeof input !== "object" ||
+          Object.keys(input).some((key) => !["automationId", "value", "expectedVersion"].includes(key))
+        ) {
+          return json(response, 400, { error: "Invalid schedule request" });
         }
-        // Publish the version we inspected, not a newer draft edited concurrently.
-        await upstream.setEnabled(receipt.workflowId, input.enabled, versionId);
-        return json(response, 200, { enabled: (await upstream.getWorkflow(receipt.workflowId)).active });
+        return json(
+          response,
+          200,
+          await scheduleManagement.edit(input.automationId, input.value, input.expectedVersion)
+        );
       }
       if (request.method === "GET" && url.pathname === "/api/runs") {
         const identity = url.searchParams.get("automationId") ?? url.searchParams.get("templateId");
@@ -296,6 +328,11 @@ createServer(async (request, response) => {
     if (error instanceof NativeSetupFormError) return json(response, error.status, { error: error.message });
     if (error instanceof SetupError) return json(response, 409, { error: error.message });
     if (error instanceof WorkflowEditConflict) return json(response, 409, { error: error.message });
+    if (error instanceof ScheduleRequestError) {
+      const scheduleWrite = request.method === "POST" && url.pathname === "/api/schedule";
+      const value = scheduleWrite ? { code: "schedule_invalid", error: error.message } : { error: error.message };
+      return json(response, error.status, value);
+    }
     const unconfirmed = error.outcome === "unconfirmed";
     json(response, 502, {
       error: unconfirmed

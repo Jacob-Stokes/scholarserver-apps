@@ -111,8 +111,8 @@ export function workflowFingerprint(workflow) {
 }
 
 export class WorkflowEditConflict extends Error {
-  constructor() {
-    super("This workflow changed in n8n. Open n8n to review and enable it there.");
+  constructor(message = "This workflow changed in n8n. Open n8n to review and enable it there.") {
+    super(message);
   }
 }
 

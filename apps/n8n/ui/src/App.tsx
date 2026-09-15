@@ -138,7 +138,7 @@ export function App() {
         <EmbeddedSetupSurface>
           <section className="ss-card ss-stack">
             <h1>Automation added</h1>
-            <p>Your automation was added with its schedule disabled. Review it in My automations before enabling it.</p>
+            <p>Your automation starts paused. Turn on automatic runs from Manage when you&apos;re ready.</p>
             <p>Close this window to return to Automations.</p>
           </section>
         </EmbeddedSetupSurface>
