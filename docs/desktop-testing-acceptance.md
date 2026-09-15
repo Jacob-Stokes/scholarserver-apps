@@ -4,9 +4,19 @@
 
 Created `scholarserver-dev` through the real Obsidian desktop interface in the
 existing isolated Docker client, at `/config/scholarserver-dev`. This is a
-container volume, not a personal Mac profile. No sync method, account, community
-plugin or server connection was configured for it. The existing `ScholarServer
+container volume, not a personal Mac profile. No sync method, account or server
+connection was configured during creation. The existing `ScholarServer
 Test` vault is retained. This proves local vault creation only.
+
+Follow-up: with explicit owner approval, community plugins were enabled and
+Self-hosted LiveSync 1.0.28 was installed and enabled from Obsidian's official
+community directory in `scholarserver-dev`; the desktop showed Disable and
+the initial setup notice. This changes only the isolated test profile.
+Freelove's separate `personal/obsidian-dev` instance is installed and healthy,
+but no endpoint, sync credential or replication proof is available yet. The
+managed Tailscale reconnect failed because this retained installation lacks
+the canonical generated core Compose/environment files expected by the current
+executor. Its existing host Tailscale connection and routes were preserved.
 
 Freelove's personal/obsidian reports setup-required but its managed vault already
 contains notes. No remote configuration or data was changed. Connecting this new
