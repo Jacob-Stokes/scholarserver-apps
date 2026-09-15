@@ -18,9 +18,22 @@ public update DTO marks that field read-only and the public controller does not
 accept an expected version for conditional writes. The integration therefore
 checks the version, active state and full guided fingerprint again immediately
 before PUT. A direct external editor can still race that final check and write;
-this source does not claim upstream CAS protection. Package `0.1.0-guided.20260915.2`
-and its immutable image remain unchanged. Source tests use synthetic workflows;
-the live enabled PDF workflow was not mutated.
+this source does not claim upstream CAS protection.
+
+Package candidate `0.1.0-guided.20260915.3` pins the ARM64 integration image
+`ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:67978943ced877b754e16cb0063813a5e30f7eefd13f6656336c13edb78ae804`,
+built from apps source `6138498de3e048a2f4f89faac249592ea6b9f060` with source digest
+`sha256:360949b9a3cce17e33263a7b129b56e339acd88924fc1c34118bde4243e30137`.
+On Freelove it passed the content scan, isolated native setup/restart, a 118 ms
+synthetic schedule write preserving inactive state, graph, description, node
+groups, static data and pinned data, and restart reconciliation of an unknown
+outcome without replay. The isolated containers were removed, and the retained
+live n8n and integration container identities, images, mounts and start times
+matched the pre-build checkpoint. The live enabled PDF workflow was not mutated.
+Evidence is under
+`/var/lib/scholarserver-upgrades/automation-manage-n8n-20260915/evidence`;
+`qualification.json` has SHA-256
+`3978272eaf3e021018b324e178f74e0bd71954ad6c88f2c5ed811db0d2d16bc5`.
 
 ## Native Manager setup form candidate — 15 September 2026
 
