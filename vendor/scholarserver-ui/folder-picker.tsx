@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, Folder, FolderOpen, HardDrive, LoaderCircle, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
+import "./folder-picker.css";
 
 export interface FolderListing {
   path: string;

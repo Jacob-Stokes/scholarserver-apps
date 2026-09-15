@@ -99,11 +99,6 @@ onboarding:
     - Keep workflow credentials in n8n, not in workflow parameters
     - Back up the complete application data, including its encryption key
   actions:
-    - id: connect-research
-      data: runtime
-      timeoutSeconds: 90
-      provisionServiceAccess: true
-      fields: []
     - id: setup
       data: runtime
       timeoutSeconds: 90
@@ -112,3 +107,8 @@ onboarding:
         - { id: password, type: string, secret: true, required: true }
         - { id: email, type: string, secret: false, required: false }
         - { id: mfaCode, type: string, secret: true, required: false }
+    - id: connect-research
+      data: runtime
+      timeoutSeconds: 90
+      provisionServiceAccess: true
+      fields: []
