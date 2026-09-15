@@ -22,7 +22,7 @@ services:
       start_period: 60s
       retries: 4
   integration:
-    image: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:aac963bd606cd206c282e89c931aad58dfe400cff35c3b620ba280734d8ccf65
+    image: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:0505f36711279ba6c109f770abaa86c5163d6634cbfedb0dfb2d2705e4a0aaee
     restart: unless-stopped
     user: "1000:1000"
     read_only: true

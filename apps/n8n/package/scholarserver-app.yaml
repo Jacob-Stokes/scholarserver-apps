@@ -4,7 +4,7 @@ name: n8n (Beta)
 packageVersion: 0.1.0-guided.20260915.1
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
-support: { tier: official, architectures: [amd64, arm64] }
+support: { tier: official, architectures: [arm64] }
 delivery: { class: headless-service, management: managed }
 tenancy: { mode: per-workspace }
 capabilities:
@@ -30,7 +30,7 @@ images:
   - service: n8n
     reference: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:c0378ee646e6734cdf7194bdd4065201aa94544a67247142aad8e3e217ac5974
   - service: integration
-    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:aac963bd606cd206c282e89c931aad58dfe400cff35c3b620ba280734d8ccf65
+    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:0505f36711279ba6c109f770abaa86c5163d6634cbfedb0dfb2d2705e4a0aaee
 data:
   - id: state
     mountPath: /home/node/.n8n

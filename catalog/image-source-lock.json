@@ -75,10 +75,9 @@
     },
     {
       "recipe": "n8n-app",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:aac963bd606cd206c282e89c931aad58dfe400cff35c3b620ba280734d8ccf65",
-      "sourceDigest": "sha256:6a93f2ab2875946966790ce9d25b39da5f5ca17cc8b492ab897f603dab772c53",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:0505f36711279ba6c109f770abaa86c5163d6634cbfedb0dfb2d2705e4a0aaee",
+      "sourceDigest": "sha256:000254ecc1a88269bf62d6cf5e6c43e4e012aea93f3025e2642bcaf76101fd6b",
       "nativeArchitectures": [
-        "amd64",
         "arm64"
       ]
     },
