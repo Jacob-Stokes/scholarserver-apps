@@ -3,12 +3,19 @@
 ## Metadata research candidate — 15 September 2026
 
 `0.5.10-guided.20260915.1` adds the missing read-only metadata action declaration
-without changing any image or runtime source. It is not deployed or qualified
-by that declaration. Run the isolated native pinned-controller synthetic mailbox
-harness in `qualification/README.md` before deployment; failures or source/image
-byte mismatches block the metadata-only update. Real-library/Manager/browser
-acceptance remains distinct. Earlier historical release gates below are not
-silently closed by this metadata change.
+without changing any image or runtime source. The isolated native pinned-controller
+synthetic mailbox harness in `qualification/README.md` passed all seven cases on
+15 September, including restart and invalid/bounded input. Fourteen reads and
+zero unexpected or mutating requests were observed; controller and metadata-reader
+bytes matched source. Private receipt:
+`/tmp/zotero-pinned-controller-qualification-20260915.json`.
+
+The candidate is **not deployed**. Freelove imported it, then its executor rejected
+the update plan with HTTP 422 because personal Zotero uses shared storage. No
+Apply was submitted; revision 22 and its existing binding remain unchanged.
+A metadata-only executor path with plan/apply/recovery verification is still
+required. Real-library/Manager/browser acceptance remains distinct. Earlier
+historical release gates below are not silently closed by this metadata change.
 
 ## Editorial candidate — 14 September 2026
 
