@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
+import "../sync/couchdb-address.test.mjs";
 
 const manifest = parse(await readFile(new URL("./scholarserver-app.yaml", import.meta.url), "utf8"));
 const compose = parse(await readFile(new URL("./compose.yaml", import.meta.url), "utf8"));
@@ -77,7 +78,7 @@ test("the core projection contract removes only the official-client mount for Li
 });
 
 test("research actions use the runtime mailbox and protect note contents", () => {
-  assert.equal(manifest.packageVersion, "0.5.0-guided.20260915.3");
+  assert.equal(manifest.packageVersion, "0.5.0-guided.20260915.4");
   const browse = manifest.onboarding.actions.filter((action) => action.id === "browse-folders");
   const create = manifest.onboarding.actions.filter((action) => action.id === "create-research-note");
   assert.deepEqual(browse, [
@@ -132,7 +133,11 @@ test("LiveSync uses an opt-in private origin and keeps its database off the shar
     }
   });
   assert.deepEqual(compose.services["livesync-couchdb"].networks, {
-    instance: { aliases: ["livesync-couchdb"] }
+    instance: {
+      aliases: ["livesync-couchdb", "obsidian-db-${SCHOLARSERVER_WORKSPACE_ID}-${SCHOLARSERVER_INSTANCE_ID}"]
+    }
   });
+  assert.equal(compose.services.sync.environment.SCHOLARSERVER_WORKSPACE_ID, "${SCHOLARSERVER_WORKSPACE_ID}");
+  assert.equal(compose.services.sync.environment.SCHOLARSERVER_INSTANCE_ID, "${SCHOLARSERVER_INSTANCE_ID}");
   assert.equal(compose.services["livesync-couchdb"].ports, undefined);
 });

@@ -32,6 +32,7 @@ COPY --chown=1000:1000 apps/obsidian/sync/official-client.mjs apps/obsidian/sync
 COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/couchdb-request.mjs /app/couchdb-request.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/couchdb-address.mjs /app/couchdb-address.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-settings.mjs /app/livesync-settings.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-lifecycle.mjs /app/livesync-lifecycle.mjs
 COPY --from=ui-build --chown=1000:1000 /source/apps/obsidian/ui/dist /app/ui

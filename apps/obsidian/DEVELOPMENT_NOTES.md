@@ -1,5 +1,24 @@
 # Obsidian development notes
 
+## Multiple LiveSync instances — 15 September 2026
+
+Fresh `personal/obsidian-dev` installation of private-origin candidate `.3`
+exposed a DNS collision. Its controller joins both its private instance network
+and the shared edge; `livesync-couchdb` resolved the existing personal instance's
+edge address, which correctly rejected the new credentials with HTTP 403.
+A disposable dual-network Node probe reproduced the wrong generic address and
+the correct instance-qualified container address. Existing data was untouched.
+
+Candidate `.4` supplies workspace/instance identities and a matching private
+database alias. The controller uses that address for bootstrap, provisioning and
+worker configuration. Standalone fixtures without either identity retain their
+private service name; partial/invalid identities fail closed. Authentication and
+403 handling are unchanged. Tests cover address selection and package wiring.
+This source checkpoint still requires a rebuilt sync image and native two-instance
+acceptance before its pin can be updated or the failed installation retried.
+The original uncertain lifecycle operation must be reconciled, not replayed.
+Project-vault documentation follow-up remains pending.
+
 ## Per-instance approval contract — 15 September 2026
 
 The existing unpublished `0.5.0-guided.20260915.1` candidate now declares

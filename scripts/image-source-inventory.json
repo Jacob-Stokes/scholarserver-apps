@@ -319,6 +319,7 @@
         "apps/obsidian/sync/Dockerfile",
         "apps/obsidian/sync/controller.mjs",
         "apps/obsidian/sync/couchdb-request.mjs",
+        "apps/obsidian/sync/couchdb-address.mjs",
         "apps/obsidian/sync/livesync-lifecycle.mjs",
         "apps/obsidian/sync/livesync-settings.mjs",
         "apps/obsidian/sync/livesync-setup.mjs",

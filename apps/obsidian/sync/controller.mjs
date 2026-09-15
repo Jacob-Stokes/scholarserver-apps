@@ -15,6 +15,7 @@ import {
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
 import { createResearchNote } from "./research-note.mjs";
 import { browseVaultFolders } from "./vault-folders.mjs";
+import { couchDbAddress } from "./couchdb-address.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -31,6 +32,7 @@ const liveSyncWorkerStatusPath = path.join(liveSyncRuntimePath, "livesync-worker
 const liveSyncOnboardingPath = path.join(liveSyncRuntimePath, "livesync-onboarding.json");
 const uiPath = "/app/ui";
 const installedVariant = process.env.SCHOLARSERVER_VARIANT || "";
+const internalCouchDbUrl = couchDbAddress(process.env);
 const installedProfile =
   installedVariant === "obsidian-sync" ? "official" : installedVariant === "self-hosted-livesync" ? "livesync" : "none";
 
@@ -323,7 +325,7 @@ async function configureLiveSync(input) {
   await stopOfficialSync();
   await updateStatus({ profile: "livesync", state: "livesync-preparing", lastError: null });
   await provisionCouchDb({
-    internalUrl: "http://livesync-couchdb:5984",
+    internalUrl: internalCouchDbUrl,
     username: administrator.username,
     password: administrator.password,
     database,
@@ -339,7 +341,7 @@ async function configureLiveSync(input) {
     requestApi: accessMethod === "public"
   });
   const server = await generateSetupUri({
-    url: "http://livesync-couchdb:5984",
+    url: internalCouchDbUrl,
     username: clientCredentials.username,
     password: clientCredentials.password,
     database,
@@ -635,7 +637,7 @@ await ensureServiceToken();
 if (installedProfile === "livesync") {
   const liveSyncCredentials = await ensureLiveSyncSecrets();
   await initializeCouchDb({
-    internalUrl: "http://livesync-couchdb:5984",
+    internalUrl: internalCouchDbUrl,
     username: liveSyncCredentials.username,
     password: liveSyncCredentials.password
   });
