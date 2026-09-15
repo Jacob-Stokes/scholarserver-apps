@@ -1,5 +1,23 @@
 # n8n integration — development record
 
+## Native Manager setup form candidate — 15 September 2026
+
+Unpublished package candidate `0.1.0-guided.20260915.2` adds the bounded
+Manager-native setup form for the PDF conversion template. Its ARM64 integration
+image is built from apps source `6c46ec0f3eddd9f58c1a6bd5b7281f570ebb2b67`
+and published at
+`ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:fe8ca06c2ed4dc3525a8de9fd33b9407f84dbd58f691905c0b62ef16fea8dbec`.
+The native n8n image remains unchanged at `c0378ee646e6734cdf7194bdd4065201aa94544a67247142aad8e3e217ac5974`.
+
+On Freelove, the new integration image passed the image-content scan, isolated
+ARM64 password/service setup, controller restart, packaged setup-form evaluation,
+pre-write validation rejection and complete test-container cleanup. These checks
+used disposable Docker volumes and created no workflow. The retained n8n runtime,
+installed package and data were not changed. Live Manager rendering, installation
+and authenticated browser acceptance remain pending. Evidence is under
+`/var/lib/scholarserver-upgrades/native-form-n8n-20260915/evidence`; the project-vault
+update remains pending for the parent documentation pass.
+
 ## Research setup discovery and folder browser — 15 September 2026
 
 Freelove's previous beta.2 integration returned HTTP 502 because its Manager
