@@ -267,3 +267,11 @@ under `presentation.details.tags`. The metadata-only source candidate is
 unchanged. No package was published or deployed. The Obsidian project-vault
 note was updated through Jacob Gateway on 11 September 2026; this repository's
 catalog-tags document remains authoritative for the exact vocabulary.
+# ARM64 native research checkpoint — 15 September 2026
+
+Development package `0.5.0-guided.20260915.2` now pins five native ARM64 images
+from apps source `2a8cde7`, including the per-vault folder reader. Native official
+client and LiveSync checks passed; AMD64, paid-account and actual desktop-plugin
+acceptance are not claimed. See [the scoped report](../../docs/native-research-candidates-20260915.md)
+and the remaining release gate in `RELEASE_BLOCKED.md`. The project vault note
+update is pending because Jacob Gateway note reads timed out.

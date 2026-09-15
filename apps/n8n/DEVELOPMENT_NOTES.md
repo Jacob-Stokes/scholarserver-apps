@@ -1077,3 +1077,11 @@ controls and reload, without workflow writes. Native n8n, existing workflows
 and credential files were preserved. This is not a published package update,
 research-grant acceptance, OAuth login test or desktop sync proof. The project
 vault note and security-review remediation follow-up record these boundaries.
+# ARM64 native research checkpoint — 15 September 2026
+
+Development package `0.1.0-guided.20260915.5` pins the newly published native
+wrapper and integration from apps source `2a8cde7`. All six research workflows
+passed isolated native execution, including empty input and revoked grants.
+See [the scoped report](../../docs/native-research-candidates-20260915.md).
+Live deployment/permissions and browser acceptance remain separate. The project
+vault note update is pending because Jacob Gateway note reads timed out.

@@ -2,19 +2,26 @@
 
 ## Guided research candidate — 15 September 2026
 
-`0.5.0-guided.20260915.1` is a pending source candidate, **not for deployment**.
-It declares the two research actions and removes official-client from LiveSync's
-variant selection only. All images remain at their old pins by explicit request;
-the sync pin does not contain the new folder reader. Build/qualify the new sync
-image and update both pins before use. Native source filesystem tests are not
-final-image acceptance.
+`0.5.0-guided.20260915.2` is an **ARM64 development candidate**, not an official
+release. It supersedes the unqualified `.1` source candidate. All five services
+now select immutable images built from `2a8cde7cd7a81193891a993bad74eb9adff4a03e`;
+manifest, Compose and current source-lock records agree. The new sync image
+contains the per-vault folder reader. AMD64 is deliberately not advertised by
+this candidate; it has not been rebuilt and qualified for this source.
 
-The package also depends on the parent-owned generic core dataset-mount
-projection in both planner/validation and executor rendering. Qualify both
-variants, preserve all six existing LiveSync datasets and official Sync's
-excluded client cache, and select the compatible platform minimum before release.
-The existing broad minimum is not evidence that old core can render this package.
-New n8n vault-folder access needs explicit user approval separately.
+The exact ARM64 native suite passed consent/integrity-controlled official-client
+download, native CLI/SQLite, restart and legacy-layout preservation, API/MCP note
+operations, and independent two-peer LiveSync replication. These are isolated
+synthetic-data checks, not official account or actual desktop/plugin acceptance.
+See `docs/native-research-candidates-20260915.md` for receipts and limits.
+
+Development deployment is restricted to qualified core
+`18c69580d71052a72f32288d5d2c07328371a271`, which contains generic variant mount
+projection in planner/validation and executor. Both variant source contracts
+preserve their declared datasets; a live plan must separately prove preservation
+of all six installed LiveSync roots. Select a compatible released platform
+minimum before official release; the broad minimum is not an old-core guarantee.
+New n8n vault-folder access still requires a separate per-vault approval.
 
 ## Editorial candidate — 14 September 2026
 
