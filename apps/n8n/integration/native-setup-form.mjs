@@ -133,7 +133,14 @@ export class N8nNativeSetupForm {
         targetRequirement.actions.every((action) => application.actions.includes(action))
     );
     const targets = compatibleTargets.filter((application) => application.actions.includes("browse-folders"));
-    const targetValue = initial && targets.length === 1 ? choiceFor(targets[0]) : initial ? "" : (values.target ?? "");
+    let targetValue;
+    if (!initial) {
+      targetValue = values.target ?? "";
+    } else if (targets.length === 1) {
+      targetValue = choiceFor(targets[0]);
+    } else {
+      targetValue = "";
+    }
     const selectedTarget = matchingChoice(targets, targetValue);
     const nameValue = initial ? template.name : (values.name ?? "");
     const folderValue = initial ? "" : (values.folder ?? "");
