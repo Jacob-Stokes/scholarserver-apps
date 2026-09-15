@@ -14,6 +14,7 @@ import {
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
 import { createResearchNote } from "./research-note.mjs";
+import { browseVaultFolders } from "./vault-folders.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -422,6 +423,9 @@ async function statusWithPrivateOnboarding() {
 
 async function action(request) {
   switch (request.action) {
+    case "browse-folders":
+      if (state.state !== "ready") throw new Error("Finish connecting this vault before browsing folders");
+      return browseVaultFolders(vaultPath, request.input ?? {});
     case "create-research-note":
       if (state.state !== "ready") throw new Error("Finish connecting this vault before creating research notes");
       return createResearchNote(vaultPath, request.input ?? {});
@@ -480,11 +484,15 @@ async function processRequest(fileName) {
   const requestFile = path.join(requestsPath, fileName);
   const responseFile = path.join(responsesPath, fileName);
   let response;
+  let request;
   try {
-    const request = JSON.parse(await readFile(requestFile, "utf8"));
+    request = JSON.parse(await readFile(requestFile, "utf8"));
     response = { ok: true, result: await dispatch(request) };
   } catch (error) {
-    await updateStatus({ lastError: error instanceof Error ? error.message : "Onboarding failed" });
+    // A failed read must not replace the saved sync/setup status.
+    if (request?.action !== "browse-folders") {
+      await updateStatus({ lastError: error instanceof Error ? error.message : "Onboarding failed" });
+    }
     response = { ok: false, error: error instanceof Error ? error.message : "Onboarding failed" };
   } finally {
     await rm(requestFile, { force: true });

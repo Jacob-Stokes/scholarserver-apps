@@ -13,22 +13,32 @@ const ids = [];
 const reportIds = [];
 assert.equal(templates.length, 6, "All six reviewed research templates must be available");
 for (const template of templates) {
+  assert.equal(template.setupFormVersion, 1);
   const destination = template.research === "convert-pdfs" ? "docling" : "obsidian";
-  const response = await fetch("http://localhost:8080/api/install", {
+  const formResponse = await fetch("http://localhost:8080/api/setup-form", {
     method: "POST",
     headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
-    body: JSON.stringify({
-      templateId: template.id,
-      settings: {
-        research: {
-          workspaceId: "personal",
-          zotero: "zotero",
-          [destination]: destination,
-          folder: destination === "docling" ? "Papers" : "Research"
-        }
-      }
-    })
+    body: JSON.stringify({ templateId: template.id })
   });
+  assert.equal(formResponse.status, 200);
+  const form = await formResponse.json();
+  const values = Object.fromEntries(form.fields.map((field) => [field.id, field.value]));
+  assert.equal(form.canSubmit, false);
+  assert.ok(values.source && values.target, "The sole compatible fixture apps should be selected");
+  values.folder = destination === "docling" ? "Papers" : "Research";
+  const folderResponse = await fetch("http://localhost:8080/api/setup-form/folders", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
+    body: JSON.stringify({ templateId: template.id, values, path: "" })
+  });
+  assert.equal(folderResponse.status, 200);
+  assert.ok((await folderResponse.json()).folders.some((folder) => folder.path === values.folder));
+  const response = await fetch("http://localhost:8080/api/setup-form/submit", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
+    body: JSON.stringify({ templateId: template.id, values, automationId: randomUUID() })
+  });
+  assert.equal(response.status, 200);
   const receipt = await response.json();
   assert.equal(receipt.state, "installed", JSON.stringify(receipt));
   const workflow = await client.getWorkflow(receipt.workflowId);
@@ -113,5 +123,5 @@ await writeFile("/runtime/research-test-ids.json", JSON.stringify(ids));
 assert.equal(reportIds.length, 3);
 await writeFile("/runtime/report-test-ids.json", JSON.stringify(reportIds));
 console.log(
-  "Six templates and a second reading copy: independent identity, enable/disable, native edit detection and no overwrite passed."
+  "Six native setup forms and a second reading copy: folder selection, independent identity, paused creation, enable/disable, native edit detection and no overwrite passed."
 );

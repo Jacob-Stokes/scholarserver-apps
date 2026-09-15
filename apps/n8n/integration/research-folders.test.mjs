@@ -61,3 +61,28 @@ test("browsing never bypasses missing grants or cross-workspace selections", asy
   await assert.rejects(bridge.folders(selection), /not been allowed/);
   assert.equal(calls.length, 0);
 });
+
+test("report browsing uses only the chosen same-workspace vault and requires metadata, note and browse access", async () => {
+  const { bridge, applications, calls } = fixture();
+  applications[0].actions.push("research-items");
+  const vault = {
+    id: "vault",
+    workspaceId: "personal",
+    packageId: "org.scholarserver.obsidian",
+    actions: ["create-research-note", "browse-folders"]
+  };
+  applications.push(vault);
+  const scope = { kind: "weekly-roundup", workspaceId: "personal", zotero: "library", obsidian: "vault", folder: "" };
+  await bridge.folders(scope);
+  assert.deepEqual(calls[0].slice(1), ["obsidian", "browse-folders", { path: "" }]);
+  await assert.rejects(bridge.folders({ ...scope, kind: "arbitrary" }), /Unknown/);
+  await assert.rejects(bridge.folders({ ...scope, workspaceId: "other" }), /unavailable/);
+  for (const missing of ["create-research-note", "browse-folders"]) {
+    vault.actions = ["create-research-note", "browse-folders"].filter((action) => action !== missing);
+    await assert.rejects(bridge.folders(scope));
+  }
+  vault.actions = ["create-research-note", "browse-folders"];
+  applications[0].actions = [];
+  await assert.rejects(bridge.folders(scope));
+  assert.equal(calls.length, 1);
+});

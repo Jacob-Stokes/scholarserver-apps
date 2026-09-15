@@ -1,5 +1,30 @@
 # n8n integration — development record
 
+## All research templates use native setup — 15 September 2026
+
+The five note/report templates now advertise the same bounded version-one native
+form contract as PDF conversion. App-owned evaluation selects same-workspace
+Zotero/Obsidian instances with the required actions, preserves drafts, validates
+hour intervals and output-subfolder length before writes, and submits to the
+existing durable installation flow. New workflows still start paused. Existing
+workflow schedules, grants and files are not migrated. Manager has no new
+application-specific fields or rules.
+
+Folder browsing uses the selected destination's explicit read-only browse-folders
+action, never a caller-selected action or path outside its storage. n8n candidate
+`0.1.0-guided.20260915.4` adds only Obsidian folder browsing to its requested
+service actions; deployment requires approval of that added capability and a
+qualified Obsidian package exposing it. Its image pin is not yet rebuilt.
+
+All 113 integration source tests pass, covering all six forms, hour/minute
+submissions, unavailable or revoked actions, workspace isolation, invalid output
+paths and draft preservation. The full apps suite and n8n UI build also pass. The
+native fixture harness now installs all six via the setup-form API, including
+folder browsing, before repeated synthetic execution. Source tests are not
+native qualification or Freelove deployment. Final image, package and live browser
+results remain pending. The project-vault app note and index record this source
+checkpoint separately from the unchanged live installation.
+
 ## App-owned saved schedule editing — 15 September 2026
 
 Source adds bounded read/edit endpoints for the one reviewed native minute or

@@ -1,5 +1,55 @@
 # Zotero development notes
 
+## Metadata-only research capability candidate — 15 September 2026
+
+`0.5.10-guided.20260915.1` adds only the missing `research-items` onboarding
+declaration (runtime mailbox, 120 seconds, required non-secret `since`/`until`
+strings) and the new package identity. Images, Compose, runtime source, data,
+variants, permissions and existing actions are unchanged. The recorded installed
+editorial package remains revision 22 per core `docs/deployments.md`; this
+candidate is not published or deployed.
+
+The existing controller already dispatches `research-items` to the bounded
+metadata reader through its authenticated local API (or Web API for the online
+variant). It performs GETs on `/users/<id>/items/top`, limits windows to eight
+days and scanning to 1,000 recent items, and returns selected bibliographic
+fields only. It excludes note/attachment/annotation records and does not return
+private note contents, file paths or credentials. It does not invoke attachment
+mutation, download, login or sync actions. The action mailbox still has normal
+request/response/status bookkeeping; read-only means no research-library writes,
+not a promise that the controller never writes runtime files.
+
+n8n already declares this exact grant. Manager discovery intersects that grant
+with the target package's declared actions; the missing Zotero declaration,
+not absent reader source or a new permission requirement, blocked the reports.
+No new n8n grant or token rotation is needed for this metadata declaration.
+Obsidian folder access is a separate permission decision.
+
+The prior 9 September instruction to withhold the action until compatible
+controller publication is not a claim that every older pin must be rebuilt.
+The current selected controller already contains this implementation according
+to the source audit. Before deploying this metadata-only update, run the
+new isolated pinned-image qualification in
+[`qualification/README.md`](qualification/README.md). It requires image/source
+byte matches and exercises the actual controller mailbox/API adapter with
+synthetic data, including restart, filtering, bounds and GET-only requests.
+No image is rebuilt, pulled or replaced by this harness. A mismatch/failure
+blocks the metadata-only route; do not relabel it as qualified or change pins
+without separate review. The harness has not yet run against Docker in this
+pass. It is not real-library, online-Web-API, Manager service-grant, sync or
+browser acceptance.
+
+The new source test reuses the same seven synthetic cases as the image harness
+and passes locally. `package/research-action.test.mjs` also passes, checking the
+precise declaration and both-variant runtime availability; the parent has added
+it to the root pretest. The controller source test is picked up by the existing
+controller test glob. Harness syntax and focused formatting checks pass, but
+the Docker harness has not executed. Source tests are separate from pinned-image
+evidence. The parent reports the final full `npm test` passing and has updated
+the Zotero project-vault note and app index through Jacob Gateway, retaining
+the source-only evidence and pending deployment/approval boundaries. No commit,
+publication or deployment occurred in this source pass.
+
 ## Finalized native candidate pins — 14 September 2026
 
 The current unpublished editorial candidate now selects its exact verified

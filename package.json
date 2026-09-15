@@ -23,7 +23,7 @@
     "packages/controller-runtime"
   ],
   "scripts": {
-    "pretest": "node --test tests/notifications.test.mjs tests/image-source.test.mjs tests/source-check.test.mjs tests/native-image-pipeline.test.mjs tests/n8n-development.test.mjs tests/n8n-candidate.test.mjs apps/n8n/integration/*.test.mjs apps/n8n/ui/test/*.test.mjs apps/obsidian/sync/research-note.test.mjs apps/obsidian/sync/couchdb-request.test.mjs && npm run typecheck -w apps/n8n/ui",
+    "pretest": "node --test tests/notifications.test.mjs tests/image-source.test.mjs tests/source-check.test.mjs tests/native-image-pipeline.test.mjs tests/n8n-development.test.mjs tests/n8n-candidate.test.mjs apps/n8n/integration/*.test.mjs apps/n8n/ui/test/*.test.mjs apps/obsidian/sync/research-note.test.mjs apps/obsidian/sync/vault-folders.test.mjs apps/obsidian/package/variants.test.mjs apps/zotero/package/research-action.test.mjs apps/obsidian/sync/couchdb-request.test.mjs && npm run typecheck -w apps/n8n/ui",
     "dev:n8n": "node dev/n8n/command.mjs",
     "dev:desktops": "node dev/desktop-clients/command.mjs",
     "test:desktops": "node --test tests/desktop-clients.test.mjs && python3 -m unittest discover -s dev/desktop-clients/zotero -p 'test_*.py'",

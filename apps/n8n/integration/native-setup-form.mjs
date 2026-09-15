@@ -1,8 +1,33 @@
 import { AutomationConfigurationError, scheduleConfiguration } from "./configuration.mjs";
 import { assertRequiredApplications } from "./requirements.mjs";
+import { noteOutputFolder, researchConfiguration } from "./research-access.mjs";
 
-export const nativeSetupTemplateId = "zotero-pdf-markdown";
 export const nativeSetupFormVersion = 1;
+
+// These are reviewed app-owned forms, not a configuration language in Manager.
+const nativeTemplates = new Map([
+  ["zotero-pdf-markdown", "convert-pdfs"],
+  ["zotero-reading-notes", "reading-notes"],
+  ["zotero-daily-digest", "research-digest"],
+  ["zotero-weekly-roundup", "weekly-roundup"],
+  ["zotero-reference-audit", "reference-audit"],
+  ["zotero-bibliography", "bibliography"]
+]);
+
+function destinationFor(template) {
+  if (template.research === "convert-pdfs") {
+    return { binding: "docling", label: "Docling installation", folderLabel: "Shared PDF folder" };
+  }
+  return { binding: "obsidian", label: "Obsidian vault", folderLabel: "Save notes in" };
+}
+
+function folderHint(template, folder) {
+  if (template.research === "convert-pdfs") {
+    return "Use the same relative folder in Zotero linked attachments and Docling Research documents.";
+  }
+  const output = noteOutputFolder({ kind: template.research, folder: folder || "Selected folder" });
+  return `Notes are saved in ${output}. Existing notes are not replaced.`;
+}
 
 const valueKeys = ["name", "source", "target", "folder", "interval"];
 const appIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -91,7 +116,7 @@ function decodeChoice(value) {
 }
 
 export function advertisesNativeSetup(template) {
-  return template.id === nativeSetupTemplateId && template.research === "convert-pdfs";
+  return nativeTemplates.has(template.id) && nativeTemplates.get(template.id) === template.research;
 }
 
 export class N8nNativeSetupForm {
@@ -112,9 +137,10 @@ export class N8nNativeSetupForm {
 
   async evaluate(templateId, suppliedValues) {
     const template = this.template(templateId);
+    const destination = destinationFor(template);
     const applications = (await this.researchBridge.applications()).filter(validApplication);
     const sourceRequirement = template.requirements.find((requirement) => requirement.binding === "zotero");
-    const targetRequirement = template.requirements.find((requirement) => requirement.binding === "docling");
+    const targetRequirement = template.requirements.find((requirement) => requirement.binding === destination.binding);
     const sources = applications.filter(
       (application) =>
         application.packageId === sourceRequirement.packageId &&
@@ -160,12 +186,15 @@ export class N8nNativeSetupForm {
     let targetError;
     if (!selectedSource) targetError = "Choose a Zotero library first.";
     else if (compatibleTargets.length > 0 && !targets.length) {
-      targetError = "No compatible Docling installation has folder browsing access in this workspace.";
-    } else if (!targets.length) targetError = "No compatible Docling installation is available in this workspace.";
-    else if (!selectedTarget) targetError = "Choose a current Docling installation in the same workspace.";
-    const folderError = validateFolder(folderValue)
+      targetError = `No compatible ${destination.label} has folder browsing access in this workspace.`;
+    } else if (!targets.length) targetError = `No compatible ${destination.label} is available in this workspace.`;
+    else if (!selectedTarget) targetError = `Choose a current ${destination.label} in the same workspace.`;
+    let folderError = validateFolder(folderValue)
       ? undefined
       : "Enter a relative folder without hidden folders, empty names or parent paths.";
+    if (!folderError && noteOutputFolder({ kind: template.research, folder: folderValue }).length > 200) {
+      folderError = "Choose a shorter folder to leave room for the report subfolder.";
+    }
     const intervalError =
       Number.isInteger(interval) && interval >= schedule.minimum && interval <= schedule.maximum
         ? undefined
@@ -183,7 +212,7 @@ export class N8nNativeSetupForm {
       },
       {
         id: "target",
-        label: "Docling installation",
+        label: destination.label,
         type: "select",
         value: targetValue,
         options: targets.map((application) => applicationChoice(application, false)),
@@ -193,17 +222,17 @@ export class N8nNativeSetupForm {
       },
       {
         id: "folder",
-        label: "Shared PDF folder",
+        label: destination.folderLabel,
         type: "folder",
         value: folderValue,
         dependsOn: ["source", "target"],
-        hint: "Use the same relative folder in Zotero linked attachments and Docling Research documents.",
+        hint: folderHint(template, folderValue),
         error: folderError,
         disabled: !selectedSource || !selectedTarget
       },
       {
         id: "interval",
-        label: "Check every (minutes)",
+        label: schedule.minutesInterval === undefined ? "Run every (hours)" : "Check every (minutes)",
         type: "number",
         value: intervalValue,
         min: schedule.minimum,
@@ -246,22 +275,26 @@ export class N8nNativeSetupForm {
     }
     const applications = await this.researchBridge.applications();
     const template = this.template(templateId);
+    const destination = destinationFor(template);
     const scope = {
       workspaceId: source.workspaceId,
       zotero: source.id,
-      docling: target.id,
+      [destination.binding]: target.id,
       folder: selected.values.folder
     };
+    if (requireCompleteForm) {
+      researchConfiguration(template, { research: scope });
+    }
     try {
       assertRequiredApplications(template.requirements, scope, applications);
     } catch {
       throw new NativeSetupFormError("The selected research applications are no longer available", 422);
     }
     const currentTarget = applications.find(
-      (application) => application.workspaceId === scope.workspaceId && application.id === scope.docling
+      (application) => application.workspaceId === scope.workspaceId && application.id === target.id
     );
     if (!currentTarget?.actions.includes("browse-folders")) {
-      throw new NativeSetupFormError("Folder browsing is not allowed for the selected Docling installation", 422);
+      throw new NativeSetupFormError(`Folder browsing is not allowed for the selected ${destination.label}`, 422);
     }
     return { form, scope };
   }
@@ -269,7 +302,7 @@ export class N8nNativeSetupForm {
   async folders(templateId, values, folderPath) {
     if (typeof folderPath !== "string") throw new NativeSetupFormError("Choose a folder path");
     const { scope } = await this.scopeFrom(templateId, validateValues(values), false);
-    return this.researchBridge.folders({ ...scope, folder: folderPath });
+    return this.researchBridge.folders({ ...scope, kind: this.template(templateId).research, folder: folderPath });
   }
 
   async submit(templateId, values, automationId) {
@@ -287,9 +320,11 @@ export class N8nNativeSetupForm {
       throw error;
     }
     await this.requiredClient();
+    const schedule = scheduleConfiguration(this.template(templateId));
+    const intervalSetting = schedule.minutesInterval === undefined ? "hoursInterval" : "minutesInterval";
     return this.installations.install(
       templateId,
-      { minutesInterval: Number(formValues.interval), research: scope },
+      { [intervalSetting]: Number(formValues.interval), research: scope },
       null,
       automationId,
       formValues.name

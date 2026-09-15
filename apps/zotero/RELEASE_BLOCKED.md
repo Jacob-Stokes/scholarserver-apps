@@ -1,5 +1,15 @@
 # Source candidate — not for publication
 
+## Metadata research candidate — 15 September 2026
+
+`0.5.10-guided.20260915.1` adds the missing read-only metadata action declaration
+without changing any image or runtime source. It is not deployed or qualified
+by that declaration. Run the isolated native pinned-controller synthetic mailbox
+harness in `qualification/README.md` before deployment; failures or source/image
+byte mismatches block the metadata-only update. Real-library/Manager/browser
+acceptance remains distinct. Earlier historical release gates below are not
+silently closed by this metadata change.
+
 ## Editorial candidate — 14 September 2026
 
 Source package `0.5.10-guided.20260913.2.editorial.20260914.1` is not published or qualified for a live

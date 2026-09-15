@@ -1,5 +1,21 @@
 # Packaging candidate — not ready for catalog publication
 
+## Guided research candidate — 15 September 2026
+
+`0.5.0-guided.20260915.1` is a pending source candidate, **not for deployment**.
+It declares the two research actions and removes official-client from LiveSync's
+variant selection only. All images remain at their old pins by explicit request;
+the sync pin does not contain the new folder reader. Build/qualify the new sync
+image and update both pins before use. Native source filesystem tests are not
+final-image acceptance.
+
+The package also depends on the parent-owned generic core dataset-mount
+projection in both planner/validation and executor rendering. Qualify both
+variants, preserve all six existing LiveSync datasets and official Sync's
+excluded client cache, and select the compatible platform minimum before release.
+The existing broad minimum is not evidence that old core can render this package.
+New n8n vault-folder access needs explicit user approval separately.
+
 ## Editorial candidate — 14 September 2026
 
 Source package `0.5.0-beta.4.editorial.20260914.1` is not published or qualified for a live

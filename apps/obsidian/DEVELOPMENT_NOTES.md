@@ -1,5 +1,126 @@
 # Obsidian development notes
 
+## Guided package candidate — 15 September 2026
+
+Unpublished `0.5.0-guided.20260915.1` declares `browse-folders` and
+`create-research-note` and removes `official-client` **only** from the
+`self-hosted-livesync` variant's data selection. The six existing LiveSync
+datasets, global data declarations, official Sync variant, Compose mounts,
+permissions and all image pins remain unchanged. The old sync pin does not
+contain the new folder reader: this package is a pending source candidate,
+not an installable/qualified update. Rebuild and qualify the sync image before
+selecting its immutable digest in the manifest and Compose.
+
+The parent is implementing generic core variant dataset-mount selection in a
+separate pass. This candidate requires that change in both validation/planning
+and executor rendering. `package/variants.test.mjs` checks the exact six-dataset
+contract and official cache preservation, and specifies that only the
+`sync:official-client` mount is inactive for LiveSync, while none are inactive
+for official Sync. These are package-side regression expectations, not proof
+of core projection or an installed update. The core worker must prove actual
+both-variant render/update behaviour; select the supported platform minimum
+once that change is qualified. No workaround weakens excluded-cache recovery.
+
+Parent-reported native ARM64 source acceptance now passes all eight tests:
+seven folder-reader checks and the existing create-only note test. The fixture
+used a cached Node 24 integration image, network none, non-root/read-only,
+no capabilities, a read-only temporary source mount and a 16 MiB tmpfs.
+No user data was mounted; the container and exact temporary directory were
+removed and absence verified. This supersedes the earlier macOS skips for
+native filesystem source coverage only, not built Obsidian-image acceptance.
+The parent has also added the reader to the source inventory and the reader
+and package variant tests to the root pretest. All four package variant/action
+checks pass locally; the parent independently reports all five new cross-app
+package tests and the final full `npm test` passing. The parent updated the
+Obsidian project-vault note and app index through Jacob Gateway with these
+source/native-filesystem boundaries and pending deployment/approval gates.
+No commit, publication or live update occurred in this source pass.
+
+## Research folder browsing source — 15 September 2026
+
+The sync controller now handles `browse-folders` through the existing protected
+`runtime` action mailbox, only when the vault connection is ready. There is no
+new HTTP route, credential, network permission or arbitrary filesystem root.
+It browses the configured `/vault` mount, matching `create-research-note`; the
+separate MCP `scopePath` is not the research-action root. User approval must
+describe vault-folder visibility, not imply that this grant is MCP-scope-limited.
+The reader returns only `{path,parent,folders:[{name,path}]}`. Root is `""` with
+`parent: null`; a top-level folder has `parent: ""`. It never returns note files
+or contents and does not create missing directories. Paths are at most 200
+characters; hidden/control-character/backslash/parent paths are rejected, and
+unselectable directory names are omitted. It streams one directory, failing
+rather than returning a partial listing above 2,000 entries or 250 subfolders.
+Linux `O_NOFOLLOW` directory descriptors prevent symlink replacement from
+redirecting traversal/enumeration. Errors omit server filesystem paths and do
+not replace persisted sync status. Queue request/response housekeeping remains
+the existing controller-owned transport, not a vault write.
+
+`sync/vault-folders.test.mjs` covers path validation, root/nested responses,
+hidden files, symlink rejection/replacement, listing limits, unchanged vault
+contents and image/mailbox wiring. On the operator Mac, validation/wiring and
+existing CouchDB request checks passed (7 tests); the five new Linux filesystem
+tests and existing Linux note-write test skipped. Controller syntax passed.
+This is not native Linux, final-image, Manager discovery or sync acceptance.
+Docker was stopped; no daemon, remote host or live app was changed. Run the
+new test file and `sync/research-note.test.mjs` on native Linux before qualification.
+
+The parent-owned reader source-inventory and root-test entries are now added,
+as recorded above. The Dockerfile includes the new module. Do not refresh
+image-source lock records without rebuilding/qualification.
+
+Neither research action is added to the previously imported immutable package.
+The new pending source candidate declares the following `onboarding.actions`;
+these must be paired with a newly built and qualified sync image before use:
+
+```yaml
+- id: browse-folders
+  data: runtime
+  timeoutSeconds: 10
+  fields:
+    - { id: path, type: string, secret: false, required: false }
+- id: create-research-note
+  data: runtime
+  timeoutSeconds: 30
+  fields:
+    - { id: folder, type: string, secret: false, required: true }
+    - { id: filename, type: string, secret: false, required: true }
+    - { id: content, type: string, secret: true, required: true }
+```
+
+The parent's new n8n candidate adds `browse-folders` beside `create-research-note`
+in `permissions.applicationActions` for `org.scholarserver.obsidian`.
+That is **new access requiring explicit user approval**;
+the previously approved Zotero `research-items` and Obsidian note-create grants
+do not authorize folder enumeration. Existing Manager identities obtain grants
+from the installed source package on each authentication, so a valid existing
+identity does not need token rotation merely for this grant change. Installing
+the target action declarations alone is not sufficient: Manager discovery uses
+the intersection of n8n grants and target declarations in the same workspace.
+
+### LiveSync update depends on core mount projection
+
+Core `docs/deployments.md` records `personal/obsidian` at 0.4.6, revision 16;
+the imported `0.5.0-beta.4.editorial.20260914.1` candidate did not apply. Its
+LiveSync data selection unnecessarily includes the excluded `official-client`
+cache. All six installed data directories must remain in place.
+
+Removing that data entry alone is invalid on the recorded installed core:
+shared Compose service `sync` still references
+`${SCHOLARSERVER_DATA_OFFICIAL_CLIENT}`. Its `renderCompose` removes inactive
+services, not inactive mounts, and rejects that unresolved placeholder.
+Both variants must include the one service owning `ui.endpoint` (`sync`), so a
+simple second variant-specific controller service cannot replace it under the
+current contract. No speculative Compose condition or backup-policy change was
+made. Do not relabel excluded cache data as reproducible, move it into another
+dataset, or remove the official variant's persistent mount to bypass recovery.
+
+The parent-owned mount-selection/platform change (including validation and
+both-variant render/update tests) is required before deploying this candidate's
+narrowed LiveSync selection. Qualify the new package against the unchanged
+six-dataset installed layout and preserve official Sync cache/consent/recovery.
+Only the source package version/declarations/selection have advanced; no image
+digest, installed package or published artifact was changed.
+
 ## Finalized native candidate pins — 14 September 2026
 
 The current unpublished editorial candidate now selects its exact verified

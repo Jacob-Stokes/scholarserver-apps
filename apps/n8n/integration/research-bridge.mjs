@@ -81,24 +81,27 @@ export class ResearchBridge {
     assertRequiredApplications(requirementsForScope(templates, scope), scope, applications);
   }
 
-  async folders({ workspaceId, zotero, docling, folder }) {
+  async folders({ kind = "convert-pdfs", workspaceId, zotero, docling, obsidian, folder }) {
+    if (!researchKinds.includes(kind)) throw new Error("Unknown research connection kind");
     if (
       typeof folder !== "string" ||
       folder.length > 200 ||
       (folder !== "" && folder.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part)))
     ) {
-      throw new Error("Choose a relative folder inside Research documents");
+      throw new Error("Choose a relative folder inside the selected application's storage");
     }
-    const scope = { kind: "convert-pdfs", workspaceId, zotero, docling };
+    const destinationBinding = kind === "convert-pdfs" ? "docling" : "obsidian";
+    const destinationId = destinationBinding === "docling" ? docling : obsidian;
+    const scope = { kind, workspaceId, zotero, [destinationBinding]: destinationId };
     const applications = await this.applications();
     assertRequiredApplications(requirementsForScope(templates, scope), scope, applications);
-    const destination = applications.find((app) => app.workspaceId === workspaceId && app.id === docling);
+    const destination = applications.find((app) => app.workspaceId === workspaceId && app.id === destinationId);
     if (!destination.actions.includes("browse-folders")) {
-      throw new Error("Folder browsing has not been allowed for this Docling connection");
+      throw new Error("Folder browsing has not been allowed for this application connection");
     }
     // Browsing is a setup-only, allowlisted action, never a workflow operation.
-    // This lists Docling storage; it does not prove Zotero shares the same root.
-    return this.action(scope, "docling", "browse-folders", { path: folder });
+    // Listing the destination does not prove another app shares the same root.
+    return this.action(scope, destinationBinding, "browse-folders", { path: folder });
   }
 
   action(scope, app, action, input) {

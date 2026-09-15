@@ -16,11 +16,15 @@ const packages = [
     version: "test",
     onboarding: { actions: ["research-items", "match-attachment", "attach-docling-result"].map((id) => ({ id })) }
   },
-  { id: "org.scholarserver.obsidian", version: "test", onboarding: { actions: [{ id: "create-research-note" }] } },
+  {
+    id: "org.scholarserver.obsidian",
+    version: "test",
+    onboarding: { actions: [{ id: "create-research-note" }, { id: "browse-folders" }] }
+  },
   {
     id: "org.scholarserver.docling",
     version: "test",
-    onboarding: { actions: ["discover", "enqueue", "job-status"].map((id) => ({ id })) }
+    onboarding: { actions: ["discover", "enqueue", "job-status", "browse-folders"].map((id) => ({ id })) }
   }
 ];
 const job = {
@@ -110,6 +114,13 @@ createServer(async (request, response) => {
       const action = match[2];
       operations.push(action);
       switch (action) {
+        case "browse-folders": {
+          assert.ok(match[1] === "obsidian" || match[1] === "docling");
+          assert.equal(input.path, "");
+          const name = match[1] === "obsidian" ? "Research" : "Papers";
+          result = { path: "", parent: null, folders: [{ name, path: name }] };
+          break;
+        }
         case "research-items":
           assert.ok(Date.parse(input.until) > Date.parse(input.since));
           assert.ok(Date.parse(input.until) - Date.parse(input.since) <= 7 * 86400000);

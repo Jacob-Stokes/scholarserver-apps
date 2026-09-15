@@ -3,7 +3,12 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { readCatalog } from "./catalog.mjs";
-import { assertNativeSetupRequest, N8nNativeSetupForm, NativeSetupFormError } from "./native-setup-form.mjs";
+import {
+  advertisesNativeSetup,
+  assertNativeSetupRequest,
+  N8nNativeSetupForm,
+  NativeSetupFormError
+} from "./native-setup-form.mjs";
 
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
 const templateId = "zotero-pdf-markdown";
@@ -14,7 +19,13 @@ function applications() {
       id: "zotero-one",
       workspaceId: "personal",
       packageId: "org.scholarserver.zotero",
-      actions: ["match-attachment", "attach-docling-result"]
+      actions: ["match-attachment", "attach-docling-result", "research-items"]
+    },
+    {
+      id: "obsidian-one",
+      workspaceId: "personal",
+      packageId: "org.scholarserver.obsidian",
+      actions: ["create-research-note", "browse-folders"]
     },
     {
       id: "docling-one",
@@ -66,12 +77,89 @@ function valuesFrom(form) {
   return Object.fromEntries(form.fields.map((field) => [field.id, field.value]));
 }
 
-test("only the PDF conversion template advertises native setup version one", async () => {
+test("all six reviewed research templates advertise native setup; unknown and mismatched templates do not", async () => {
   const server = await readFile(new URL("./server.mjs", import.meta.url), "utf8");
   assert.match(server, /setupFormVersion: nativeSetupFormVersion/);
   const { service } = fixture();
-  await assert.rejects(service.evaluate("zotero-reading-notes"), /does not support native setup/);
-  assert.equal((await service.evaluate(templateId)).version, 1);
+  const supported = templates.filter(advertisesNativeSetup);
+  assert.equal(supported.length, 6);
+  for (const template of supported) assert.equal((await service.evaluate(template.id)).version, 1);
+  await assert.rejects(service.evaluate("connection-check"), /does not support native setup/);
+  assert.equal(advertisesNativeSetup({ id: templateId, research: "reading-notes" }), false);
+  assert.equal(advertisesNativeSetup({ id: "unknown", research: "reading-notes" }), false);
+});
+
+for (const template of templates.filter((item) => advertisesNativeSetup(item) && item.id !== templateId)) {
+  test(`${template.id}: native vault picker, hour interval and app-owned scope reach installation unchanged`, async () => {
+    const { service, calls } = fixture();
+    const form = await service.evaluate(template.id);
+    const values = { ...valuesFrom(form), folder: "Research", interval: "12" };
+    const folder = form.fields.find((field) => field.id === "folder");
+    assert.equal(folder.type, "folder");
+    assert.equal(form.fields.find((field) => field.id === "target").label, "Obsidian vault");
+    assert.equal(form.fields.find((field) => field.id === "interval").label, "Run every (hours)");
+    assert.equal(form.canSubmit, false);
+    await service.folders(template.id, values, "Research");
+    assert.deepEqual(calls.folders[0], {
+      kind: template.research,
+      workspaceId: "personal",
+      zotero: "zotero-one",
+      obsidian: "obsidian-one",
+      folder: "Research"
+    });
+    const ready = await service.evaluate(template.id, values);
+    assert.equal(ready.canSubmit, true);
+    assert.match(ready.fields.find((field) => field.id === "folder").hint, /Existing notes are not replaced/);
+    const automationId = randomUUID();
+    await service.submit(template.id, values, automationId);
+    assert.deepEqual(calls.installs[0], [
+      template.id,
+      {
+        hoursInterval: 12,
+        research: { workspaceId: "personal", zotero: "zotero-one", obsidian: "obsidian-one", folder: "Research" }
+      },
+      null,
+      automationId,
+      template.name
+    ]);
+  });
+}
+
+test("report form preserves drafts and rejects revoked vault access, long output paths and excessive intervals before writes", async () => {
+  const { service, calls, currentApplications } = fixture();
+  const reportId = "zotero-weekly-roundup";
+  const values = { ...valuesFrom(await service.evaluate(reportId)), folder: "a".repeat(200) };
+  const invalid = await service.evaluate(reportId, values);
+  assert.equal(invalid.canSubmit, false);
+  assert.match(invalid.fields.find((field) => field.id === "folder").error, /shorter folder/);
+  await assert.rejects(service.submit(reportId, values, randomUUID()), NativeSetupFormError);
+  for (const report of templates.filter((item) => advertisesNativeSetup(item) && item.id !== templateId)) {
+    const initial = await service.evaluate(report.id);
+    const intervalField = initial.fields.find((field) => field.id === "interval");
+    await assert.rejects(
+      service.submit(
+        report.id,
+        {
+          ...valuesFrom(initial),
+          folder: "Research",
+          interval: String(intervalField.max + 1)
+        },
+        randomUUID()
+      ),
+      NativeSetupFormError
+    );
+  }
+  const vault = currentApplications.find((application) => application.id === "obsidian-one");
+  vault.actions = ["create-research-note"];
+  const draft = { ...values, folder: "Keep my draft", interval: "12" };
+  const revoked = await service.evaluate(reportId, draft);
+  assert.deepEqual(valuesFrom(revoked), draft);
+  assert.equal(revoked.canSubmit, false);
+  await assert.rejects(service.folders(reportId, draft, "Research"));
+  await assert.rejects(service.submit(reportId, draft, randomUUID()));
+  assert.equal(calls.folders.length, 0);
+  assert.equal(calls.clients, 0);
+  assert.equal(calls.installs.length, 0);
 });
 
 test("initial evaluation selects compatible same-workspace apps and leaves the required folder empty", async () => {
@@ -114,7 +202,7 @@ test("initial evaluation leaves ambiguous source and target choices unselected",
       return [
         ...current,
         {
-          ...current[1],
+          ...current.find((application) => application.id === "docling-one"),
           id: "docling-two"
         }
       ];

@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.n8n
 name: n8n (Beta)
-packageVersion: 0.1.0-guided.20260915.3
+packageVersion: 0.1.0-guided.20260915.4
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
 support: { tier: official, architectures: [arm64] }
@@ -22,7 +22,7 @@ permissions:
     - packageId: org.scholarserver.zotero
       actionIds: [research-items, match-attachment, attach-docling-result]
     - packageId: org.scholarserver.obsidian
-      actionIds: [create-research-note]
+      actionIds: [create-research-note, browse-folders]
     - packageId: org.scholarserver.docling
       actionIds: [discover, enqueue, job-status, browse-folders]
 hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }

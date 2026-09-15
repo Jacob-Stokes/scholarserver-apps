@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.10-guided.20260913.2.editorial.20260914.1
+packageVersion: 0.5.10-guided.20260915.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -187,6 +187,12 @@ onboarding:
     - Complete desktop authorization when using the complete workspace
     - Configure optional automations after setup
   actions:
+    - id: research-items
+      data: runtime
+      timeoutSeconds: 120
+      fields:
+        - { id: since, type: string, secret: false, required: true }
+        - { id: until, type: string, secret: false, required: true }
     - id: status
       data: runtime
       timeoutSeconds: 10

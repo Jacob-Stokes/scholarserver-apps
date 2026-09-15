@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.0-beta.4.editorial.20260914.1
+packageVersion: 0.5.0-guided.20260915.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -27,7 +27,7 @@ variants:
     description: Sync your vault through ScholarServer using the free Self-hosted LiveSync plugin.
     recommended: true
     services: [sync, api, mcp, livesync-couchdb, livesync-worker]
-    data: [vault, headless-config, runtime, official-client, livesync-db, livesync-runtime, livesync-couchdb]
+    data: [vault, headless-config, runtime, livesync-db, livesync-runtime, livesync-couchdb]
     resources:
       minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
       recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
@@ -179,6 +179,18 @@ onboarding:
     - Keep other vault sync methods turned off when using LiveSync
     - Choose the folder exposed through MCP
   actions:
+    - id: browse-folders
+      data: runtime
+      timeoutSeconds: 10
+      fields:
+        - { id: path, type: string, secret: false, required: false }
+    - id: create-research-note
+      data: runtime
+      timeoutSeconds: 30
+      fields:
+        - { id: folder, type: string, secret: false, required: true }
+        - { id: filename, type: string, secret: false, required: true }
+        - { id: content, type: string, secret: true, required: true }
     - id: install-client
       data: runtime
       timeoutSeconds: 10
