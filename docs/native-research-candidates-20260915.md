@@ -36,9 +36,10 @@ Freelove's n8n and Obsidian updates passed exact installed-state plans, fresh
 encrypted checkpoints and live preservation checks. Installed revisions are
 n8n 6 and Obsidian 17. The owner approved folder browsing for personal/obsidian
 only. Existing automation schedules were preserved. Five native report forms
-remain blocked by Zotero's missing installed metadata declaration: its qualified
-metadata-only candidate cannot pass the executor's shared-storage update guard.
-No live report creation or functional report-folder-picker acceptance is claimed.
+now render without iframes and list personal Zotero following its metadata-only
+update to revision 23. Live folder browsing reaches Obsidian, which reports
+`setup-required` / LiveSync worker `waiting`; the user must choose and connect a
+vault. No live report creation or successful report-folder selection is claimed.
 No real research workflow, paid Obsidian account, personal desktop profile or
 fresh-install acceptance is claimed here. Core deployment state is recorded in
 the core repository's `docs/deployments.md`.

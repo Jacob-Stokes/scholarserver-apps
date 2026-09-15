@@ -10,12 +10,14 @@ zero unexpected or mutating requests were observed; controller and metadata-read
 bytes matched source. Private receipt:
 `/tmp/zotero-pinned-controller-qualification-20260915.json`.
 
-The candidate is **not deployed**. Freelove imported it, then its executor rejected
-the update plan with HTTP 422 because personal Zotero uses shared storage. No
-Apply was submitted; revision 22 and its existing binding remain unchanged.
-A metadata-only executor path with plan/apply/recovery verification is still
-required. Real-library/Manager/browser acceptance remains distinct. Earlier
-historical release gates below are not silently closed by this metadata change.
+The development candidate is deployed on Freelove's personal Zotero at revision
+23. The earlier shared-storage rejection is retained as a failed-plan checkpoint.
+Core `98afb33` adds a guarded metadata commit without runtime or data mutation;
+Apply `f20960b7-c747-4bec-8416-affaeacac686` succeeded without warnings. Existing
+images and the linked-folder binding are unchanged. All five native report forms
+now list personal Zotero. Their live folder test is blocked by Obsidian vault
+setup, not this package. No real-library report execution is claimed. Earlier
+historical release gates are not silently closed by this metadata change.
 
 ## Editorial candidate — 14 September 2026
 
