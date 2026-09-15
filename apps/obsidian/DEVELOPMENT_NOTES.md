@@ -14,9 +14,15 @@ database alias. The controller uses that address for bootstrap, provisioning and
 worker configuration. Standalone fixtures without either identity retain their
 private service name; partial/invalid identities fail closed. Authentication and
 403 handling are unchanged. Tests cover address selection and package wiring.
-This source checkpoint still requires a rebuilt sync image and native two-instance
-acceptance before its pin can be updated or the failed installation retried.
-The original uncertain lifecycle operation must be reconciled, not replayed.
+The rebuilt ARM64 sync image and native two-instance startup/restart regression
+passed; `.4` now selects its immutable published digest (see RELEASE_BLOCKED.md).
+Freelove's original operation failed and rolled back its containers, preserving
+data. A separately reviewed revision 2 succeeded with all five services healthy.
+The existing personal instance and other container identities stayed unchanged.
+The new vault remains setup-required: ScholarServer's managed Tailscale connection
+is logged out, although the host's separate Tailscale connection works. Private
+endpoint setup and actual desktop/plugin sync are not yet verified. No new
+per-vault n8n approval has been applied; the owner was asked separately.
 Project-vault documentation follow-up remains pending.
 
 ## Per-instance approval contract — 15 September 2026
