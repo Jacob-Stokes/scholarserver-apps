@@ -202,6 +202,7 @@
         "apps/n8n/integration/configuration.mjs",
         "apps/n8n/integration/inventory.mjs",
         "apps/n8n/integration/manager-connection.mjs",
+        "apps/n8n/integration/native-setup-form.mjs",
         "apps/n8n/integration/package.json",
         "apps/n8n/integration/package-lock.json",
         "apps/n8n/integration/password-setup.mjs",
