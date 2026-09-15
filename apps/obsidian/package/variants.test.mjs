@@ -85,6 +85,7 @@ test("research actions use the runtime mailbox and protect note contents", () =>
       id: "browse-folders",
       data: "runtime",
       timeoutSeconds: 10,
+      requireInstanceApproval: true,
       fields: [{ id: "path", type: "string", secret: false, required: false }]
     }
   ]);
@@ -101,4 +102,14 @@ test("research actions use the runtime mailbox and protect note contents", () =>
     }
   ]);
   for (const image of manifest.images) assert.equal(compose.services[image.service].image, image.reference);
+});
+
+test("only the app-owned folder browsing action requires target-instance approval", () => {
+  assert.deepEqual(
+    manifest.onboarding.actions.filter((action) => action.requireInstanceApproval).map((action) => action.id),
+    ["browse-folders"]
+  );
+  for (const action of manifest.onboarding.actions.filter((action) => action.id !== "browse-folders")) {
+    assert.equal(Object.hasOwn(action, "requireInstanceApproval"), false);
+  }
 });

@@ -1,5 +1,17 @@
 # Obsidian development notes
 
+## Per-instance approval contract — 15 September 2026
+
+The existing unpublished `0.5.0-guided.20260915.1` candidate now declares
+`requireInstanceApproval: true` only on the app-owned `browse-folders` action.
+Its runtime mailbox, input fields, other actions, version and image pins are
+unchanged. The optional core manifest boolean defaults to false when omitted;
+the declaration is not a grant or evidence of runtime enforcement. Manager
+persisted approvals and enforcement remain a separate parent-owned change and
+a release gate, alongside the existing image and mount-projection gates.
+The package regression checks the exact action and that no other action opts in.
+The project-vault documentation follow-up remains pending under this scoped pass.
+
 ## Guided package candidate — 15 September 2026
 
 Unpublished `0.5.0-guided.20260915.1` declares `browse-folders` and
@@ -76,6 +88,7 @@ these must be paired with a newly built and qualified sync image before use:
 - id: browse-folders
   data: runtime
   timeoutSeconds: 10
+  requireInstanceApproval: true
   fields:
     - { id: path, type: string, secret: false, required: false }
 - id: create-research-note

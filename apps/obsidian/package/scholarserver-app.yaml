@@ -182,6 +182,7 @@ onboarding:
     - id: browse-folders
       data: runtime
       timeoutSeconds: 10
+      requireInstanceApproval: true
       fields:
         - { id: path, type: string, secret: false, required: false }
     - id: create-research-note
