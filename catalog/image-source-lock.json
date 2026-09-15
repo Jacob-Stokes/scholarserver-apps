@@ -114,8 +114,8 @@
     },
     {
       "recipe": "obsidian-sync",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:e1231db5a9ac84f3a671642da53a1746ed04b6b6af8cfd4028caeaed2c6cd1cf",
-      "sourceDigest": "sha256:40207f534eceb7def6d58c9933d79f0f032af6033f4549c3bcea5fa02d0bfeed",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:b105d4073909f50a00c0fc8de6bbeaf56cd93a6b7893fa6692a033554a5508e7",
+      "sourceDigest": "sha256:edb8806c2456abe0b7a4d25a3e4a742e8eb9ac4501c2dc61cfb16f09875b7efe",
       "nativeArchitectures": [
         "arm64"
       ]

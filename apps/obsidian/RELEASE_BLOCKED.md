@@ -1,5 +1,17 @@
 # Packaging candidate — not ready for catalog publication
 
+## Isolated-instance repair candidate — 15 September 2026
+
+`.4` supersedes the failed private-origin `.3` development install. Only sync
+is rebuilt, from `d8bce37f78ad33b90e910a6cd80faf8a55c97226` on native ARM64.
+Published manifest `b105d4073909f50a00c0fc8de6bbeaf56cd93a6b7893fa6692a033554a5508e7`
+selects config `e1502a6cdd3e54a8e0f6166edf632e57dee696800243e8d340c593d642712da1`.
+The other four image pins are unchanged. Full source tests, package validation,
+image-content checks and two-instance startup/restart with a conflicting edge
+alias passed. See `scripts/check-obsidian-instance-isolation.py`.
+This scoped regression is not a new full replication/desktop qualification.
+Live installation, private endpoint and actual desktop connection remain gates.
+
 ## Guided research candidate — 15 September 2026
 
 `0.5.0-guided.20260915.2` is an **ARM64 development candidate**, not an official
