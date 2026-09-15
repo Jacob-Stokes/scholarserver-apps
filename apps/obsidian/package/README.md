@@ -19,8 +19,12 @@ Never enable Obsidian Sync, iCloud, Git/Syncthing, or another vault sync engine
 at the same time as Self-hosted LiveSync. Additional devices should generate a
 fresh Setup URI from an already-connected Obsidian device.
 
-LiveSync requires an HTTPS address accessible to every Obsidian device. Route
-that hostname to `http://obsidian-livesync:5984` on the shared edge network.
+LiveSync requires an HTTPS address accessible to every Obsidian device. The
+package declares an opt-in private origin for `livesync-couchdb`. Select its
+Private Tailscale address through Manager endpoint access and use that exact
+address during setup; do not assume port 8443 belongs to this instance.
+The database stays on its instance network. The platform-owned origin router
+joins that network and targets the exact instance, not a shared database alias.
 
 LiveSync offers two connection methods:
 

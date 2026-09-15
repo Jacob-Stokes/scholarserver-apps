@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.0-guided.20260915.2
+packageVersion: 0.5.0-guided.20260915.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -140,7 +140,18 @@ endpoints:
       hostname: obsidian-mcp
       credentialData: runtime
       credentialFile: service-token
-  - { id: livesync-couchdb, service: livesync-couchdb, port: 5984, protocol: http, exposure: private, auth: none-private }
+  - id: livesync-couchdb
+    service: livesync-couchdb
+    port: 5984
+    protocol: http
+    exposure: human-optional
+    auth: none-private
+    remoteAccess:
+      routing: origin
+      private: true
+      public: false
+      authentik: unsupported
+      defaultAuthentik: false
 ui:
   mode: standalone
   endpoint: app-ui

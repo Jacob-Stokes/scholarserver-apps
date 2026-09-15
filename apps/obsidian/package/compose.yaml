@@ -78,8 +78,6 @@ services:
     networks:
       instance:
         aliases: [livesync-couchdb]
-      edge:
-        aliases: [obsidian-livesync]
     healthcheck:
       test: [CMD, /usr/local/bin/scholarserver-couchdb-healthcheck]
       interval: 10s

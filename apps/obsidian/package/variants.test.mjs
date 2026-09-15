@@ -77,7 +77,7 @@ test("the core projection contract removes only the official-client mount for Li
 });
 
 test("research actions use the runtime mailbox and protect note contents", () => {
-  assert.equal(manifest.packageVersion, "0.5.0-guided.20260915.2");
+  assert.equal(manifest.packageVersion, "0.5.0-guided.20260915.3");
   const browse = manifest.onboarding.actions.filter((action) => action.id === "browse-folders");
   const create = manifest.onboarding.actions.filter((action) => action.id === "create-research-note");
   assert.deepEqual(browse, [
@@ -112,4 +112,27 @@ test("only the app-owned folder browsing action requires target-instance approva
   for (const action of manifest.onboarding.actions.filter((action) => action.id !== "browse-folders")) {
     assert.equal(Object.hasOwn(action, "requireInstanceApproval"), false);
   }
+});
+
+test("LiveSync uses an opt-in private origin and keeps its database off the shared edge network", () => {
+  const endpoint = manifest.endpoints.find((entry) => entry.id === "livesync-couchdb");
+  assert.deepEqual(endpoint, {
+    id: "livesync-couchdb",
+    service: "livesync-couchdb",
+    port: 5984,
+    protocol: "http",
+    exposure: "human-optional",
+    auth: "none-private",
+    remoteAccess: {
+      routing: "origin",
+      private: true,
+      public: false,
+      authentik: "unsupported",
+      defaultAuthentik: false
+    }
+  });
+  assert.deepEqual(compose.services["livesync-couchdb"].networks, {
+    instance: { aliases: ["livesync-couchdb"] }
+  });
+  assert.equal(compose.services["livesync-couchdb"].ports, undefined);
 });

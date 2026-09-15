@@ -49,3 +49,12 @@ The target platform must
 support `data.backup: excluded`; select a compatible released platform minimum
 before publication rather than relying on the current broad `>=0.1.0` range.
 Older published versions are immutable and still refer to their old images.
+# Private development origin candidate — 15 September 2026
+
+`0.5.0-guided.20260915.3` retains all qualified image digests and adds an opt-in,
+private-only platform origin for LiveSync. CouchDB no longer joins the shared
+edge network or advertises a shared database alias; the instance-specific router
+joins its private network. Existing installed packages are unchanged. The full
+app test suite and core package-schema validation pass. Fresh development install,
+private-route and desktop synchronization acceptance remain pending. This is not
+a general release or an update of Freelove's existing notes.
