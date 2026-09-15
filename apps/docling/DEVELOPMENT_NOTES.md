@@ -98,3 +98,20 @@ tags under `presentation.details.tags`. The metadata-only source candidate is
 unchanged. No package was published or deployed. The Obsidian project-vault
 note was updated through Jacob Gateway on 11 September 2026; this repository's
 catalog-tags document remains authoritative for the exact vocabulary.
+## Folder action queue correction — 15 September 2026
+
+Candidate `0.3.5-beta.4.editorial.20260915.1` changes only package version and the
+`browse-folders` action's request directory from `documents` to `runtime`. Its
+controller already implements folder browsing, but listens for executor requests
+under `/runtime/requests`; the old declaration caused a timeout. The declared
+`data` field identifies the action mailbox, not the filesystem being browsed.
+A cross-app regression checks this contract. Container image pins, permissions
+and persistent datasets are unchanged; no image rebuild is needed for this fix.
+
+On Freelove, the approved `research-shared` local storage supplies Docling's
+documents and Zotero's linked files. The new empty `Papers` subfolder is shared;
+old per-app local directories remain intact and Drive remains disabled. No PDF
+conversion or automation execution is claimed. Exact deployment and browser
+acceptance are recorded in core `docs/deployments.md`. The package is installed at
+revision 17; the live n8n picker selected Papers and enabled Add automation without
+submitting. The project-vault note and index were updated through Jacob Gateway.

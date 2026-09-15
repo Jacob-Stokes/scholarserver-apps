@@ -2,34 +2,55 @@
 
 ## Research setup discovery and folder browser — 15 September 2026
 
-Read-only Freelove diagnostics reproduced HTTP 502 from the integration's
-`/api/research-applications` on port 8080. The verified integration image remains
-`1269b67b2864772ae8bc1aab9c4af523570f9801310856ffcbf052d119b36a0d`;
-its configured state root is `/runtime` and `manager-connection.json` is absent.
-This is missing service setup, not a browser refresh problem. The installed beta.2
-package remains held for cross-app permission approval; no credentials were read,
-created or printed and no grants or workflows were changed.
+Freelove's previous beta.2 integration returned HTTP 502 because its Manager
+service credential was absent. With explicit approval, package
+`0.1.0-guided.20260915.1` is now installed at revision 3. Its integration is
+`ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:db409be097792daea14dbedb158f72b1e2412408a4de13e34825d17f3c291347`,
+from source `9c0ffdde515cdbb962b096dd7a602a955b2a939e`. Native n8n uses the
+previously qualified `c0378ee` wrapper, still upstream 2.38.1. The new development
+candidate is ARM64-only; this is not dual-native or official catalog qualification.
+The old UI overlays are no longer active.
 
 Source now classifies the missing connection without exposing upstream errors.
 The setup-only folder route uses the selected same-workspace Docling instance's
 allowlisted `browse-folders` action; it refuses missing grants and unsafe paths.
 Root browsing is permitted, but existing automation scope rules still require a
 nonempty relative subfolder. Listing Docling folders does not establish that Zotero
-uses the same physical storage. Freelove's two existing local roots are separate;
-binding changes require a user choice and must preserve both roots and leave Drive off.
+uses the same physical storage. Freelove now binds personal Zotero and Docling to
+the approved new `research-shared` local storage. Their `Papers` folder had the
+same device/inode in both containers. Previous local roots were preserved and
+Google Drive remains disabled. No live automation was created or enabled.
 
-The current candidate does not declare `browse-folders` in n8n's grants. A new
-immutable qualified candidate with that explicit read-only permission is required
-before the new browser can be used. Source changes here are not a live fix or
-package publication. The project-vault note update remains pending.
+The candidate declares read-only Docling `browse-folders` alongside the reviewed
+research actions. One setup action provisions service access: empty input verifies
+the existing account connection without changing its password; initial setup still
+validates the password in the controller. A first candidate was correctly rejected
+because two actions requested service provisioning. The regression now enforces
+the platform's single-action rule. The accepted native image passed isolated
+read-only ARM64 setup, restricted credentials and restart checks before deployment.
+
+Live discovery also exposed a missing `scholarserver-manager` DNS alias in the
+development Compose template. Production already declares that alias. Adding it
+to the same existing edge network restored authenticated app discovery without
+changing the Manager image or widening network access. Docling's folder action
+then exposed a separate package error: its request directory was `documents`
+instead of `runtime`. Correct it in a new Docling metadata version, not by editing
+an installed immutable package or injecting requests into research folders.
 
 Verification: full `npm test`, `npm run lint`, n8n UI typecheck and production
 build pass. Regression tests cover missing credentials, scoped folder browsing,
 traversal rejection, missing grants and the form's discovery/blocker wiring.
-These are source checks, not authenticated browser or shared-data acceptance.
-The existing vendor-only folder picker now clears a stale listing before a failed
-load can leave it selectable and associates its input with its visible label.
-Canonical shared-component consolidation remains separate from this app fix.
+These source checks are separate from the native/deployment checks above. The
+folder picker clears stale listings on failed loads and has a labelled input and
+shared dialog styling. Its canonical source now lives in core `packages/ui`, with
+the intentional apps vendor snapshot. Other shared-UI image records still need
+their own qualification; their fingerprints were not rewritten to claim builds.
+Live authenticated browser acceptance selected personal Zotero, Docling and
+`Papers` through Browse and showed Add automation enabled; submission was not
+performed. Docling's corrected package is revision 17. Other report templates
+still lack installed Zotero metadata/Obsidian capabilities. The n8n and Docling
+project-vault notes and application index were updated through Jacob Gateway.
+Core `docs/deployments.md` records the exact runtime receipts and recovery paths.
 
 ## Finalized native candidate pins — 14 September 2026
 
