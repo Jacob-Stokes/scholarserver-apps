@@ -550,15 +550,23 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 :root[data-motion="on"] :where(body, .ss-card, .bg-card, .bg-sidebar, .ss-tab, .ss-button, .ss-pressable) {
   transition: background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out;
 }
-:root[data-motion="on"] :where(.ss-button, .ss-pressable, .ss-app-card) {
+:root[data-motion="on"] :where(.ss-button, .ss-pressable) {
   transition: background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out, transform 140ms ease-out;
 }
-:root[data-motion="on"] :where(.workspace-navigation a, .workspace-application-card) {
+:root[data-motion="on"] .workspace-navigation a {
   transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
 }
-@media (hover: hover) {
-  .workspace-application-card:hover,
-  .workspace-application-card:focus-within {
+:root[data-motion="on"] .ss-app-card {
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
+}
+.ss-app-card:has(:focus-visible) {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+:root[data-motion="on"] .ss-app-card:has(:focus-visible) {
+  transform: translateY(-2px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ss-app-card:hover {
     border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
   }
 }
