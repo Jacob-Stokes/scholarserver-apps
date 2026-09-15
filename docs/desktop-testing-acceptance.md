@@ -1,5 +1,17 @@
 # Desktop client setup acceptance — 12 September 2026
 
+## Isolated development vault — 15 September 2026
+
+Created `scholarserver-dev` through the real Obsidian desktop interface in the
+existing isolated Docker client, at `/config/scholarserver-dev`. This is a
+container volume, not a personal Mac profile. No sync method, account, community
+plugin or server connection was configured for it. The existing `ScholarServer
+Test` vault is retained. This proves local vault creation only.
+
+Freelove's personal/obsidian reports setup-required but its managed vault already
+contains notes. No remote configuration or data was changed. Connecting this new
+test vault requires a separate server instance rather than reusing that data.
+
 ## Result and limits
 
 Two persistent native ARM64 Linux desktop clients were qualified on the operator
