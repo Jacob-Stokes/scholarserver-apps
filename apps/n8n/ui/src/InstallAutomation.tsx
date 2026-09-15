@@ -1,6 +1,11 @@
 import { useId, useState } from "react";
 import type { AppRequirement } from "./automation-types";
-import { type ResearchBindings, type ResearchKind, ResearchSettings } from "./ResearchSettings";
+import {
+  type ResearchAvailability,
+  type ResearchBindings,
+  type ResearchKind,
+  ResearchSettings
+} from "./ResearchSettings";
 
 export type Schedule = { hoursInterval?: number; minutesInterval?: number; minimum: number; maximum: number };
 export type AutomationSettings = { hoursInterval?: number; minutesInterval?: number; research?: ResearchBindings };
@@ -28,15 +33,26 @@ export function InstallAutomation({
   const minutes = schedule?.minutesInterval !== undefined;
   const [interval, setInterval] = useState(String(schedule?.minutesInterval ?? schedule?.hoursInterval ?? 1));
   const [bindings, setBindings] = useState<ResearchBindings | null>(null);
+  const [researchAvailability, setResearchAvailability] = useState<ResearchAvailability>("loading");
   const feedbackId = useId();
   const scheduleErrorId = useId();
   const value = Number(interval);
   const validSchedule =
     !schedule || (Number.isInteger(value) && value >= schedule.minimum && value <= schedule.maximum);
-  const valid = validSchedule && (!research || bindings !== null);
+  const valid = validSchedule && (!research || (researchAvailability === "ready" && bindings !== null));
   let unavailableReason = disabledReason;
   if (busy) {
     unavailableReason = "Wait for the current request to finish.";
+  } else if (!unavailableReason && research && researchAvailability === "loading") {
+    unavailableReason = "Wait for research app discovery to finish.";
+  } else if (!unavailableReason && research && researchAvailability === "error") {
+    unavailableReason = "Resolve the research app access message above.";
+  } else if (!unavailableReason && research && researchAvailability === "missing-source") {
+    unavailableReason = "Choose a compatible Zotero library.";
+  } else if (!unavailableReason && research && researchAvailability === "missing-target") {
+    unavailableReason = "Choose a compatible research app in the same workspace.";
+  } else if (!unavailableReason && research && researchAvailability === "invalid-folder") {
+    unavailableReason = "Enter a valid research folder.";
   } else if (!unavailableReason && validSchedule && research && !bindings) {
     unavailableReason = "Choose compatible research apps and enter a valid folder.";
   }
@@ -55,7 +71,13 @@ export function InstallAutomation({
       }}
     >
       {research ? (
-        <ResearchSettings kind={research} requirements={requirements} busy={busy} onChange={setBindings} />
+        <ResearchSettings
+          kind={research}
+          requirements={requirements}
+          busy={busy}
+          onChange={setBindings}
+          onAvailabilityChange={setResearchAvailability}
+        />
       ) : null}
       {schedule ? (
         <fieldset className="automation-setup-group automation-schedule">

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ManagerConnection } from "./manager-connection.mjs";
+import { ManagerConnection, ResearchConnectionRequired } from "./manager-connection.mjs";
 
 const valid = {
   url: "http://scholarserver-manager:8080/api/v1/service",
@@ -26,5 +26,10 @@ test("Manager connection rejects caller-selected addresses and malformed tokens"
   const connection = new ManagerConnection(directory);
   await assert.rejects(connection.configure({ ...valid, url: "http://example.org" }));
   await assert.rejects(connection.configure({ ...valid, token: "short" }));
-  await assert.rejects(connection.read(), /Reconnect/);
+  await assert.rejects(connection.read(), (error) => {
+    assert.ok(error instanceof ResearchConnectionRequired);
+    assert.equal(error.code, "research_connection_required");
+    assert.match(error.message, /Allow research app access/);
+    return true;
+  });
 });

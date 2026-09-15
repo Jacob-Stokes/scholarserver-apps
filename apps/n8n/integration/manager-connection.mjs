@@ -4,6 +4,13 @@ import { atomicJson } from "@scholarserver/controller-runtime/files";
 
 const expectedServiceUrl = "http://scholarserver-manager:8080/api/v1/service";
 
+export class ResearchConnectionRequired extends Error {
+  constructor() {
+    super("Allow research app access in n8n Configuration before choosing apps.");
+    this.code = "research_connection_required";
+  }
+}
+
 export class ManagerConnection {
   constructor(directory) {
     this.file = path.join(directory, "manager-connection.json");
@@ -28,14 +35,14 @@ export class ManagerConnection {
     try {
       value = JSON.parse(await readFile(this.file, "utf8"));
     } catch {
-      throw new Error("Reconnect this automation platform from ScholarServer");
+      throw new ResearchConnectionRequired();
     }
     if (
       value?.url !== expectedServiceUrl ||
       typeof value.token !== "string" ||
       !/^[A-Za-z0-9_-]{43,128}$/.test(value.token)
     ) {
-      throw new Error("Reconnect this automation platform from ScholarServer");
+      throw new ResearchConnectionRequired();
     }
     return value;
   }

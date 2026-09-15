@@ -12,7 +12,7 @@ import {
   workflowScheduleMinutes
 } from "./configuration.mjs";
 import { completeWorkflowInventory, editingState } from "./inventory.mjs";
-import { ManagerConnection } from "./manager-connection.mjs";
+import { ManagerConnection, ResearchConnectionRequired } from "./manager-connection.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
 import { ResearchAccess } from "./research-access.mjs";
 import { ResearchBridge } from "./research-bridge.mjs";
@@ -159,6 +159,18 @@ createServer(async (request, response) => {
       if (request.method === "GET" && url.pathname === "/api/research-applications") {
         return json(response, 200, await researchBridge.applications());
       }
+      if (request.method === "GET" && url.pathname === "/api/research-folders") {
+        return json(
+          response,
+          200,
+          await researchBridge.folders({
+            workspaceId: url.searchParams.get("workspaceId"),
+            zotero: url.searchParams.get("zotero"),
+            docling: url.searchParams.get("docling"),
+            folder: url.searchParams.get("folder") ?? ""
+          })
+        );
+      }
       if (request.method === "POST" && url.pathname === "/api/revoke-research") {
         const input = await body(request);
         const receipt = (await installations.read()).installations[input.automationId ?? input.templateId];
@@ -249,6 +261,9 @@ createServer(async (request, response) => {
   } catch (error) {
     // No upstream message, body or submitted credential may enter the response.
     if (response.headersSent) return response.end();
+    if (error instanceof ResearchConnectionRequired) {
+      return json(response, 409, { code: error.code, error: error.message });
+    }
     if (error instanceof AutomationConfigurationError) return json(response, 400, { error: error.message });
     if (error instanceof SetupError) return json(response, 409, { error: error.message });
     if (error instanceof WorkflowEditConflict) return json(response, 409, { error: error.message });

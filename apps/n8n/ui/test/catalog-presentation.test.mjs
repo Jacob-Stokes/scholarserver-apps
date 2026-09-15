@@ -74,7 +74,17 @@ test("folder and availability guidance stays visible with existing permission an
   assert.match(research, /setSource\(event.target.value\);\s*setTarget\(""\)/);
   assert.match(research, /loading \? <p role="status">Checking available research apps/);
   assert.match(research, /!loading && !error && sources.length === 0/);
-  assert.match(research, /error \? <p role="alert">\{error\}<\/p>/);
+  assert.match(research, /<p role="alert">\{error\}<\/p>/);
+  assert.match(research, /Retry app discovery/);
+  assert.match(research, /research_connection_required/);
+  assert.match(research, /Allow research app access in n8n Configuration before choosing apps\./);
+  assert.match(research, /FolderPicker/);
+  assert.match(research, /browse-folders/);
+  assert.match(research, /docling: selectedTarget\.id/);
+  assert.match(research, /parent !== null/);
+  assert.match(research, /loading \|\| error \|\| !selectedSource/);
+  assert.match(research, /destination === "docling"/);
+  assert.match(research, /Browse Docling’s Research documents\. Zotero must use the same storage location\./);
   assert.match(
     research,
     /Allows reading recent Zotero metadata and creating notes only in this folder\. Existing notes are not replaced/
@@ -85,4 +95,12 @@ test("folder and availability guidance stays visible with existing permission an
   );
   assert.match(research, /fixed “\{reportSubfolder\}” subfolder\. Existing reports are/);
   assert.match(research, /Check installation, running state, package/);
+});
+
+test("the shared folder picker clears an old listing before each load", async () => {
+  const picker = await readFile(
+    new URL("../../../../vendor/scholarserver-ui/folder-picker.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(picker, /setError\(null\);\s*setListing\(null\);/);
 });

@@ -81,6 +81,26 @@ export class ResearchBridge {
     assertRequiredApplications(requirementsForScope(templates, scope), scope, applications);
   }
 
+  async folders({ workspaceId, zotero, docling, folder }) {
+    if (
+      typeof folder !== "string" ||
+      folder.length > 200 ||
+      (folder !== "" && folder.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part)))
+    ) {
+      throw new Error("Choose a relative folder inside Research documents");
+    }
+    const scope = { kind: "convert-pdfs", workspaceId, zotero, docling };
+    const applications = await this.applications();
+    assertRequiredApplications(requirementsForScope(templates, scope), scope, applications);
+    const destination = applications.find((app) => app.workspaceId === workspaceId && app.id === docling);
+    if (!destination.actions.includes("browse-folders")) {
+      throw new Error("Folder browsing has not been allowed for this Docling connection");
+    }
+    // Browsing is a setup-only, allowlisted action, never a workflow operation.
+    // This lists Docling storage; it does not prove Zotero shares the same root.
+    return this.action(scope, "docling", "browse-folders", { path: folder });
+  }
+
   action(scope, app, action, input) {
     const workspace = encodeURIComponent(scope.workspaceId);
     const instance = encodeURIComponent(scope[app]);

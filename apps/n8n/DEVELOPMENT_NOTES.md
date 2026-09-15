@@ -1,5 +1,36 @@
 # n8n integration — development record
 
+## Research setup discovery and folder browser — 15 September 2026
+
+Read-only Freelove diagnostics reproduced HTTP 502 from the integration's
+`/api/research-applications` on port 8080. The verified integration image remains
+`1269b67b2864772ae8bc1aab9c4af523570f9801310856ffcbf052d119b36a0d`;
+its configured state root is `/runtime` and `manager-connection.json` is absent.
+This is missing service setup, not a browser refresh problem. The installed beta.2
+package remains held for cross-app permission approval; no credentials were read,
+created or printed and no grants or workflows were changed.
+
+Source now classifies the missing connection without exposing upstream errors.
+The setup-only folder route uses the selected same-workspace Docling instance's
+allowlisted `browse-folders` action; it refuses missing grants and unsafe paths.
+Root browsing is permitted, but existing automation scope rules still require a
+nonempty relative subfolder. Listing Docling folders does not establish that Zotero
+uses the same physical storage. Freelove's two existing local roots are separate;
+binding changes require a user choice and must preserve both roots and leave Drive off.
+
+The current candidate does not declare `browse-folders` in n8n's grants. A new
+immutable qualified candidate with that explicit read-only permission is required
+before the new browser can be used. Source changes here are not a live fix or
+package publication. The project-vault note update remains pending.
+
+Verification: full `npm test`, `npm run lint`, n8n UI typecheck and production
+build pass. Regression tests cover missing credentials, scoped folder browsing,
+traversal rejection, missing grants and the form's discovery/blocker wiring.
+These are source checks, not authenticated browser or shared-data acceptance.
+The existing vendor-only folder picker now clears a stale listing before a failed
+load can leave it selectable and associates its input with its visible label.
+Canonical shared-component consolidation remains separate from this app fix.
+
 ## Finalized native candidate pins — 14 September 2026
 
 The current unpublished editorial candidate now selects its exact verified

@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, Folder, FolderOpen, HardDrive, LoaderCircle, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 export interface FolderListing {
   path: string;
@@ -16,6 +16,7 @@ export function FolderPicker({ label, help, value, disabled = false, onChange, b
   onChange: (path: string) => void;
   browse: (path: string) => Promise<FolderListing>;
 }) {
+  const inputId = useId();
   const [open, setOpen] = useState(false);
   const [listing, setListing] = useState<FolderListing | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,7 @@ export function FolderPicker({ label, help, value, disabled = false, onChange, b
   const load = async (folder: string) => {
     setLoading(true);
     setError(null);
+    setListing(null);
     try { setListing(await browse(folder)); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "The folder could not be opened"); }
     finally { setLoading(false); }
@@ -36,9 +38,9 @@ export function FolderPicker({ label, help, value, disabled = false, onChange, b
   }, [listing?.path]);
 
   return <div className="ss-field">
-    <span>{label}</span>
+    <label htmlFor={inputId}>{label}</label>
     <div className="ss-input-group">
-      <input className="ss-input" value={value} disabled={disabled} placeholder="Whole shared folder" onChange={(event) => onChange(event.target.value)} />
+      <input id={inputId} className="ss-input" value={value} disabled={disabled} placeholder="Whole shared folder" onChange={(event) => onChange(event.target.value)} />
       <button type="button" className="ss-button ss-button-secondary" disabled={disabled} onClick={() => setOpen(true)}><FolderOpen size={16} />Browse</button>
     </div>
     <span className="ss-field-help">{help}</span>
