@@ -33,9 +33,18 @@ export async function startSetupActions(directory, setup, managerConnection) {
         try {
           const request = JSON.parse(await readFile(file, "utf8"));
           await rm(file, { force: true });
-          if (request.action !== "setup") throw new SetupError("Unknown setup action.");
+          if (!["setup", "connect-research"].includes(request.action)) throw new SetupError("Unknown setup action.");
           const { scholarserverService, ...setupInput } = request.input;
-          const setupResult = await setup.finish(setupInput);
+          let setupResult;
+          if (request.action === "connect-research") {
+            if (Object.keys(setupInput).length !== 0)
+              throw new SetupError("Research access does not accept account settings.");
+            const status = await setup.status();
+            if (!status.connected) throw new SetupError("Finish n8n sign-in before connecting research apps.");
+            setupResult = { connected: true, phase: "ready" };
+          } else {
+            setupResult = await setup.finish(setupInput);
+          }
           await managerConnection.configure(scholarserverService);
           result = { ok: true, result: setupResult };
         } catch (error) {

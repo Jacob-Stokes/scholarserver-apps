@@ -7,6 +7,43 @@ import { setTimeout as delay } from "node:timers/promises";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { startSetupActions } from "./setup-actions.mjs";
 
+test("research access preserves an existing account and refuses unfinished sign-in", async (t) => {
+  for (const connected of [true, false]) {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "n8n-research-access-"));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    let configured = 0;
+    const stop = await startSetupActions(
+      directory,
+      {
+        status: async () => ({ connected }),
+        finish: () => assert.fail("Research access must not change account setup")
+      },
+      {
+        configure: async (value) => {
+          assert.deepEqual(value, { token: "test-only" });
+          configured++;
+        }
+      }
+    );
+    t.after(stop);
+    const name = `${"e".repeat(32)}.json`;
+    await atomicJson(path.join(directory, "requests", name), {
+      action: "connect-research",
+      input: { scholarserverService: { token: "test-only" } }
+    });
+    let result;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      result = await readFile(path.join(directory, "responses", name), "utf8").catch(() => null);
+      if (result) break;
+      await delay(25);
+    }
+    assert.ok(result);
+    assert.equal(JSON.parse(result).ok, connected);
+    assert.equal(configured, connected ? 1 : 0);
+    assert.doesNotMatch(result, /test-only/);
+  }
+});
+
 test("action consumes its secret file before setup and returns only a sanitized result", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "n8n-action-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
