@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "1.1.15",
+    "lucide-react": "0.475.0",
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
     "motion": "13.2.0",
     "react": "19.1.1",
