@@ -1,12 +1,12 @@
 .ss-input-group { display: flex; gap: .5rem; min-width: 0; }
 .ss-input-group > input { flex: 1; min-width: 0; }
-.ss-dialog-overlay { position: fixed; inset: 0; z-index: 80; background: rgb(20 35 29 / .35); }
-.ss-dialog-content { position: fixed; inset: 50% auto auto 50%; translate: -50% -50%; z-index: 81; width: min(32rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; background: var(--background); color: var(--foreground); border: 1px solid var(--border); border-radius: .4rem; box-shadow: 0 16px 48px rgb(0 0 0 / .18); }
-.ss-dialog-header, .ss-dialog-body, .ss-dialog-footer { padding: 1rem; }
-.ss-dialog-header { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); }
-.ss-dialog-title { margin: 0 0 .5rem; font-size: 1.2rem; }
-.ss-dialog-description { margin: 0; color: var(--muted-foreground); font-size: .875rem; }
-.ss-dialog-footer { display: flex; justify-content: flex-end; gap: .5rem; border-top: 1px solid var(--border); }
+.ss-folder-dialog-overlay { position: fixed; inset: 0; z-index: 80; background: rgb(20 35 29 / .35); }
+.ss-folder-dialog-content { position: fixed; inset: 50% auto auto 50%; translate: -50% -50%; z-index: 81; width: min(32rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; background: var(--background); color: var(--foreground); border: 1px solid var(--border); border-radius: .4rem; box-shadow: 0 16px 48px rgb(0 0 0 / .18); }
+.ss-folder-dialog-header, .ss-folder-dialog-body, .ss-folder-dialog-footer { padding: 1rem; }
+.ss-folder-dialog-header { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); }
+.ss-folder-dialog-title { margin: 0 0 .5rem; font-size: 1.2rem; }
+.ss-folder-dialog-description { margin: 0; color: var(--muted-foreground); font-size: .875rem; }
+.ss-folder-dialog-footer { display: flex; justify-content: flex-end; gap: .5rem; border-top: 1px solid var(--border); }
 .ss-breadcrumbs, .ss-breadcrumb-part { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; }
 .ss-breadcrumb-part button { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem; }
 .ss-folder-list { margin-block: .75rem; }
@@ -15,3 +15,20 @@
 .ss-folder-row > strong { flex: 1; overflow-wrap: anywhere; }
 .ss-folder-message { display: grid; justify-items: center; gap: .5rem; padding: 1rem; text-align: center; }
 .ss-selected-folder { overflow-wrap: anywhere; color: var(--muted-foreground); font-size: .875rem; }
+.ss-folder-dialog-content { font: 400 .875rem/1.5 var(--ss-font-sans); overscroll-behavior: contain; }
+.ss-folder-dialog-title { font: 400 1.65rem/1.2 var(--ss-font-heading); letter-spacing: -.025em; }
+.ss-folder-dialog-description { font-size: .8125rem; }
+.ss-folder-close, .ss-breadcrumb-part button { appearance: none; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.ss-folder-close { display: grid; place-items: center; flex: 0 0 2rem; align-self: start; width: 2rem; height: 2rem; padding: 0; color: var(--muted-foreground); }
+.ss-folder-close:hover, .ss-breadcrumb-part button:hover:not(:disabled) { background: var(--muted); }
+.ss-folder-dialog-content button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ss-folder-dialog-content button:disabled { opacity: .5; cursor: default; }
+.ss-folder-list { min-height: 9rem; }
+.ss-folder-row { font: inherit; cursor: pointer; min-height: 48px; }
+.ss-folder-row > strong { font-weight: 500; }
+.ss-folder-icon { color: var(--primary); }
+.ss-folder-message { color: var(--muted-foreground); }
+.ss-folder-error { color: var(--destructive); }
+@media (max-width: 480px) { .ss-folder-dialog-footer { flex-wrap: wrap; } .ss-folder-dialog-footer > button { flex: 1; min-height: 44px; } }
+@media (prefers-reduced-motion: no-preference) { :root:not([data-motion="off"]) .ss-folder-dialog-overlay[data-state="open"], :root:not([data-motion="off"]) .ss-folder-dialog-content[data-state="open"] { animation: ss-folder-fade 140ms ease-out; } }
+@keyframes ss-folder-fade { from { opacity: 0; } to { opacity: 1; } }

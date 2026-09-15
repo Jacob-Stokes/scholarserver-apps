@@ -20,6 +20,7 @@ WORKDIR /app/integration
 COPY --from=build /source/apps/n8n/integration/node_modules ./node_modules
 COPY --from=build /source/apps/n8n/ui/dist ./ui
 COPY apps/n8n/integration/client.mjs apps/n8n/integration/templates.mjs apps/n8n/integration/workflows.mjs apps/n8n/integration/setup.mjs apps/n8n/integration/server.mjs apps/n8n/integration/package.json ./
+COPY apps/n8n/integration/native-setup-form.mjs ./
 COPY apps/n8n/templates ../templates
 COPY apps/n8n/integration/configuration.mjs ./
 COPY apps/n8n/integration/requirements.mjs apps/n8n/integration/inventory.mjs ./

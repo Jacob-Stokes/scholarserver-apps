@@ -112,6 +112,18 @@ test("invalid settings fail before writing an installation receipt or contacting
   assert.deepEqual((await service.read()).installations, {});
 });
 
+test("automation names are trimmed and control characters fail before a receipt or n8n request", async (t) => {
+  const { service } = await fixture(t, {
+    createWorkflow: async (workflow) => ({ ...workflow, id: "workflow-1" })
+  });
+  const installed = await service.install(template.id, {}, null, randomUUID(), "  Trimmed name  ");
+  assert.equal(installed.name, "Trimmed name");
+
+  const rejectedId = randomUUID();
+  await assert.rejects(service.install(template.id, {}, null, rejectedId, "Bad\nname"), /control characters/);
+  assert.equal((await service.read()).installations[rejectedId], undefined);
+});
+
 test("two copies of one template have independent identities, schedules and restart receipts", async (t) => {
   let creates = 0;
   const { service, options } = await fixture(t, {

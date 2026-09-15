@@ -49,28 +49,36 @@ export class WorkflowInstallations {
     return result;
   }
 
+  async validateInstallRequest(templateId, automationId, name) {
+    const template = this.templates.find((candidate) => candidate.id === templateId);
+    if (!template) throw new Error("Unknown automation template");
+    if (automationId !== templateId && !/^[a-f0-9-]{36}$/.test(automationId ?? "")) {
+      throw new AutomationConfigurationError("Invalid automation identity");
+    }
+    const trimmedName = name === null ? template.name : validatedAutomationName(name);
+    const state = await this.read();
+    const existing = state.installations[automationId];
+    if (existing && existing.templateId !== templateId) {
+      throw new AutomationConfigurationError("Automation identity is already in use");
+    }
+    const unresolved = Object.values(state.installations).some(
+      (receipt) => receipt.templateId === templateId && receipt.state !== "installed" && receipt.state !== "rejected"
+    );
+    if (!existing && unresolved) {
+      throw new AutomationConfigurationError(
+        "Resolve the unconfirmed installation in My automations before adding another copy"
+      );
+    }
+    return { template, state, existing, trimmedName };
+  }
+
   install(templateId, settings = {}, retryOperationId = null, automationId = templateId, name = null) {
     return this.serialise(async () => {
-      const template = this.templates.find((candidate) => candidate.id === templateId);
-      if (!template) throw new Error("Unknown automation template");
-      const state = await this.read();
-      // Legacy template-keyed receipts remain addressable. New clients supply a
-      // UUID per configured copy, retained across failed requests and retries.
-      if (automationId !== templateId && !/^[a-f0-9-]{36}$/.test(automationId ?? "")) {
-        throw new AutomationConfigurationError("Invalid automation identity");
-      }
-      if (name !== null && (typeof name !== "string" || !name.trim() || name.length > 120)) {
-        throw new AutomationConfigurationError("Choose an automation name of up to 120 characters");
-      }
-      const existing = state.installations[automationId];
-      const unresolved = Object.values(state.installations).some(
-        (receipt) => receipt.templateId === templateId && receipt.state !== "installed" && receipt.state !== "rejected"
+      const { template, state, existing, trimmedName } = await this.validateInstallRequest(
+        templateId,
+        automationId,
+        name
       );
-      if (!existing && unresolved) {
-        throw new AutomationConfigurationError(
-          "Resolve the unconfirmed installation in My automations before adding another copy"
-        );
-      }
       if (existing) {
         if (existing.templateId !== templateId)
           throw new AutomationConfigurationError("Automation identity is already in use");
@@ -85,7 +93,7 @@ export class WorkflowInstallations {
       if (research && this.validateResearch) await this.validateResearch(research);
       const receipt = {
         automationId,
-        name: name?.trim() ?? template.name,
+        name: trimmedName,
         templateId,
         templateVersion: template.version,
         operationId: randomUUID(),
@@ -161,4 +169,17 @@ export class WorkflowInstallations {
       return receipt;
     });
   }
+}
+
+function validatedAutomationName(name) {
+  if (typeof name !== "string") {
+    throw new AutomationConfigurationError("Choose an automation name of up to 120 characters");
+  }
+  const trimmedName = name.trim();
+  if (!trimmedName || trimmedName.length > 120 || /[\x00-\x1f\x7f]/.test(name)) {
+    throw new AutomationConfigurationError(
+      "Choose an automation name of up to 120 characters without control characters"
+    );
+  }
+  return trimmedName;
 }

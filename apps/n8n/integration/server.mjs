@@ -13,6 +13,13 @@ import {
 } from "./configuration.mjs";
 import { completeWorkflowInventory, editingState } from "./inventory.mjs";
 import { ManagerConnection, ResearchConnectionRequired } from "./manager-connection.mjs";
+import {
+  advertisesNativeSetup,
+  assertNativeSetupRequest,
+  N8nNativeSetupForm,
+  NativeSetupFormError,
+  nativeSetupFormVersion
+} from "./native-setup-form.mjs";
 import { PasswordSetup } from "./password-setup.mjs";
 import { ResearchAccess } from "./research-access.mjs";
 import { ResearchBridge } from "./research-bridge.mjs";
@@ -61,6 +68,7 @@ const installations = new WorkflowInstallations({
     }
   }
 });
+const nativeSetupForm = new N8nNativeSetupForm({ templates, researchBridge, installations, requiredClient });
 
 async function requiredClient() {
   const connected = await setup.client();
@@ -144,7 +152,8 @@ createServer(async (request, response) => {
             requirements: template.requirements ?? [],
             presentation: template.presentation ?? null,
             schedule: scheduleConfiguration(template),
-            kind: template.research ? "automation" : "diagnostic"
+            kind: template.research ? "automation" : "diagnostic",
+            ...(advertisesNativeSetup(template) ? { setupFormVersion: nativeSetupFormVersion } : {})
           })),
           installations: projectedInstallations,
           workflows: inventory.map((workflow) => ({
@@ -170,6 +179,21 @@ createServer(async (request, response) => {
             folder: url.searchParams.get("folder") ?? ""
           })
         );
+      }
+      if (request.method === "POST" && url.pathname === "/api/setup-form") {
+        const input = await body(request);
+        assertNativeSetupRequest(input, ["templateId", "values"]);
+        return json(response, 200, await nativeSetupForm.evaluate(input.templateId, input.values));
+      }
+      if (request.method === "POST" && url.pathname === "/api/setup-form/folders") {
+        const input = await body(request);
+        assertNativeSetupRequest(input, ["templateId", "values", "path"]);
+        return json(response, 200, await nativeSetupForm.folders(input.templateId, input.values, input.path));
+      }
+      if (request.method === "POST" && url.pathname === "/api/setup-form/submit") {
+        const input = await body(request);
+        assertNativeSetupRequest(input, ["templateId", "values", "automationId"]);
+        return json(response, 200, await nativeSetupForm.submit(input.templateId, input.values, input.automationId));
       }
       if (request.method === "POST" && url.pathname === "/api/revoke-research") {
         const input = await body(request);
@@ -264,7 +288,12 @@ createServer(async (request, response) => {
     if (error instanceof ResearchConnectionRequired) {
       return json(response, 409, { code: error.code, error: error.message });
     }
+    const nativeSubmit = url.pathname === "/api/setup-form/submit";
+    if (nativeSubmit && error instanceof NativeSetupFormError) {
+      return json(response, 422, { code: "setup_form_invalid", error: error.message });
+    }
     if (error instanceof AutomationConfigurationError) return json(response, 400, { error: error.message });
+    if (error instanceof NativeSetupFormError) return json(response, error.status, { error: error.message });
     if (error instanceof SetupError) return json(response, 409, { error: error.message });
     if (error instanceof WorkflowEditConflict) return json(response, 409, { error: error.message });
     const unconfirmed = error.outcome === "unconfirmed";
