@@ -30,6 +30,7 @@ export function FolderPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestGeneration = useRef(0);
+  const browseButton = useRef<HTMLButtonElement>(null);
 
   const load = async (folder: string) => {
     const generation = ++requestGeneration.current;
@@ -84,6 +85,7 @@ export function FolderPicker({
           onChange={(event) => onChange(event.target.value)}
         />
         <button
+          ref={browseButton}
           type="button"
           className="ss-button ss-button-secondary"
           disabled={disabled}
@@ -98,7 +100,15 @@ export function FolderPicker({
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="ss-folder-dialog-overlay" />
-          <Dialog.Content className="ss-folder-dialog-content">
+          <Dialog.Content
+            className="ss-folder-dialog-content"
+            onCloseAutoFocus={(event) => {
+              if (browseButton.current?.isConnected && !browseButton.current.disabled) {
+                event.preventDefault();
+                browseButton.current.focus();
+              }
+            }}
+          >
             <div className="ss-folder-dialog-header">
               <div>
                 <Dialog.Title className="ss-folder-dialog-title">Choose a folder</Dialog.Title>
