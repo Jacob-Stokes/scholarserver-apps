@@ -1,5 +1,33 @@
 # Obsidian development notes
 
+## Isolated LiveSync acceptance — 16 September 2026
+
+`personal/obsidian-dev` on Freelove now reports ready, with the dedicated Mac
+Docker desktop `scholarserver-dev` connected through the private Tailscale
+endpoint. Actual server-created note delivery and desktop-edited return sync
+passed. Owner folder browsing and create-only retry preservation also passed.
+See `docs/desktop-testing-acceptance.md` and core `docs/deployments.md` for exact
+evidence and retained test data. No personal vault, n8n approval or schedule was
+changed; automation execution and full restart/restore recovery remain untested.
+
+The upstream 1.0.28 first-device reset option attempts database DELETE even when
+ScholarServer has already provisioned the database. The vault-scoped account
+correctly received 401. Do not grant administrator rights to accommodate this
+path. Recovery used the existing database: trash the test-only rebuild marker,
+select LiveSync mode and reload the plugin. This recovered session is not a
+clean beginner setup proof. Update the app-owned first-device guidance and test
+the correct existing-server path before qualifying a new onboarding release.
+
+Manager returned HTTP 500 after Configure LiveSync had already prepared the
+connection. Its optional AI registration conflicts with the personal instance's
+namespace; this is a suspected cause, not a captured exception. Reconcile the
+app state before any retry. Keep app action completion distinct from optional
+Gateway activation so the UI does not invite replay of a completed mutation.
+
+The Obsidian project-vault note and app index were updated through Jacob Gateway
+with these runtime results and remaining limits. No credentials or note contents
+were included in that documentation update.
+
 ## Multiple LiveSync instances — 15 September 2026
 
 Fresh `personal/obsidian-dev` installation of private-origin candidate `.3`
@@ -19,11 +47,10 @@ passed; `.4` now selects its immutable published digest (see RELEASE_BLOCKED.md)
 Freelove's original operation failed and rolled back its containers, preserving
 data. A separately reviewed revision 2 succeeded with all five services healthy.
 The existing personal instance and other container identities stayed unchanged.
-The new vault remains setup-required: ScholarServer's managed Tailscale connection
-is logged out, although the host's separate Tailscale connection works. Private
-endpoint setup and actual desktop/plugin sync are not yet verified. No new
-per-vault n8n approval has been applied; the owner was asked separately.
-Project-vault documentation follow-up remains pending.
+At that checkpoint the new vault remained setup-required because managed
+Tailscale was logged out. The 16 September acceptance above supersedes that
+blocker and verifies the private endpoint and actual desktop sync. No new
+per-vault n8n approval has been applied.
 
 ## Per-instance approval contract — 15 September 2026
 

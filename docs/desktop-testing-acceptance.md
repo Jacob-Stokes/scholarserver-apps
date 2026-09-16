@@ -12,17 +12,53 @@ Follow-up: with explicit owner approval, community plugins were enabled and
 Self-hosted LiveSync 1.0.28 was installed and enabled from Obsidian's official
 community directory in `scholarserver-dev`; the desktop showed Disable and
 the initial setup notice. This changes only the isolated test profile.
-Freelove's separate `personal/obsidian-dev` instance is installed and healthy,
-but no endpoint, sync credential or replication proof is available yet. The
-managed Tailscale reconnect failed because this retained installation lacks
-the canonical generated core Compose/environment files expected by the current
-executor. Its existing host Tailscale connection and routes were preserved.
+Freelove's separate `personal/obsidian-dev` instance is installed and healthy.
+The initial managed Tailscale reconnect failed because the retained installation
+lacked the canonical generated core Compose/environment files expected by the
+executor. That blocker was resolved by the separately recorded core-layout
+migration and executor recovery fix. Its host connection/routes were preserved.
 
 Freelove's personal/obsidian reports setup-required but its managed vault already
 contains notes. No remote configuration or data was changed. Connecting this new
-test vault requires a separate server instance rather than reusing that data.
+test vault uses the separate server instance rather than reusing that data.
 
-## Result and limits
+### Two-way LiveSync acceptance — 16 September 2026
+
+Obsidian 1.13.7 with Self-hosted LiveSync 1.0.28 in the isolated Docker desktop
+connected to `personal/obsidian-dev`, package `0.5.0-guided.20260915.4`, revision 2.
+The endpoint is private Tailscale with CouchDB-native authentication. No personal
+Mac profile, personal server vault, n8n grant or existing schedule was changed.
+Core's `docs/deployments.md` records exact server identities and recovery receipts.
+
+The client imported the app-generated encrypted setup link. The upstream
+first-device reset path was incorrectly selected for the pre-provisioned
+database: after owner confirmation, its DELETE request failed with HTTP 401.
+That is the expected limit of the vault-scoped account, not a reason to grant
+database administrator access. The database was not deleted. The test-only
+`flag_rebuild.md` request was moved to the isolated desktop's system trash;
+LiveSync mode was enabled and the plugin disabled/re-enabled to resume normal
+replication. Guidance must distinguish an existing provisioned database from
+the upstream create/reset-server path before claiming beginner acceptance.
+
+After the desktop exchanged data, “Connect ScholarServer” started the server
+worker. Manager showed “Obsidian is connected”; both app and LiveSync worker
+reported ready, with no last error. Actual content checks then passed:
+
+1. The desktop Welcome note arrived in the server vault.
+2. Owner-scoped `create-research-note` created a synthetic Markdown note in
+   `ScholarServer acceptance 20260916/digest-2026-09-16.md`. Its server-origin
+   marker appeared in the real desktop editor.
+3. An edit in that editor added a desktop-origin marker. Independent server
+   readback contained both markers, proving the return direction.
+4. Folder browsing returned the test folder. Repeating create with different
+   content returned `existing`; the desktop edit remained intact.
+
+The test note remains for review. This proves a recovered two-way sync session
+and create-only note semantics, not a fresh unassisted setup, full restart or
+backup recovery, permission enforcement for n8n, or automation execution.
+No new image build/publication was needed for this acceptance pass.
+
+## Historical 12 September result and limits
 
 Two persistent native ARM64 Linux desktop clients were qualified on the operator
 Mac under Compose project `scholarserver-test-desktops`. Docker is currently
