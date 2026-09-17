@@ -1,7 +1,8 @@
 """Native Docker smoke test using only disposable data and container-local HTTP.
 
-Expects locally built scholarserver-packaging-review:{obsidian-sync,obsidian-api,
-obsidian-mcp}. No existing vaults, accounts, public routes or containers are used.
+Defaults to locally built scholarserver-packaging-review images. Explicit
+SCHOLARSERVER_OBSIDIAN_*_IMAGE overrides select qualified image IDs without
+retagging unrelated images. No existing vaults, accounts or containers are used.
 The official client is downloaded into a disposable user-owned volume, not an image.
 """
 
@@ -42,6 +43,13 @@ def wait_for(description, check, timeout=90):
 
 
 def main():
+    images = {
+        "sync": os.environ.get("SCHOLARSERVER_OBSIDIAN_SYNC_IMAGE", "scholarserver-packaging-review:obsidian-sync"),
+        "api": os.environ.get("SCHOLARSERVER_OBSIDIAN_API_IMAGE", "scholarserver-packaging-review:obsidian-api"),
+        "mcp": os.environ.get("SCHOLARSERVER_OBSIDIAN_MCP_IMAGE", "scholarserver-packaging-review:obsidian-mcp"),
+        "couchdb": os.environ.get("SCHOLARSERVER_OBSIDIAN_COUCHDB_IMAGE", "scholarserver-packaging-review:couchdb"),
+        "worker": os.environ.get("SCHOLARSERVER_OBSIDIAN_WORKER_IMAGE", "scholarserver-packaging-review:livesync-worker"),
+    }
     prefix = "ss-packaging-" + uuid.uuid4().hex[:10]
     root = Path(tempfile.mkdtemp(prefix=prefix))
     containers = []
@@ -63,7 +71,7 @@ def main():
                     "--memory", "768m", "--cpus", "1", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=32m"]
             for source, target in mounts:
                 args += ["--mount", f"type=bind,src={root / source},dst={target}"]
-            args += list(extra) + [image or f"scholarserver-packaging-review:obsidian-{role}"] + list(command)
+            args += list(extra) + [image or images[role]] + list(command)
             docker(*args)
             containers.append(name)
             return name
@@ -159,12 +167,12 @@ def main():
             os.chown(root / name, uid, uid)
         start("couch", [("couch", "/opt/couchdb/data"), ("live", "/livesync-runtime")],
               ["--network-alias", "livesync-couchdb", "--tmpfs", "/opt/couchdb/etc/local.d:rw,noexec,nosuid,nodev,size=4m,uid=5984,gid=5984,mode=0700"],
-              image="scholarserver-packaging-review:couchdb")
+              image=images["couchdb"])
         controller = start("sync", [("live-vault", "/vault"), ("live-runtime", "/runtime"), ("live", "/livesync-runtime"),
                                     ("live-client", "/official-client"), ("live-config", "/home/obsidian/.config")],
                            ["-e", "SCHOLARSERVER_VARIANT=self-hosted-livesync"])
         worker = start("worker", [("live-vault", "/vault"), ("server-db", "/livesync-db"), ("live", "/livesync-runtime")],
-                       image="scholarserver-packaging-review:livesync-worker")
+                       image=images["worker"])
         wait_for("LiveSync controller starts with Headless absent", lambda: status(controller)["profile"] == "livesync")
         assert status(controller)["officialClient"] is None
         assert probe(controller, "console.log((await fetch('http://127.0.0.1:8080/api/client/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmed:true})})).status)") == "400"
@@ -185,7 +193,7 @@ def main():
         assert (root / "live-runtime/vault-binding.json").read_bytes() == live_binding
         assert (root / "live-runtime/enrollment.json").read_bytes() == live_enrollment
         peer = start("peer", [("peer-db", "/livesync-db"), ("peer-vault", "/vault"), ("live", "/livesync-runtime")],
-                     ["--entrypoint", "node"], image="scholarserver-packaging-review:livesync-worker",
+                     ["--entrypoint", "node"], image=images["worker"],
                      command=["-e", "setInterval(()=>{},1000)"])
         probe(peer, """
           import {readFile,mkdir} from 'node:fs/promises';

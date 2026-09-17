@@ -24,6 +24,26 @@ for (const template of templates) {
   const form = await formResponse.json();
   assert.equal(form.version, 1);
   assert.equal(Object.hasOwn(form, "bindings"), false);
+  const nativeResponse = await fetch("http://localhost:8080/api/setup-form", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
+    body: JSON.stringify({ templateId: template.id, version: 2 })
+  });
+  assert.equal(nativeResponse.status, 200);
+  const nativeForm = await nativeResponse.json();
+  assert.equal(nativeForm.version, 2);
+  assert.deepEqual(nativeForm.fields, form.fields);
+  assert.equal(nativeForm.bindings.length, 2);
+  assert.deepEqual(
+    nativeForm.bindings.map((binding) => binding.fieldId),
+    ["source", "target"]
+  );
+  assert.equal(nativeForm.bindings[0].packageId, "org.scholarserver.zotero");
+  assert.equal(nativeForm.bindings[1].packageId, `org.scholarserver.${destination}`);
+  assert.deepEqual(nativeForm.bindings[1].dependsOn, ["source"]);
+  for (const binding of nativeForm.bindings) {
+    assert.ok(binding.actionIds.length > 0 && binding.actionIds.length <= 4);
+  }
   const values = Object.fromEntries(form.fields.map((field) => [field.id, field.value]));
   assert.equal(form.canSubmit, false);
   assert.ok(values.source && values.target, "The sole compatible fixture apps should be selected");

@@ -1,5 +1,34 @@
 # Obsidian development notes
 
+## Native vault-binding candidate qualification — 17 September 2026
+
+The owner-approved capped ARM64 build on Freelove produced sync candidate
+`sha256:82fa290d68525f5ee9d5f5178098a5daa5a504e1b720bf68e00f63cf3e980f6b`
+from exact apps source `c81a3bedce44243a6c4327fdc2d93abc99da3fb6`, with recipe
+fingerprint `sha256:be7c7b91d543d041b5f2369323e8977385c914c29e8f0de356f0193f0d6a419e`.
+It is a local image, not a published registry digest or live package update.
+Other Obsidian services reused their unchanged qualified ARM64 images.
+
+All 75 binding tests pass against the packaged module/controller. The first run
+passed 74 but lacked the Dockerfile fixture for its source-inventory assertion;
+mounting that build metadata read-only made the complete rerun pass. This did not
+replace runtime files in the candidate. Full native checks passed official-client
+consent/download/integrity, non-root native SQLite, restart, legacy enrollment
+adoption and unchanged saved binding. API/MCP note operations also passed.
+
+A separate disposable LiveSync installation rejected repeated setup without
+changing enrollment or binding. Two independent LiveSync peers replicated a note
+to the server and a server research note back to the peer; the worker resumed
+after restart. This is real protocol replication with synthetic data, not a new
+desktop/account test or acceptance against a personal vault.
+
+The harness now accepts explicit image-ID overrides, avoiding global review-tag
+changes. Full apps source tests passed on Resolution. Evidence is under Freelove's
+`/var/lib/scholarserver-upgrades/connections-native-20260917/`, particularly
+`packaged-vault-binding-tests-rerun.log` and `obsidian-native-tests.log`.
+No live vault or grants were changed. Publication, new immutable package metadata,
+selected-instance update and authenticated Manager acceptance remain pending.
+
 ## One vault per installation — 17 September 2026
 
 The setup controller now reserves `/runtime/vault-binding.json` before either

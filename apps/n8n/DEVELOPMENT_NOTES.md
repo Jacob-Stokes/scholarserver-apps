@@ -1,5 +1,34 @@
 # n8n integration — development record
 
+## Native v2 candidate qualification — 17 September 2026
+
+The owner-approved capped ARM64 build on Freelove produced integration image
+`sha256:74ada87b5980f0e219c3409967f3406eeb4cf5412a832a6f9777333854056b9f`
+from exact committed apps source `c81a3bedce44243a6c4327fdc2d93abc99da3fb6`.
+Its recorded recipe fingerprint is
+`sha256:49f3184d31855ea85c61db7a85e6b1922a14b796d0f21ceacce3116af4b5cfc0`.
+This is a local candidate image, not a registry digest or installed package.
+The unchanged qualified native n8n runtime was reused in disposable tests.
+
+Password-only setup, restricted credentials, restart, all six setup forms and
+repeated workflow execution passed. The native harness now requests v2 explicitly
+and checks its target/action bindings as well as the binding-free v1 fallback.
+It also checks independent copies, paused creation, enable/disable and direct-edit
+protection. Empty input and revoked fixture permissions produced no extra writes.
+The research fixture has explicit CPU, memory and process limits. Only synthetic
+accounts, app responses and disposable note files participated; no real grant,
+workflow, schedule or installed app was changed.
+
+Private evidence is in
+`/var/lib/scholarserver-upgrades/connections-native-20260917/` on Freelove,
+including `n8n-native-tests.log`, image metadata and content-scan results.
+The operator Mac has the same named `.dev/connections-native-20260917-evidence`
+checkpoint. The test-only refinements passed full `npm test` on Resolution;
+one formatting correction then passed focused lint and all 37 form tests.
+That source check is not a new image build. Runtime fingerprints are unchanged.
+New immutable package metadata, publication and live Manager consent acceptance
+remain pending. Core's deployment map remains the live inventory.
+
 ## Native setup v2 preparation — 17 September 2026
 
 All six reviewed research templates advertise `setupFormVersion: 2`. A Manager

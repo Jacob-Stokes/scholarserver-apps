@@ -82,6 +82,7 @@ echo "Native read-only n8n and integration startup passed."
 if [ "${SCHOLARSERVER_CHECK_RESEARCH:-0}" = 1 ]; then
   docker run -d --name "$prefix-research-fixture" --network "$prefix" --network-alias manager --network-alias scholarserver-manager \
     --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
+    --cpus=0.25 --memory=192m --memory-swap=192m --pids-limit=64 \
     --tmpfs /tmp:rw,nosuid,nodev,size=32m \
     -v "$prefix-runtime:/runtime:ro" \
     -v "$PWD/apps/n8n/integration/check-research-fixture.mjs:/fixture.mjs:ro" \
