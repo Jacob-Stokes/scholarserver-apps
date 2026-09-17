@@ -329,6 +329,7 @@
         "apps/obsidian/sync/package-lock.json",
         "apps/obsidian/sync/research-note.mjs",
         "apps/obsidian/sync/vault-folders.mjs",
+        "apps/obsidian/sync/vault-binding.mjs",
         "apps/obsidian/ui/index.html",
         "apps/obsidian/ui/package-lock.json",
         "apps/obsidian/ui/package.json",

@@ -538,6 +538,23 @@ try {
   await page.unroute("**/apps/obsidian/api/status");
   await page.unroute("**/apps/obsidian/api/client/install");
   console.log("Obsidian: completed installation supersedes old polling without replacing the folder draft");
+  obsidianStatus = {
+    state: "recovery-required",
+    profile: "livesync",
+    scopePath: "/",
+    remoteVault: null,
+    workerRunning: false,
+    lastError: "The saved vault connection needs recovery. Do not repeat setup or replace its files."
+  };
+  await page.goto(`${origin}/apps/obsidian/configuration`);
+  await page.getByRole("heading", { name: "Restore the vault connection", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Prepare LiveSync", exact: true }).count(), 0);
+  assert.equal(await page.getByText("The saved vault connection needs recovery.", { exact: false }).count(), 1);
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await page.reload();
+  await page.getByRole("heading", { name: "Restore the vault connection", exact: true }).waitFor();
+  await page.screenshot({ path: join(output, "obsidian-vault-recovery-mobile.png"), fullPage: true });
+  console.log("Obsidian: interrupted vault setup stays in recovery after reload without offering replacement setup");
   obsidianStatus = null;
 
   let zoteroReads = 0;
@@ -612,7 +629,7 @@ try {
   await password.fill("synthetic-password");
   await page.getByRole("button", { name: "Save and continue", exact: true }).click();
   await page.getByRole("button", { name: "Use this address", exact: true }).click();
-  await page.getByRole("heading", { name: "Authorize ScholarServer", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Approve ScholarServer in Zotero", exact: true }).waitFor();
   assert.deepEqual(calls.findLast((call) => call.method === "PUT").body, {
     optionId: "private",
     authentication: "none"

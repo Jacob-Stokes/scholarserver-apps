@@ -14,6 +14,7 @@ type Status = {
     | "livesync-preparing"
     | "livesync-device-setup"
     | "livesync-server-joining"
+    | "recovery-required"
     | "ready";
   profile: SyncProfile;
   remoteVault: string | null;
@@ -263,23 +264,31 @@ export function App() {
   };
 
   const ready = status?.state === "ready";
+  const needsRecovery = status?.state === "recovery-required";
   const liveSyncRunning = Boolean(status?.liveSyncWorker?.running);
+  let connectionLabel = "Setup needed";
+  let connectionDescription = "Choose and connect a sync method to begin.";
+  if (ready && status) {
+    connectionLabel = "Connected";
+    connectionDescription = `Your server replica uses ${profileLabel(status.profile)}.`;
+  } else if (needsRecovery) {
+    connectionLabel = "Recovery needed";
+    connectionDescription = "Restore the saved connection before using this vault.";
+  }
   return (
     <ApplicationScreen
       name="Obsidian"
       description={"Keep a server copy of your vault synchronized and choose which folder AI tools may use."}
       status={
         status ? (
-          <span className={`ss-badge ${ready ? "ss-badge-success" : "ss-badge-warning"}`}>
-            {ready ? "Connected" : "Setup needed"}
-          </span>
+          <span className={`ss-badge ${ready ? "ss-badge-success" : "ss-badge-warning"}`}>{connectionLabel}</span>
         ) : null
       }
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}
       notice={notice}
-      error={error || statusError}
+      error={error || statusError || (needsRecovery ? status?.lastError : null)}
       loading={!status}
     >
       {status && tab === "overview" ? (
@@ -312,11 +321,7 @@ export function App() {
             <div className="ss-toolbar">
               <div>
                 <h2>Vault connection</h2>
-                <p className="ss-card-description">
-                  {ready
-                    ? `Your server replica uses ${profileLabel(status.profile)}.`
-                    : "Choose and connect a sync method to begin."}
-                </p>
+                <p className="ss-card-description">{connectionDescription}</p>
               </div>
               <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
                 Refresh
@@ -326,7 +331,7 @@ export function App() {
               <div className="ss-alert ss-alert-error">{status.liveSyncWorker.lastError}</div>
             ) : null}
           </section>
-          {!ready ? (
+          {!ready && !needsRecovery ? (
             <section className="ss-card">
               <div className="ss-toolbar">
                 <div>
@@ -344,7 +349,20 @@ export function App() {
 
       {status && tab === "configuration" ? (
         <div className="ss-stack">
-          {status.profile === "none" ? <ProfileChoice busy={busy} choose={chooseProfile} /> : null}
+          {needsRecovery ? (
+            <section className="ss-card">
+              <h2>Restore the vault connection</h2>
+              <p>
+                Keep this installation's vault and connection records together. For a different vault, add a separate
+                Obsidian installation and review its permissions.
+              </p>
+              <p>After restoring the connection records, restart this application and check its status.</p>
+              <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
+                Refresh status
+              </button>
+            </section>
+          ) : null}
+          {status.profile === "none" && !needsRecovery ? <ProfileChoice busy={busy} choose={chooseProfile} /> : null}
           {status.profile === "official" && status.state === "client-install-required" ? (
             <OfficialInstall
               status={status}

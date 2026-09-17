@@ -1,5 +1,51 @@
 # Obsidian development notes
 
+## One vault per installation — 17 September 2026
+
+The setup controller now reserves `/runtime/vault-binding.json` before either
+sync method can select/provision a vault. This app-owned identity is separate
+from Manager's source-instance/action approvals. It does not grant or revoke
+access. Another vault requires a separate installation and permission review;
+there is no in-place vault replacement operation in this candidate.
+
+Existing valid enrollment is adopted without changing enrollment, sync settings,
+credentials or vault contents. The record survives restart. Malformed, unreadable
+or symlinked records, a changed identity and orphaned vault/LiveSync state fail
+closed. A nonempty vault without enrollment is recovery-needed, not a fresh vault.
+Folder browsing and research-note creation recheck the saved identity.
+Only the worker's exact pristine waiting status is allowed before first setup;
+a revision, previous start, error, worker configuration or onboarding record is
+not evidence of an empty installation. Independent review caught this startup
+distinction before image qualification.
+
+Official setup accepts IDs from the current account's structured vault list and
+may retry an incomplete pull only for its reserved ID. Completed setup cannot be
+rerun. Interrupted LiveSync provisioning cannot be blindly replayed: it enters
+recovery, retaining all records/data. Restore the original connection records and
+restart to recover; there is no automatic reset or replacement-database fallback.
+New initial setup requires an empty managed replica. Restoring/moving an existing
+replica must keep its enrollment and binding, rather than repointing old data.
+
+Focused filesystem tests include exclusive concurrent reservation, restart,
+legacy adoption, missing/corrupt records, symlinks, permission errors and identity
+replacement. A regression caught explicit null profile being mistaken for an
+omitted legacy profile; only an omitted field now permits that compatibility.
+The container acceptance script uses separate official/LiveSync installations
+and checks repeated LiveSync setup is rejected with unchanged records. The UI
+fixture covers the recovery panel on mobile and after reload. Those harnesses
+must pass against the rebuilt image/UI before claiming runtime acceptance.
+
+Source-image inventory and Dockerfile include the new module. Existing package
+versions, image pins and source-lock records remain unchanged pending native
+qualification. No live vault, grant or schedule is changed by this source pass.
+All 75 focused checks and full apps tests pass on native Linux on Resolution;
+all production app builds and the synthetic multi-app browser suite pass.
+The new mobile recovery panel was visually inspected. These are not native
+container or live-vault acceptance. Exact logs and build/deployment status are
+recorded in core's `docs/testing/application-connections-20260917.md`.
+The project-vault app note and index were updated through Jacob Gateway with
+these source/browser results and the remaining image/deployment gates.
+
 ## Isolated LiveSync acceptance — 16 September 2026
 
 `personal/obsidian-dev` on Freelove now reports ready, with the dedicated Mac

@@ -4,6 +4,7 @@ import { mkdir, open, readdir, readFile, rm, stat, writeFile } from "node:fs/pro
 import { createServer } from "node:http";
 import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
+import { couchDbAddress } from "./couchdb-address.mjs";
 import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
 import {
   generateSecret,
@@ -14,8 +15,8 @@ import {
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
 import { createResearchNote } from "./research-note.mjs";
+import { createVaultBinding } from "./vault-binding.mjs";
 import { browseVaultFolders } from "./vault-folders.mjs";
-import { couchDbAddress } from "./couchdb-address.mjs";
 
 const vaultPath = "/vault";
 const runtimePath = "/runtime";
@@ -41,6 +42,7 @@ let stoppingSync = false;
 let mutationRunning = false;
 let installingClient = false;
 const officialClient = createOfficialClient();
+const vaultBinding = createVaultBinding({ runtimePath, liveSyncRuntimePath, vaultPath });
 let state = {
   state: "setup-required",
   profile: installedProfile,
@@ -162,6 +164,9 @@ async function listRemoteVaults() {
 
 async function login(input) {
   if (state.profile === "livesync") throw new Error("Turn off Self-hosted LiveSync before connecting Obsidian Sync");
+  if (await vaultBinding.restore()) {
+    throw new Error("This installation already has a vault connection. Add a separate installation for another vault.");
+  }
   if (typeof input.email !== "string" || !input.email.includes("@")) throw new Error("A valid email is required");
   if (typeof input.password !== "string" || input.password.length === 0) throw new Error("Password is required");
   const args = ["login", "--email", input.email, "--password", input.password];
@@ -175,6 +180,15 @@ async function login(input) {
 async function connectVault(input) {
   if (state.profile === "livesync") throw new Error("Turn off Self-hosted LiveSync before connecting Obsidian Sync");
   if (typeof input.vault !== "string" || input.vault.length === 0) throw new Error("Remote vault is required");
+  const vaults = await listRemoteVaults();
+  const selectedVault = vaults.find((vault) => {
+    if (!vault || typeof vault !== "object") return false;
+    return (vault.id ?? vault.vaultId) === input.vault;
+  });
+  if (!selectedVault) throw new Error("Choose a vault from the current account's vault list, then try again.");
+  const mcpScope = normalizeScope(input.scopePath);
+  await vaultBinding.begin({ profile: "official", vaultId: input.vault });
+  await stopOfficialSync();
   const setup = ["sync-setup", "--vault", input.vault, "--path", vaultPath, "--device-name", "ScholarServer", "--json"];
   if (typeof input.encryptionPassword === "string" && input.encryptionPassword.length > 0)
     setup.push("--password", input.encryptionPassword);
@@ -185,7 +199,6 @@ async function connectVault(input) {
   await updateStatus({ state: "initial-sync", remoteVault: input.vault, lastError: null });
   await runOb(["sync", "--path", vaultPath]);
   await runOb(["sync-config", "--path", vaultPath, "--mode", "bidirectional", "--json"]);
-  const mcpScope = typeof input.scopePath === "string" && input.scopePath.trim() ? input.scopePath.trim() : "/";
   await writeFile(scopePath, `${mcpScope}\n`, { mode: 0o600 });
   await atomicJson(enrollmentPath, {
     profile: "official",
@@ -284,8 +297,10 @@ async function selectProfile(input) {
     (installedProfile !== "none" && profile !== installedProfile) ||
     (state.profile !== "none" && state.profile !== profile)
   ) {
-    throw new Error("Disconnect the current sync method before changing it");
+    throw new Error("Add a separate Obsidian installation to use a different sync method.");
   }
+  if (state.profile === profile && state.state !== "setup-required") return statusWithPrivateOnboarding();
+  await vaultBinding.restore();
   await updateStatus({ profile, state: "setup-required", lastError: null });
   return statusWithPrivateOnboarding();
 }
@@ -317,6 +332,7 @@ async function configureLiveSync(input) {
   if (vaultPassphrase.length < 12) throw new Error("Use a vault encryption passphrase of at least 12 characters");
   const mcpScope = normalizeScope(input.scopePath);
   const database = `vault-${randomBytes(9).toString("hex")}`;
+  await vaultBinding.begin({ profile: "livesync", vaultId: database });
   const administrator = await ensureLiveSyncSecrets();
   const clientCredentials = {
     username: `vault-${randomBytes(6).toString("hex")}`,
@@ -384,6 +400,8 @@ async function completeLiveSync(input) {
   if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync has not been prepared");
   if (input.confirmedPluginConnected !== true)
     throw new Error("Confirm that the plugin connected successfully in Obsidian");
+  await vaultBinding.assertCurrent();
+  if (state.state === "ready") return statusWithPrivateOnboarding();
   if (state.state === "livesync-server-joining") return statusWithPrivateOnboarding();
   const worker = await readJson(liveSyncWorkerPath, null);
   await atomicJson(liveSyncWorkerPath, activateLiveSyncWorker(worker, Date.now()));
@@ -427,12 +445,15 @@ async function action(request) {
   switch (request.action) {
     case "browse-folders":
       if (state.state !== "ready") throw new Error("Finish connecting this vault before browsing folders");
+      await vaultBinding.assertCurrent();
       return browseVaultFolders(vaultPath, request.input ?? {});
     case "create-research-note":
       if (state.state !== "ready") throw new Error("Finish connecting this vault before creating research notes");
+      await vaultBinding.assertCurrent();
       return createResearchNote(vaultPath, request.input ?? {});
     case "status": {
       if (installingClient || mutationRunning) return statusWithPrivateOnboarding();
+      if (state.state === "recovery-required") return statusWithPrivateOnboarding();
       if (state.profile === "official" && (await officialClient.status()).phase !== "installed") {
         await updateStatus({ state: "client-install-required" });
         return statusWithPrivateOnboarding();
@@ -473,10 +494,17 @@ async function action(request) {
 
 async function dispatch(request) {
   if (request.action === "status") return action(request);
+  if (state.state === "recovery-required") throw new Error(state.lastError);
   if (mutationRunning || installingClient) throw new Error("An operation is already running. Please wait.");
   mutationRunning = true;
   try {
     return await action(request);
+  } catch (error) {
+    if (request.action === "configure-livesync") {
+      await restore();
+      if (state.state === "recovery-required") throw new Error(state.lastError);
+    }
+    throw error;
   } finally {
     mutationRunning = false;
   }
@@ -503,11 +531,17 @@ async function processRequest(fileName) {
 }
 
 async function restore() {
-  const enrollment = await readJson(enrollmentPath, null);
+  let enrollment;
+  try {
+    enrollment = await vaultBinding.restore();
+  } catch (error) {
+    await updateStatus({ state: "recovery-required", lastError: error.message });
+    return;
+  }
   const enrolledProfile = enrollment?.profile || (enrollment ? "official" : null);
   if (enrolledProfile && installedProfile !== "none" && enrolledProfile !== installedProfile) {
     await updateStatus({
-      state: "setup-required",
+      state: "recovery-required",
       lastError:
         "The saved vault uses a different sync method. Restore its original installation choice before continuing."
     });

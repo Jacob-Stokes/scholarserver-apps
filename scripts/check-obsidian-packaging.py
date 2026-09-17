@@ -51,8 +51,6 @@ def main():
             directory = root / name
             directory.mkdir(mode=0o700)
             os.chown(directory, 1000, 1000)
-        (root / "vault/Proof.md").write_text("# Synthetic vault\nOriginal note\n")
-        os.chown(root / "vault/Proof.md", 1000, 1000)
         (root / "config/migration-proof").write_text("Synthetic account configuration sentinel")
         os.chown(root / "config/migration-proof", 1000, 1000)
         docker("network", "create", prefix)
@@ -88,7 +86,6 @@ def main():
         docker("restart", controller)
         wait_for("Restart preserves downloaded client without another install", lambda: status(controller)["officialClient"]["phase"] == "installed")
         assert (root / "client/installed/receipt.json").read_bytes() == before
-        assert (root / "vault/Proof.md").read_text().endswith("Original note\n")
         assert (root / "config/migration-proof").read_text() == "Synthetic account configuration sentinel"
 
         # Old releases stored enrollment/config but had no downloaded-client
@@ -99,12 +96,19 @@ def main():
             "profile": "official", "remoteVault": "synthetic-legacy-vault", "scopePath": "/"
         }))
         os.chown(root / "runtime/enrollment.json", 1000, 1000)
+        (root / "vault/Proof.md").write_text("# Synthetic vault\nOriginal note\n")
+        os.chown(root / "vault/Proof.md", 1000, 1000)
         docker("start", controller)
         wait_for("Legacy enrollment waits for download confirmation", lambda: status(controller)["state"] == "client-install-required")
         assert status(controller)["remoteVault"] == "synthetic-legacy-vault"
         assert status(controller)["workerRunning"] is False
         assert (root / "config/migration-proof").read_text() == "Synthetic account configuration sentinel"
         assert (root / "vault/Proof.md").read_text().endswith("Original note\n")
+        binding = (root / "runtime/vault-binding.json").read_bytes()
+        assert json.loads(binding)["vaultId"] == "synthetic-legacy-vault"
+        docker("restart", controller)
+        wait_for("Restart keeps the legacy vault binding", lambda: status(controller)["state"] == "client-install-required")
+        assert (root / "runtime/vault-binding.json").read_bytes() == binding
 
         # API and MCP exercise the same vault with no dependency on sync binaries.
         api = start("api", [("vault", "/vault"), ("runtime", "/runtime")], ["--network-alias", "api"])
@@ -144,10 +148,11 @@ def main():
         # this is real replication, not a claim of Obsidian desktop-plugin QA.
         docker("rm", "-fv", controller)
         containers.remove(controller)
-        (root / "runtime/enrollment.json").unlink()
-        shutil.rmtree(root / "client")
-        (root / "client").mkdir(mode=0o700)
-        os.chown(root / "client", 1000, 1000)
+        # Another sync method is another installation: do not erase enrollment
+        # or reuse the prior vault and its access boundary as a fresh fixture.
+        for name in ["live-vault", "live-runtime", "live-client", "live-config"]:
+            (root / name).mkdir(mode=0o700)
+            os.chown(root / name, 1000, 1000)
         os.chmod(root / "live", 0o755)
         for name, uid in [("couch", 5984), ("server-db", 1000), ("peer-db", 1000), ("peer-vault", 1000)]:
             (root / name).mkdir(mode=0o700)
@@ -155,10 +160,10 @@ def main():
         start("couch", [("couch", "/opt/couchdb/data"), ("live", "/livesync-runtime")],
               ["--network-alias", "livesync-couchdb", "--tmpfs", "/opt/couchdb/etc/local.d:rw,noexec,nosuid,nodev,size=4m,uid=5984,gid=5984,mode=0700"],
               image="scholarserver-packaging-review:couchdb")
-        controller = start("sync", [("vault", "/vault"), ("runtime", "/runtime"), ("live", "/livesync-runtime"),
-                                    ("client", "/official-client"), ("config", "/home/obsidian/.config")],
+        controller = start("sync", [("live-vault", "/vault"), ("live-runtime", "/runtime"), ("live", "/livesync-runtime"),
+                                    ("live-client", "/official-client"), ("live-config", "/home/obsidian/.config")],
                            ["-e", "SCHOLARSERVER_VARIANT=self-hosted-livesync"])
-        worker = start("worker", [("vault", "/vault"), ("server-db", "/livesync-db"), ("live", "/livesync-runtime")],
+        worker = start("worker", [("live-vault", "/vault"), ("server-db", "/livesync-db"), ("live", "/livesync-runtime")],
                        image="scholarserver-packaging-review:livesync-worker")
         wait_for("LiveSync controller starts with Headless absent", lambda: status(controller)["profile"] == "livesync")
         assert status(controller)["officialClient"] is None
@@ -169,6 +174,16 @@ def main():
             body:JSON.stringify({confirmedNoOtherSync:true,accessMethod:'tailscale',connectionUrl:'https://synthetic.example.ts.net',vaultPassphrase:'Synthetic-vault-test-only-2026',scopePath:'/'})});
           assert.equal(response.status,200);
         """)
+        live_binding = (root / "live-runtime/vault-binding.json").read_bytes()
+        live_enrollment = (root / "live-runtime/enrollment.json").read_bytes()
+        probe(controller, """
+          import assert from 'node:assert/strict';
+          const response=await fetch('http://127.0.0.1:8080/api/livesync/configure',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({confirmedNoOtherSync:true,accessMethod:'tailscale',connectionUrl:'https://synthetic.example.ts.net',vaultPassphrase:'Synthetic-vault-test-only-2026',scopePath:'/'})});
+          assert.equal(response.status,400);
+        """)
+        assert (root / "live-runtime/vault-binding.json").read_bytes() == live_binding
+        assert (root / "live-runtime/enrollment.json").read_bytes() == live_enrollment
         peer = start("peer", [("peer-db", "/livesync-db"), ("peer-vault", "/vault"), ("live", "/livesync-runtime")],
                      ["--entrypoint", "node"], image="scholarserver-packaging-review:livesync-worker",
                      command=["-e", "setInterval(()=>{},1000)"])
@@ -195,16 +210,24 @@ def main():
           const r=await fetch('http://127.0.0.1:8080/api/livesync/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmedPluginConnected:true})});
           assert.equal(r.status,200);
         """)
-        wait_for("Independent LiveSync peer -> server vault replicated", lambda: (root / "vault/Device-proof.md").exists(), 120)
-        assert "independent LiveSync peer" in (root / "vault/Device-proof.md").read_text()
+        wait_for("Independent LiveSync peer -> server vault replicated", lambda: (root / "live-vault/Device-proof.md").exists(), 120)
+        assert "independent LiveSync peer" in (root / "live-vault/Device-proof.md").read_text()
         wait_for("Server LiveSync worker ready", lambda: status(controller)["state"] == "ready", 120)
-        peer_cli("sync")
-        peer_cli("mirror", "/vault")
-        assert "Edited through MCP" in (root / "peer-vault/MCP-proof.md").read_text()
+        probe(controller, """
+          import {createResearchNote} from '/app/research-note.mjs';
+          await createResearchNote('/vault',{folder:'Research',filename:'zotero-ABCD1234.md',content:'Synthetic server research note'});
+        """)
+        def research_note_arrived():
+            peer_cli("sync")
+            peer_cli("mirror", "/vault")
+            return (root / "peer-vault/Research/zotero-ABCD1234.md").exists()
+
+        wait_for("Server research note -> independent peer replicated", research_note_arrived, 120)
+        assert "Synthetic server research note" in (root / "peer-vault/Research/zotero-ABCD1234.md").read_text()
         docker("restart", worker)
         wait_for("LiveSync worker resumes after restart", lambda: status(controller)["liveSyncWorker"]["running"], 90)
-        assert not (root / "client/installed").exists()
-        print("PASS: two-peer LiveSync replication, MCP note replication and restart, with Headless absent", flush=True)
+        assert not (root / "live-client/installed").exists()
+        print("PASS: two-peer LiveSync replication, server research note replication and restart, with Headless absent", flush=True)
     finally:
         for name in reversed(containers):
             subprocess.run(["docker", "rm", "-fv", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
