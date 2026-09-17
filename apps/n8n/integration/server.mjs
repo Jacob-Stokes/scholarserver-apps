@@ -187,8 +187,8 @@ createServer(async (request, response) => {
       }
       if (request.method === "POST" && url.pathname === "/api/setup-form") {
         const input = await body(request);
-        assertNativeSetupRequest(input, ["templateId", "values"]);
-        return json(response, 200, await nativeSetupForm.evaluate(input.templateId, input.values));
+        assertNativeSetupRequest(input, ["templateId", "values", "version"]);
+        return json(response, 200, await nativeSetupForm.evaluate(input.templateId, input.values, input.version));
       }
       if (request.method === "POST" && url.pathname === "/api/setup-form/folders") {
         const input = await body(request);

@@ -13,7 +13,7 @@ const ids = [];
 const reportIds = [];
 assert.equal(templates.length, 6, "All six reviewed research templates must be available");
 for (const template of templates) {
-  assert.equal(template.setupFormVersion, 1);
+  assert.equal(template.setupFormVersion, 2);
   const destination = template.research === "convert-pdfs" ? "docling" : "obsidian";
   const formResponse = await fetch("http://localhost:8080/api/setup-form", {
     method: "POST",
@@ -22,6 +22,8 @@ for (const template of templates) {
   });
   assert.equal(formResponse.status, 200);
   const form = await formResponse.json();
+  assert.equal(form.version, 1);
+  assert.equal(Object.hasOwn(form, "bindings"), false);
   const values = Object.fromEntries(form.fields.map((field) => [field.id, field.value]));
   assert.equal(form.canSubmit, false);
   assert.ok(values.source && values.target, "The sole compatible fixture apps should be selected");

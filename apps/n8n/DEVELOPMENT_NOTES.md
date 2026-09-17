@@ -1,5 +1,83 @@
 # n8n integration — development record
 
+## Native setup v2 preparation — 17 September 2026
+
+All six reviewed research templates advertise `setupFormVersion: 2`. A Manager
+that supports only native form v1 must use the existing embedded setup fallback.
+`POST /api/setup-form` accepts `{ templateId, values?, version?: 1 | 2 }`;
+omitting `version` still returns the unchanged v1 form without bindings. Unknown
+versions and extra request fields are rejected. Folder and submit requests keep
+their existing contracts and do not accept `version` or owner inventory.
+
+An explicitly requested v2 form adds exactly two bounded declarations:
+
+```js
+bindings: [
+  { fieldId: "source", packageId: "org.scholarserver.zotero", actionIds: [...] },
+  { fieldId: "target", packageId: "org.scholarserver.docling", actionIds: [...], dependsOn: ["source"] }
+]
+```
+
+Each declaration refers to an existing `select` field. For PDF conversion the
+source actions are `match-attachment` and `attach-docling-result`; the target
+actions are `discover`, `enqueue`, `job-status` and `browse-folders`. For all five
+note/report forms the source action is `research-items`, the target package is
+`org.scholarserver.obsidian`, and its actions are `create-research-note` and
+`browse-folders`. These are reviewed setup requirements, at most four actions
+per binding, not a new execution scope. Folder browsing remains setup-only.
+
+The **fixed v2 value contract** is unpadded base64url of the UTF-8 bytes of
+`JSON.stringify([workspaceId, instanceId])`. It is identical to the existing
+`choiceFor` encoding; Manager must use this generic tuple contract, not infer
+app-specific identifiers. Both tuple members are strings. This app accepts IDs
+matching `^[a-z0-9][a-z0-9-]{0,62}$`. Empty string means no selection.
+For example, `["personal","zotero-one"]` encodes as
+`WyJwZXJzb25hbCIsInpvdGVyby1vbmUiXQ`. Encoded identity is never proof of permission.
+
+Manager independently obtains compatible targets from its authenticated owner
+service-connections API. Its rows contain `workspaceId`, `instanceId`,
+`packageId`, `applicationName`, `actionId`, `sourceRevision`, `targetRevision`,
+`allowed`, `available` and `requiresApproval`. Manager groups rows by target,
+matches the declared package and every action, constrains choices to the engine's
+workspace, injects owner choices into the bound fields and gathers explicit
+approvals. A binding's optional `dependsOn` lists other binding field IDs whose
+selected workspace must match and matches the bound field's `dependsOn` list;
+it is not an expression or permission grant.
+After saving permissions, Manager reevaluates the form with the same draft and
+`version: 2`. Owner rows, approval flags and revisions are not sent to the engine
+as authority. This describes the integration contract, not verified Manager UI
+acceptance.
+
+An empty successful service discovery still returns v2 fields and bindings, so
+Manager can offer unapproved choices. A canonical unapproved source tuple may
+enable the target picker and constrain its workspace; folder access and
+`canSubmit` still require both selections and every required action in the
+engine's own service discovery. Unapproved drafts are preserved, not silently
+selected or approved. Discovery failures still fail, rather than becoming an
+apparently successful empty inventory. Folder listing and submission independently
+reevaluate the existing authorization checks; no workflow grant, URL, markup,
+expression, package permission or execution behavior is added.
+
+Source regressions cover v1 parity, all six v2 declarations, the fixed encoding,
+empty grants, partial approval, approval then revocation, cross-workspace and
+malformed choices, rejected owner authority fields and server version forwarding.
+The initial 35 focused native-form tests, full `npm test` (with platform-specific
+skips), scoped Biome checks and server syntax check passed. These are local
+source/mock checks, not native image, Manager browser, publication or deployment acceptance.
+Package versions and image pins remain unchanged.
+The native research-install harness now requires advertised setup version 2,
+but explicitly checks response version 1 with no bindings when its request omits
+`version`. Other `automationInterfaceVersion: 1` checks cover the unchanged status
+protocol and are retained. Follow-up source regressions execute the harness's
+version assertions against synthetic data and cover request-local negotiation,
+empty drafts and matching binding/field dependencies; no live harness is run.
+All 51 focused native-form, package-contract, image-recipe, research-folder and
+requirements tests pass, including 37 native-form tests. Scoped Biome, harness
+syntax and diff checks pass; the full suite was not rerun for this harness/test
+follow-up. Review found no further negotiated-version runtime changes necessary.
+The project-vault note/index update is deferred under this task's no-live-access and
+bounded repository-write scope. No commit or source push is included yet.
+
 ## All research templates use native setup — 15 September 2026
 
 The five note/report templates now advertise the same bounded version-one native

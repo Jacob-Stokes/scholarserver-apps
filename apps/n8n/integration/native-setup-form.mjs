@@ -2,7 +2,7 @@ import { AutomationConfigurationError, scheduleConfiguration } from "./configura
 import { assertRequiredApplications } from "./requirements.mjs";
 import { noteOutputFolder, researchConfiguration } from "./research-access.mjs";
 
-export const nativeSetupFormVersion = 1;
+export const nativeSetupFormVersion = 2;
 
 // These are reviewed app-owned forms, not a configuration language in Manager.
 const nativeTemplates = new Map([
@@ -46,9 +46,14 @@ export function assertNativeSetupRequest(input, allowedKeys) {
   if (Object.keys(input).some((key) => !allowedKeys.includes(key))) {
     throw new NativeSetupFormError("Unknown request field");
   }
+  if (Object.hasOwn(input, "version") && input.version !== 1 && input.version !== 2) {
+    throw new NativeSetupFormError("Unsupported setup form version");
+  }
 }
 
 function choiceFor(application) {
+  // Fixed v2 binding value contract: unpadded base64url of a UTF-8 JSON tuple.
+  // This identifies a choice; only service discovery can establish authorization.
   return Buffer.from(JSON.stringify([application.workspaceId, application.id])).toString("base64url");
 }
 
@@ -104,12 +109,15 @@ function decodeChoice(value) {
     if (
       !Array.isArray(decoded) ||
       decoded.length !== 2 ||
-      !appIdPattern.test(decoded[0] ?? "") ||
-      !appIdPattern.test(decoded[1] ?? "")
+      typeof decoded[0] !== "string" ||
+      typeof decoded[1] !== "string" ||
+      !appIdPattern.test(decoded[0]) ||
+      !appIdPattern.test(decoded[1])
     ) {
       return null;
     }
-    return { workspaceId: decoded[0], id: decoded[1] };
+    const application = { workspaceId: decoded[0], id: decoded[1] };
+    return choiceFor(application) === value ? application : null;
   } catch {
     return null;
   }
@@ -135,7 +143,10 @@ export class N8nNativeSetupForm {
     return template;
   }
 
-  async evaluate(templateId, suppliedValues) {
+  async evaluate(templateId, suppliedValues, version = 1) {
+    if (version !== 1 && version !== 2) {
+      throw new NativeSetupFormError("Unsupported setup form version");
+    }
     const template = this.template(templateId);
     const destination = destinationFor(template);
     const applications = (await this.researchBridge.applications()).filter(validApplication);
@@ -152,9 +163,13 @@ export class N8nNativeSetupForm {
     const initialSource = sources.length === 1 ? choiceFor(sources[0]) : "";
     const sourceValue = initial ? initialSource : (values.source ?? "");
     const selectedSource = matchingChoice(sources, sourceValue);
+    // An unapproved v2 source can constrain the owner picker without permitting
+    // folder access or submission. Those still require both authorized selections.
+    let sourceWorkspace = selectedSource?.workspaceId;
+    if (version === 2 && !selectedSource) sourceWorkspace = decodeChoice(sourceValue)?.workspaceId;
     const compatibleTargets = applications.filter(
       (application) =>
-        application.workspaceId === selectedSource?.workspaceId &&
+        application.workspaceId === sourceWorkspace &&
         application.packageId === targetRequirement.packageId &&
         targetRequirement.actions.every((action) => application.actions.includes(action))
     );
@@ -218,7 +233,7 @@ export class N8nNativeSetupForm {
         options: targets.map((application) => applicationChoice(application, false)),
         dependsOn: ["source"],
         error: targetError,
-        disabled: !selectedSource
+        disabled: !sourceWorkspace
       },
       {
         id: "folder",
@@ -243,13 +258,29 @@ export class N8nNativeSetupForm {
       Object.fromEntries(Object.entries(field).filter(([, value]) => value !== undefined && value !== false))
     );
 
-    return {
-      version: nativeSetupFormVersion,
+    const form = {
+      version,
       description: template.description,
       notice: "Choose how often this runs. It starts paused; turn on automatic runs from Manage when you're ready.",
       fields,
       canSubmit: fields.every((field) => !field.error) && Boolean(selectedSource && selectedTarget)
     };
+    if (version === 2) {
+      form.bindings = [
+        {
+          fieldId: "source",
+          packageId: sourceRequirement.packageId,
+          actionIds: [...sourceRequirement.actions]
+        },
+        {
+          fieldId: "target",
+          packageId: targetRequirement.packageId,
+          actionIds: [...new Set([...targetRequirement.actions, "browse-folders"])],
+          dependsOn: ["source"]
+        }
+      ];
+    }
+    return form;
   }
 
   selectionFrom(form) {
