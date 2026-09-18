@@ -75,15 +75,23 @@ try {
   const asset = html.match(/src="\.\/([^\"]+\.js)"/)?.[1];
   assert.ok(asset, "built UI references a relative script");
   assert.equal((await fetch(`${origin}/${asset}`)).status, 200, "setup script loads");
-  const response = await fetch(`${origin}/api/connect`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      username: "researcher",
-      password: "Disposable-Reader-Only-2026"
-    })
-  });
-  assert.equal(response.status, 202);
+  if (process.env.FRESHRSS_TEST_SHARED_SETUP === "1") {
+    await writeFile(
+      "/runtime/requests/fresh-sign-in-proof.json",
+      JSON.stringify({ action: "link-sign-in", input: { scholarserverBrowserIdentity: binding } }),
+      { mode: 0o600 }
+    );
+  } else {
+    const response = await fetch(`${origin}/api/connect`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: "researcher",
+        password: "Disposable-Reader-Only-2026"
+      })
+    });
+    assert.equal(response.status, 202);
+  }
   let ready = false;
   for (let attempt = 0; attempt < 45; attempt++) {
     const status = await (await fetch(`${origin}/api/status`)).json();

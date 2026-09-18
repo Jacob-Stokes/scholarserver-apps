@@ -49,6 +49,7 @@ jobs:
           python3 scripts/check-image-contents.py "$reader"
           node --test apps/freshrss/integration/*.test.mjs
           bash apps/freshrss/test-container.sh "$reader" "$image"
+          FRESHRSS_TEST_SHARED_SETUP=1 bash apps/freshrss/test-container.sh "$reader" "$image"
           mkdir -p .dev/freshrss-candidate
           docker image inspect "$image" > .dev/freshrss-candidate/image.json
           docker image inspect "$reader" > .dev/freshrss-candidate/reader-image.json

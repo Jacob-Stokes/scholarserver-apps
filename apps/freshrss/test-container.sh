@@ -30,7 +30,7 @@ start_integration() {
     -v "$proof_dir/runtime:/runtime" "$integration_image" >/dev/null
 }
 proof() {
-  docker exec -i "$prefix-integration" node --input-type=module < apps/freshrss/integration/native-proof.mjs
+  docker exec -i -e FRESHRSS_TEST_SHARED_SETUP="${FRESHRSS_TEST_SHARED_SETUP:-0}" "$prefix-integration" node --input-type=module < apps/freshrss/integration/native-proof.mjs
 }
 start_integration
 sleep 2
@@ -40,6 +40,16 @@ proof_pid=$!
 sleep 2
 start_reader
 wait "$proof_pid"
+# A neighbouring container is not the trusted reader proxy, even on this
+# disposable network. Supplying a username directly must not reveal feed data.
+docker run --rm --network "$prefix" --read-only --cap-drop ALL --security-opt no-new-privileges \
+  --entrypoint node "$integration_image" --input-type=module -e '
+    import assert from "node:assert/strict";
+    const response = await fetch("http://freshrss:8080/i/?a=normal&get=a", { headers: { "remote-user": "researcher", "x-webauth-user": "researcher" } });
+    const html = await response.text();
+    assert.ok(response.status === 401 || response.status === 403, "direct forged browser identity is rejected");
+    assert.ok(!html.includes("Research fixture article"), "no feed data is disclosed");
+    console.log("PASS: native backend rejects forged identity from an untrusted network peer");'
 docker restart "$prefix-reader" "$prefix-integration" >/dev/null
 sleep 3
 proof
