@@ -1,5 +1,15 @@
 # Docling development notes
 
+## Main-interface shortcut — 18 September 2026
+
+Candidate `0.3.5-beta.5.launch.20260918.1` explicitly labels the standalone
+document queue as its main interface using `launchLabel: Documents`. This needs
+the matching Manager launch resolver, which accepts labelled platform-session
+standalone interfaces without provisioning a separate access route. Existing
+image pins, permissions and data declarations are unchanged. This source
+candidate is not published or deployed. Full apps tests and paired core checks
+pass; the project-vault note and index are updated.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.3.5-beta.4.editorial.20260918.1` selects changed recipe images

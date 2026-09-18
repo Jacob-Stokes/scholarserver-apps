@@ -53,6 +53,16 @@ function unique(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be unique`);
 }
 
+test("main launch metadata distinguishes the FreshRSS reader and Docling queue from setup", async () => {
+  const entries = await packages();
+  const reader = entries.find((item) => item.directory === "freshrss").manifest;
+  assert.equal(reader.endpoints.find((endpoint) => endpoint.id === "reader").launchLabel, "Reader");
+  assert.equal(reader.endpoints.find((endpoint) => endpoint.id === reader.ui.endpoint).launchLabel, undefined);
+  const documents = entries.find((item) => item.directory === "docling").manifest;
+  assert.equal(documents.endpoints.find((endpoint) => endpoint.id === documents.ui.endpoint).launchLabel, "Documents");
+  assert.equal(documents.ui.defaultPath, "/queue");
+});
+
 test("FreshRSS binds shared sign-in to its reader endpoint, not its data volume", async () => {
   const { manifest } = (await packages()).find((item) => item.directory === "freshrss");
   assert.equal(manifest.endpoints.find((endpoint) => endpoint.id === "reader").browserIdentity, true);

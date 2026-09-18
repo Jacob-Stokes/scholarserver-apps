@@ -1,5 +1,18 @@
 # FreshRSS integration
 
+## Main-interface shortcut — 18 September 2026
+
+Candidate `0.1.0-beta.9.launch.20260918.1` declares `launchLabel: Reader` on
+the reader endpoint, leaving the configuration UI unlabelled. The matching core
+change uses this endpoint even when a package also provides a setup UI. Image
+pins, access policies, identity bindings and data declarations are unchanged;
+no FreshRSS image rebuild is needed. This metadata candidate is not deployed or
+published. Existing installed packages need a normal package update; do not edit
+their stored manifests. Full apps tests and paired core checks pass; the
+project-vault note and index are updated. A compiled Manager browser check with
+synthetic APIs verifies reader/configuration separation on Home, cards, table
+and Manage, including lookup failure. This is not live package acceptance.
+
 ## Shared browser sign-in candidate — 18 September 2026
 
 The candidate links one Manager-verified owner to the existing reader account.
