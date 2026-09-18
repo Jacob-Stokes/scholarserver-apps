@@ -1,5 +1,20 @@
 # FreshRSS integration
 
+## Published image refresh — 18 September 2026
+
+Source candidate `0.1.0-beta.7.editorial.20260918.1` selects changed recipe images
+from GitHub run 35332927221,
+source 3b90bb773159202103b989cd43d9642eb226a1b6. Both native architectures passed
+the workflow gates and were published. Registry indexes, platform configs and
+source fingerprints were checked against the downloaded receipts. Only changed
+recipe pins and a new package identity change; other image pins, permissions,
+storage, variants and declared package architectures are unchanged.
+
+This is image publication and source consolidation, not an official catalog
+release or deployment. Existing release gates remain. See
+[the refresh record](../../docs/native-candidates-20260918.md). Project-vault
+documentation is pending; this pass does not access research data.
+
 ## Finalized native candidate pins — 14 September 2026
 
 The current unpublished editorial candidate now selects its exact verified

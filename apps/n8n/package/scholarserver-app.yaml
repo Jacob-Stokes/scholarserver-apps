@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.n8n
 name: n8n (Beta)
-packageVersion: 0.1.0-guided.20260915.5
+packageVersion: 0.1.0-guided.20260918.1
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: n8n, version: 2.38.1, license: Sustainable-Use-License }
 support: { tier: official, architectures: [arm64] }
@@ -30,7 +30,7 @@ images:
   - service: n8n
     reference: ghcr.io/jacob-stokes/scholarserver-n8n@sha256:4f385cb2135df65accb1d5cf52cbcb124dacb6b3613d404df3090d862f81d1c6
   - service: integration
-    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:0fe97171bfadd4eaaae6a8cd86e455b080458516d7ee61a47dfdcbe5d91ba56d
+    reference: ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:97ffe0123f2aba0a73ece5bc9ecc21e961ef761b5def3059caa5d1e9740521c6
 data:
   - id: state
     mountPath: /home/node/.n8n

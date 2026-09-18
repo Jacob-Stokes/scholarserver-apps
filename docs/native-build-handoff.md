@@ -13,9 +13,11 @@ AMD64 and ARM64 runner:
    publishes only the exact local image objects recorded by the successful build
    stage.
 
-The GitHub workflow remains available only through **Run workflow**. Do not
-schedule or automatically trigger it: the repository uses a $0 hosted Actions
-budget. Do not use emulation, QEMU or Rosetta.
+The GitHub workflow remains available only through **Run workflow**. Standard
+GitHub-hosted runners are free for this public repository; exhausting private
+repository minutes does not consume that entitlement. Artifact storage has its
+own limits. Publication remains an explicit operator action, not an automatic
+response to a source push. Do not use emulation, QEMU or Rosetta.
 
 ## Source and receipt requirements
 

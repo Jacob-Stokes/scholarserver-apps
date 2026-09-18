@@ -1,6 +1,6 @@
 services:
   freshrss:
-    image: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:d644c2761ecc76223a224e750618f205d0ea4bb7c57bdf1f800013961ebd9404
+    image: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:5ec1cc8b87b5863cc03c4ed004af917444a9094415e2d808a09e34283ea753c7
     restart: unless-stopped
     user: "1000:1000"
     read_only: true
@@ -22,7 +22,7 @@ services:
       start_period: 30s
       retries: 4
   integration:
-    image: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:ec2347bdc70dfd198d9d1d15432fe49d313f9da027905d694d82a737770a773c
+    image: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:80a9384f192c60eb7a44a23707b3e440b0de81c199df566443dd8e4dd81264ef
     restart: unless-stopped
     user: "1000:1000"
     read_only: true

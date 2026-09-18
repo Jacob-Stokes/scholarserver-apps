@@ -3,8 +3,8 @@
   "records": [
     {
       "recipe": "docling-app",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:f942f0f750ceb7d8647978ca5b841f2adc94cae04feea8f757a07be848d05354",
-      "sourceDigest": "sha256:0949a915ca5315eb4b41d82819d817716c51b9bb11b507d28b904e32a34a0732",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:7e31d22e23f8f9443251ee49cd0b85c8f51c3e6fb912d8f745007ded7907b3ee",
+      "sourceDigest": "sha256:303b3bf9bdcc58dc346f27b1637a8d32bd167864bede9d781d60a0d9f253d5ed",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -21,8 +21,8 @@
     },
     {
       "recipe": "freshrss-app",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:ec2347bdc70dfd198d9d1d15432fe49d313f9da027905d694d82a737770a773c",
-      "sourceDigest": "sha256:adbf5baec1e573dbbaa9dfd948b89a3e58b584ca8cb5c1e4287cc824de95ec93",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:80a9384f192c60eb7a44a23707b3e440b0de81c199df566443dd8e4dd81264ef",
+      "sourceDigest": "sha256:e2c981849e92c8e555c1044b6efaed5d876271054909905520aa077f0ecb2f16",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -30,8 +30,8 @@
     },
     {
       "recipe": "freshrss-reader",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:d644c2761ecc76223a224e750618f205d0ea4bb7c57bdf1f800013961ebd9404",
-      "sourceDigest": "sha256:3267f2e6a0144deb88da690bb99f589cd72b04b66c0b64ff94a33fa4f5a5bc86",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:5ec1cc8b87b5863cc03c4ed004af917444a9094415e2d808a09e34283ea753c7",
+      "sourceDigest": "sha256:ce2b03a51fc6661a7b568c72704bdb3c94b4799fa786942e8a317f4a0c33feb6",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -39,8 +39,8 @@
     },
     {
       "recipe": "logseq-helper",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:4ac0b4065d063f3a36edca8ad2827fc6afd045958a08634247455ae9cefffad3",
-      "sourceDigest": "sha256:ec94d599ff5f38a6798e4aebeb6d78dec5c8bf90b359d1f8eb4975a56e15f9ad",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:bc43f4fd9a9a7f116104795f13557a45d97d385597ea0fbae88418fc5c0af24c",
+      "sourceDigest": "sha256:23c6afe4ec2be9d8c5c8b44bbb5d8b42170948ae1e58a4db77b0b7fe619f5cff",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -74,9 +74,10 @@
     },
     {
       "recipe": "n8n-app",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:0fe97171bfadd4eaaae6a8cd86e455b080458516d7ee61a47dfdcbe5d91ba56d",
-      "sourceDigest": "sha256:807d0d6360b4f050890b23db5f64c85cede1d7feeaef2ae397ef6e6a42663b62",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-n8n-app@sha256:97ffe0123f2aba0a73ece5bc9ecc21e961ef761b5def3059caa5d1e9740521c6",
+      "sourceDigest": "sha256:49f3184d31855ea85c61db7a85e6b1922a14b796d0f21ceacce3116af4b5cfc0",
       "nativeArchitectures": [
+        "amd64",
         "arm64"
       ]
     },
@@ -114,9 +115,10 @@
     },
     {
       "recipe": "obsidian-sync",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:b105d4073909f50a00c0fc8de6bbeaf56cd93a6b7893fa6692a033554a5508e7",
-      "sourceDigest": "sha256:edb8806c2456abe0b7a4d25a3e4a742e8eb9ac4501c2dc61cfb16f09875b7efe",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0b035c54e0ca2a7da7f552f12701a6027ca363fd6a64f090cc4226e87ef42fd2",
+      "sourceDigest": "sha256:be7c7b91d543d041b5f2369323e8977385c914c29e8f0de356f0193f0d6a419e",
       "nativeArchitectures": [
+        "amd64",
         "arm64"
       ]
     },
@@ -131,8 +133,8 @@
     },
     {
       "recipe": "zotero-controller",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:7d1e66ac7b26dfa911f0f177fc798a1ddc0518a4aca2f7b2652a85f581f4453c",
-      "sourceDigest": "sha256:1b5c0afb8984c5e75c4d681030d9abbe1863107f9564a6023bac5acda5bc3bd4",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:24c17f5c90abcecd85735bb5bc54bae2d918f305eeab44f3504b1ddd5bea2aca",
+      "sourceDigest": "sha256:03058f39d256fb494b5dae00d990dec68562ec28873435ea5c356c73d7aa0a96",
       "nativeArchitectures": [
         "amd64",
         "arm64"
