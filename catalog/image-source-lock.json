@@ -21,8 +21,8 @@
     },
     {
       "recipe": "freshrss-app",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:80a9384f192c60eb7a44a23707b3e440b0de81c199df566443dd8e4dd81264ef",
-      "sourceDigest": "sha256:e2c981849e92c8e555c1044b6efaed5d876271054909905520aa077f0ecb2f16",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:047f3706cb207381ce339d2890b2ef9022f8d2924876e2f5514d4a85706043c1",
+      "sourceDigest": "sha256:543fc9d6eeec58c8f2fa05a97a4d4c747fd55b3ebea2ac4d75097a9af2f62880",
       "nativeArchitectures": [
         "amd64",
         "arm64"

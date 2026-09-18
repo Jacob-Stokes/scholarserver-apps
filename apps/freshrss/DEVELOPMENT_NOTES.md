@@ -1,5 +1,18 @@
 # FreshRSS integration
 
+## Qualified caching candidate — 18 September 2026
+
+Candidate `0.1.0-beta.7.performance.20260918.1` selects integration images from
+successful dual-native GitHub run 35364309153, source
+`21c9b9ee4e8e3302815433e6083fdea1b454e689`. Source fingerprints and registry
+configuration identities match the downloaded native test receipts. This selects
+the bounded static-cache fix below; it does not itself update an installation.
+The reader pin remains the previously qualified main candidate. Updating an older
+installed package also includes that reader's appearance extension; it is not an
+integration-only update. Review the complete package delta and take a verified
+application backup before Apply. Permissions and data declarations are unchanged
+from the preceding candidate. Project-vault documentation remains pending.
+
 ## Reader latency fix — 18 September 2026
 
 Freelove's installed beta.4 reader answered directly in 18–23 ms, while the
