@@ -3,6 +3,7 @@ import { createServer, request as proxyRequest } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMcp } from "mcp-common";
+import { applyReaderCachePolicy, readerCachePolicy, readerUpstreamHeaders } from "./cache-policy.mjs";
 import { FreshRssClient } from "./client.mjs";
 import { Setup } from "./setup.mjs";
 import { feedTools } from "./tools.mjs";
@@ -35,17 +36,17 @@ function json(response, status, result) {
 
 function reader(request, response, suffix) {
   const target = new URL(upstream);
-  const headers = { ...request.headers };
+  const cachePolicy = readerCachePolicy({
+    method: request.method,
+    url: suffix,
+    requestHeaders: request.headers
+  });
+  const headers = readerUpstreamHeaders(request.headers, cachePolicy);
   // The outer Manager proxy consumes the body through fetch. Keep this internal
   // hop uncompressed so its decoded body cannot retain a gzip response header.
   headers["accept-encoding"] = "identity";
-  // Native login cookies belong to FreshRSS; never pass Manager authentication.
-  delete headers.authorization;
-  delete headers["x-scholarserver-session"];
-  headers.cookie = (headers.cookie ?? "")
-    .split(";")
-    .filter((value) => /^\s*FreshRSS(?:[=;]|[A-Za-z0-9_]+=)/.test(value))
-    .join(";");
+  // Manager authenticates this network request. Dynamic reader requests retain
+  // only FreshRSS login cookies; static assets retain no identity headers.
   const prefix = process.env.SCHOLARSERVER_INSTANCE_ID
     ? `/apps/${encodeURIComponent(process.env.SCHOLARSERVER_INSTANCE_ID)}/endpoints/reader`
     : "";
@@ -60,10 +61,7 @@ function reader(request, response, suffix) {
       timeout: 30_000
     },
     (incoming) => {
-      const resultHeaders = {
-        ...incoming.headers,
-        "cache-control": "no-store"
-      };
+      const resultHeaders = applyReaderCachePolicy(incoming.headers, cachePolicy, incoming.statusCode).headers;
       const location = resultHeaders.location;
       if (location?.startsWith(upstream)) resultHeaders.location = `${prefix}${location.slice(upstream.length)}`;
       else if (location?.startsWith("/") && prefix && !location.startsWith(prefix))

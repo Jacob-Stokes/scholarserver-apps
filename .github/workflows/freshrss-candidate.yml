@@ -1,0 +1,79 @@
+name: FreshRSS integration candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked verification dependencies
+        run: |
+          npm ci --ignore-scripts
+          sudo apt-get update -qq && sudo apt-get install -y zstd
+      - name: Build and qualify the changed integration only
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          node scripts/native-image-receipt.mjs assert-source --revision "$GITHUB_SHA"
+          image="ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-$GITHUB_SHA-$ARCH"
+          source_digest=$(node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe freshrss-app)
+          reader=$(node --input-type=module -e "import fs from 'node:fs'; import {parse} from 'yaml'; console.log(parse(fs.readFileSync('apps/freshrss/package/compose.yaml','utf8')).services.freshrss.image)")
+          docker pull "$reader"
+          docker build --pull --build-arg TARGETARCH="$ARCH" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
+            --label "com.scholarserver.source-digest=$source_digest" \
+            -f apps/freshrss/integration/Dockerfile -t "$image" .
+          test "$(docker image inspect "$image" --format '{{.Architecture}}')" = "$ARCH"
+          test "$(docker image inspect "$reader" --format '{{.Architecture}}')" = "$ARCH"
+          python3 scripts/check-image-contents.py "$image"
+          node --test apps/freshrss/integration/*.test.mjs
+          bash apps/freshrss/test-container.sh "$reader" "$image"
+          mkdir -p .dev/freshrss-candidate
+          docker image inspect "$image" > .dev/freshrss-candidate/image.json
+          printf '%s\n' "$source_digest" > .dev/freshrss-candidate/source-digest.txt
+          node scripts/native-image-receipt.mjs assert-source --revision "$GITHUB_SHA"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish qualified immutable candidate
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: docker push "ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-$GITHUB_SHA-$ARCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshrss-${{ github.sha }}-${{ matrix.arch }}
+          path: .dev/freshrss-candidate/
+          include-hidden-files: true
+          retention-days: 7
+  manifest:
+    needs: native
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the two qualified native variants
+        run: |
+          image=ghcr.io/jacob-stokes/scholarserver-freshrss-app
+          docker buildx imagetools create --tag "$image:sha-$GITHUB_SHA" \
+            "$image:sha-$GITHUB_SHA-amd64" "$image:sha-$GITHUB_SHA-arm64"
+          docker buildx imagetools inspect "$image:sha-$GITHUB_SHA"

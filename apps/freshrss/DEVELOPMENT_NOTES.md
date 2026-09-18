@@ -1,5 +1,21 @@
 # FreshRSS integration
 
+## Reader latency fix — 18 September 2026
+
+Freelove's installed beta.4 reader answered directly in 18–23 ms, while the
+Manager endpoint took 1.5–2.3 seconds, including CSS. Core now separates public
+DNS/OAuth diagnostics from request authorization and revalidates just the known
+package rather than scanning all historical packages. Live ingress checks remain.
+
+The integration candidate gives recognized theme/script assets private five-minute
+browser caching and conditional revalidation. Those upstream static requests carry
+no credentials. Dynamic pages, APIs, errors, unexpected MIME types and responses
+with session cookies remain no-store. Unit tests cover the boundary; the native
+proof checks real CSS and a 304 response. The opt-in FreshRSS candidate workflow
+builds only the changed integration and tests it with the pinned reader on both
+architectures. Publication, package selection and retained-host acceptance are
+separate gates; this source change is not yet deployed.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.1.0-beta.7.editorial.20260918.1` selects changed recipe images
