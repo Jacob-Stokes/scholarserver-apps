@@ -57,7 +57,7 @@ export class Setup {
     const applied = await readJson(`${this.runtime}/browser-identity-ready.json`, null);
     if (binding && applied?.fingerprint !== bindingFingerprint(binding)) {
       worker.ready = false;
-      worker.phase = "preparing";
+      if (!worker.error) worker.phase = "preparing";
     }
     return { ...worker, username: account?.username ?? null, signIn: binding ? "scholarserver" : "password" };
   }

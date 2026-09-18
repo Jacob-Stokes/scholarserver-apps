@@ -108,4 +108,7 @@ test("fresh shared-sign-in setup creates one account without a user-supplied pas
   const account = JSON.parse(await readFile(`${runtime}/account.json`, "utf8"));
   assert.equal(account.username, "researcher");
   assert.equal(account.password.length, 43);
+  const waiting = await setup.status();
+  assert.equal(waiting.phase, "starting", "pending identity does not hide an unavailable reader");
+  assert.equal(waiting.ready, false);
 });
