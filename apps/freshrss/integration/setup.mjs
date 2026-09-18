@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 import { z } from "zod";
+import { bindingFingerprint, validateBinding } from "./browser-identity.mjs";
 
 export const accountInput = z
   .object({
@@ -52,7 +53,13 @@ export class Setup {
       delete account.password;
       await atomicJson(`${this.runtime}/account.json`, account);
     }
-    return { ...worker, username: account?.username ?? null };
+    const binding = await readJson(`${this.runtime}/browser-identity.json`, null);
+    const applied = await readJson(`${this.runtime}/browser-identity-ready.json`, null);
+    if (binding && applied?.fingerprint !== bindingFingerprint(binding)) {
+      worker.ready = false;
+      worker.phase = "preparing";
+    }
+    return { ...worker, username: account?.username ?? null, signIn: binding ? "scholarserver" : "password" };
   }
   async appearance() {
     return readJson(`${this.runtime}/appearance.json`, { style: "scholarserver" });
@@ -67,6 +74,29 @@ export class Setup {
   }
   connect(input) {
     const operation = this.pending.then(() => this.saveAccount(input));
+    this.pending = operation.catch(() => {});
+    return operation;
+  }
+  linkSignIn(input) {
+    const operation = this.pending.then(async () => {
+      const parsed = z.object({ scholarserverBrowserIdentity: z.unknown() }).strict().parse(input);
+      const binding = validateBinding(parsed.scholarserverBrowserIdentity);
+      const existing = await readJson(`${this.runtime}/browser-identity.json`, null);
+      if (
+        existing &&
+        (existing.subject !== binding.subject ||
+          existing.publicKey !== binding.publicKey ||
+          existing.audience !== binding.audience)
+      ) {
+        throw new Error("This reading list is already linked to a different sign-in.");
+      }
+      // The public key arrives only through the executor-owned queue. There is
+      // deliberately no HTTP endpoint accepting account bindings or public keys.
+      const account = await readJson(`${this.runtime}/account.json`, null);
+      if (!account) await this.saveAccount({ username: "researcher", password: randomBytes(32).toString("base64url") });
+      await atomicJson(`${this.runtime}/browser-identity.json`, binding);
+      return this.status();
+    });
     this.pending = operation.catch(() => {});
     return operation;
   }
@@ -93,13 +123,14 @@ export class Setup {
       try {
         const request = await readJson(path, {});
         if (request.action === "connect") result = await this.connect(request.input);
+        else if (request.action === "link-sign-in") result = await this.linkSignIn(request.input);
         else if (request.action === "status") result = await this.status();
         else throw new Error("Unknown setup action.");
         await atomicJson(`${this.runtime}/responses/${name}`, { ok: true, result });
       } catch {
         await atomicJson(`${this.runtime}/responses/${name}`, {
           ok: false,
-          error: "Could not set up FreshRSS. Check your username and use a password of at least 12 characters."
+          error: "Could not complete FreshRSS setup. Check Configuration before repeating this action."
         });
       } finally {
         await rm(path, { force: true });

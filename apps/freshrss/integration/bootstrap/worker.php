@@ -26,6 +26,7 @@ function command(array $arguments): void {
 }
 $lastRefresh = 0;
 $addressConfigured = false;
+$browserIdentityState = '';
 while (true) {
     touch('/runtime/heartbeat');
     try {
@@ -39,6 +40,13 @@ while (true) {
             file_put_contents('/runtime/setup-complete', '1');
         }
         if (is_file('/runtime/setup-complete')) {
+            if (is_file('/runtime/browser-identity.json')) {
+                $currentIdentityState = hash_file('sha256', '/runtime/browser-identity.json') . ':' . gethostbyname('integration');
+                if ($currentIdentityState !== $browserIdentityState) {
+                    command(['php', '/opt/scholarserver/browser-identity.php']);
+                    $browserIdentityState = $currentIdentityState;
+                }
+            }
             if (!$addressConfigured) {
                 // Infer the browser origin and subpath from our proxy headers.
                 // A fixed internal URL breaks login links behind Manager.

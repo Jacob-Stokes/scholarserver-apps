@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.freshrss
 name: FreshRSS (Beta)
-packageVersion: 0.1.0-beta.7.performance.20260918.1
+packageVersion: 0.1.0-beta.8.signin.20260918.1
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: FreshRSS, version: 1.29.1, license: AGPL-3.0 }
 support: { tier: official, architectures: [amd64, arm64] }
@@ -26,6 +26,7 @@ images:
     reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:047f3706cb207381ce339d2890b2ef9022f8d2924876e2f5514d4a85706043c1
 data:
   - id: reader
+    browserIdentity: true
     mountPath: /var/www/FreshRSS/data
     owner: freshrss
     filesystem: { uid: 1000, gid: 1000, mode: "0700" }
@@ -93,10 +94,15 @@ lifecycle: { supportsDisable: true, removeDataDefault: false, rollback: backup-r
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Create your reader sign-in
+    - Link your ScholarServer sign-in
     - Choose where to open FreshRSS
     - Add a feed or import your subscriptions
   actions:
+    - id: link-sign-in
+      data: runtime
+      timeoutSeconds: 15
+      provisionBrowserIdentity: true
+      fields: []
     - id: connect
       data: runtime
       timeoutSeconds: 15

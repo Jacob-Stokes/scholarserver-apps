@@ -1,10 +1,64 @@
 // Runs only inside a disposable integration container, never against a user's reader.
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { createPrivateKey, generateKeyPairSync, sign } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { FreshRssClient } from "./client.mjs";
+import { readJson } from "./setup.mjs";
+
+// These keys belong only to this disposable fixture. They are never used by a
+// running ScholarServer installation or included in a published image.
+let privateKey = await readFile("/runtime/test-signing-key.pem", "utf8").catch(() => null);
+if (!privateKey) {
+  const keys = generateKeyPairSync("ed25519");
+  privateKey = keys.privateKey.export({ type: "pkcs8", format: "pem" });
+  await writeFile("/runtime/test-signing-key.pem", privateKey, { mode: 0o600 });
+  await writeFile("/runtime/test-public-key.pem", keys.publicKey.export({ type: "spki", format: "pem" }), {
+    mode: 0o600
+  });
+}
+const binding = {
+  version: 1,
+  audience: "personal/freshrss-proof",
+  subject: "fixture-owner",
+  username: "fixture-owner",
+  publicKey: await readFile("/runtime/test-public-key.pem", "utf8")
+};
+function signedRequest(path, subject = binding.subject) {
+  const iat = Math.floor(Date.now() / 1000);
+  const values = [
+    { alg: "EdDSA", typ: "JWT" },
+    {
+      iss: "scholarserver-manager",
+      aud: binding.audience,
+      sub: subject,
+      endpoint: "reader",
+      method: "GET",
+      path,
+      iat,
+      exp: iat + 30
+    }
+  ];
+  const message = values.map((value) => Buffer.from(JSON.stringify(value)).toString("base64url")).join(".");
+  return `${message}.${sign(null, Buffer.from(message), createPrivateKey(privateKey)).toString("base64url")}`;
+}
+async function readerFetch(url, options = {}) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const enabled = await readJson("/runtime/browser-identity.json", null);
+    const path = new URL(url).pathname + new URL(url).search;
+    const headers = new Headers(options.headers);
+    if (enabled) headers.set("x-scholarserver-browser-identity", signedRequest(path));
+    const response = await fetch(url, { ...options, headers, redirect: "manual" });
+    if (options.redirect === "manual" || ![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const next = new URL(response.headers.get("location"), url);
+    assert.equal(next.origin, "http://127.0.0.1:8082", "fixture never follows an external redirect");
+    next.pathname = next.pathname.replace(/^\/apps\/freshrss-proof\/endpoints\/reader/, "");
+    url = next.href;
+  }
+  throw new Error("Too many reader redirects");
+}
 
 const origin = "http://127.0.0.1:8080";
 const feed = createServer((_request, response) => {
@@ -41,13 +95,13 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   assert.ok(ready, "setup completes");
-  const readerPage = await fetch("http://127.0.0.1:8082/i/", {
+  const readerPage = await readerFetch("http://127.0.0.1:8082/i/", {
     headers: { "accept-encoding": "gzip, deflate, br" }
   });
   assert.equal(readerPage.headers.get("content-encoding"), null, "reader proxy supplies an uncompressed body");
   assert.equal(readerPage.headers.get("cache-control"), "no-store", "account pages are never cached");
   const stylesheetUrl = "http://127.0.0.1:8082/themes/Origine/origine.css";
-  const stylesheet = await fetch(stylesheetUrl, {
+  const stylesheet = await readerFetch(stylesheetUrl, {
     headers: { cookie: "FreshRSS=synthetic-session; manager-session=must-not-forward" }
   });
   assert.equal(stylesheet.status, 200);
@@ -57,7 +111,7 @@ try {
   await stylesheet.arrayBuffer();
   const modified = stylesheet.headers.get("last-modified");
   assert.ok(modified, "native static assets provide a revalidation timestamp");
-  const unchanged = await fetch(stylesheetUrl, { headers: { "if-modified-since": modified } });
+  const unchanged = await readerFetch(stylesheetUrl, { headers: { "if-modified-since": modified } });
   assert.equal(unchanged.status, 304, "static revalidation survives the integration proxy");
   assert.equal(unchanged.headers.get("cache-control"), "private, max-age=300, must-revalidate");
   const readerHtml = await readerPage.text();
@@ -70,7 +124,7 @@ try {
     body: JSON.stringify({ style: "original" })
   });
   assert.equal(appearance.status, 200);
-  const originalHtml = await (await fetch("http://127.0.0.1:8082/i/")).text();
+  const originalHtml = await (await readerFetch("http://127.0.0.1:8082/i/")).text();
   assert.doesNotMatch(
     originalHtml,
     /themes\/ScholarServer|ss-reader-brand/,
@@ -128,8 +182,55 @@ try {
   assert.equal(unauthorized.status, 401);
   const account = JSON.parse(await readFile("/runtime/account.json", "utf8"));
   assert.equal(account.password, undefined, "web password removed after setup");
+  await writeFile(
+    "/runtime/requests/sign-in-proof.json",
+    JSON.stringify({ action: "link-sign-in", input: { scholarserverBrowserIdentity: binding } }),
+    { mode: 0o600 }
+  );
+  let linked = false;
+  for (let attempt = 0; attempt < 45; attempt++) {
+    const result = await readJson("/runtime/responses/sign-in-proof.json", null);
+    if (result?.ok === false) throw new Error("Reader rejected its trusted sign-in setup");
+    const status = await (await fetch(`${origin}/api/status`)).json();
+    if (result?.ok && status.ready && status.signIn === "scholarserver") {
+      linked = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  assert.ok(linked, "the PHP reader applies the queued identity binding");
+  assert.deepEqual(
+    JSON.parse(await readFile("/runtime/account.json", "utf8")),
+    account,
+    "migration preserves account and API credentials"
+  );
+  for (const headers of [
+    {},
+    { "remote-user": "researcher" },
+    { "x-webauth-user": "researcher" },
+    { "x-scholarserver-browser-identity": signedRequest("/i/", "another-owner") }
+  ]) {
+    assert.equal(
+      (await fetch("http://127.0.0.1:8082/i/", { headers })).status,
+      401,
+      "unsigned or wrong-owner access is denied"
+    );
+  }
+  const signedPage = await readerFetch("http://127.0.0.1:8082/i/?a=normal&get=a");
+  const signedHtml = await signedPage.text();
+  assert.equal(signedPage.status, 200);
+  assert.match(
+    signedHtml,
+    /Research fixture article/,
+    "linked identity opens the existing feed without a FreshRSS login"
+  );
+  assert.doesNotMatch(signedHtml, /name="password"/, "no separate password form");
+  assert.equal((await call("list_feeds")).feeds.length, 1, "MCP credentials still work after browser migration");
+  const logout = await readerFetch("http://127.0.0.1:8082/i/?c=auth&a=logout", { redirect: "manual" });
+  assert.equal(logout.status, 303);
+  assert.equal(logout.headers.get("location"), "/if/flow/default-invalidation-flow/?next=/");
   console.log(
-    "PASS: fresh setup, synthetic feed, all six MCP tools, read/star persistence, unauthenticated rejection, password removal"
+    "PASS: fresh setup, synthetic feed, all six MCP tools, sign-in migration, signed login, forged identity rejection and shared logout"
   );
 } finally {
   await mcp.close();

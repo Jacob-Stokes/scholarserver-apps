@@ -128,7 +128,19 @@ export function forwardReaderConditionals(requestHeaders, policy) {
 export function readerUpstreamHeaders(requestHeaders, policy) {
   const headers = forwardReaderConditionals(requestHeaders, policy);
   for (const key of Object.keys(headers)) {
-    if (key.toLowerCase() === "authorization" || key.toLowerCase() === "x-scholarserver-session") delete headers[key];
+    if (
+      [
+        "authorization",
+        "x-scholarserver-session",
+        "x-scholarserver-browser-identity",
+        "remote-user",
+        "remote_user",
+        "x-webauth-user",
+        "x-forwarded-user"
+      ].includes(key.toLowerCase()) ||
+      key.toLowerCase().startsWith("x-authentik-")
+    )
+      delete headers[key];
     if (key.toLowerCase() === "cookie") {
       if (policy.cacheable) delete headers[key];
       else headers[key] = freshRssCookies(headers[key]);

@@ -3,9 +3,10 @@ import { createServer, request as proxyRequest } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMcp } from "mcp-common";
+import { verifyBrowserIdentity } from "./browser-identity.mjs";
 import { applyReaderCachePolicy, readerCachePolicy, readerUpstreamHeaders } from "./cache-policy.mjs";
 import { FreshRssClient } from "./client.mjs";
-import { Setup } from "./setup.mjs";
+import { readJson, Setup } from "./setup.mjs";
 import { feedTools } from "./tools.mjs";
 
 const runtime = process.env.RUNTIME_PATH ?? "/runtime";
@@ -34,7 +35,7 @@ function json(response, status, result) {
   response.end(JSON.stringify(result));
 }
 
-function reader(request, response, suffix) {
+function reader(request, response, suffix, username) {
   const target = new URL(upstream);
   const cachePolicy = readerCachePolicy({
     method: request.method,
@@ -42,6 +43,7 @@ function reader(request, response, suffix) {
     requestHeaders: request.headers
   });
   const headers = readerUpstreamHeaders(request.headers, cachePolicy);
+  if (username && !cachePolicy.cacheable) headers["remote-user"] = username;
   // The outer Manager proxy consumes the body through fetch. Keep this internal
   // hop uncompressed so its decoded body cannot retain a gzip response header.
   headers["accept-encoding"] = "identity";
@@ -158,8 +160,21 @@ createServer(async (request, response) => {
 // Manager's existing application proxy. The setup UI intentionally has none.
 createServer(async (request, response) => {
   try {
-    if (!(await setup.status()).ready) return json(response, 409, { error: "Finish account setup first." });
-    reader(request, response, request.url);
+    const status = await setup.status();
+    const binding = await readJson(`${runtime}/browser-identity.json`, null);
+    if (
+      binding &&
+      !verifyBrowserIdentity(request.headers["x-scholarserver-browser-identity"], binding, request.method, request.url)
+    ) {
+      return json(response, 401, { error: "Open this reader from ScholarServer and sign in to continue." });
+    }
+    if (!status.ready) return json(response, 409, { error: "Finish account setup first." });
+    const url = new URL(request.url, "http://localhost");
+    if (binding && url.searchParams.get("c") === "auth" && url.searchParams.get("a") === "logout") {
+      response.writeHead(303, { location: "/if/flow/default-invalidation-flow/?next=/", "cache-control": "no-store" });
+      return response.end();
+    }
+    reader(request, response, request.url, binding ? status.username : undefined);
   } catch {
     json(response, 502, { error: "FreshRSS is temporarily unavailable." });
   }

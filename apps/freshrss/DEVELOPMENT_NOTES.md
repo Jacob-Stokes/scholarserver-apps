@@ -1,5 +1,20 @@
 # FreshRSS integration
 
+## Shared browser sign-in candidate — 18 September 2026
+
+The candidate links one Manager-verified owner to the existing reader account.
+Manager provisions an Ed25519 public key through a declared executor action;
+the reader proxy accepts only signed, short-lived, instance/request-bound identity
+assertions. The PHP adapter uses FreshRSS HTTP authentication, disables automatic
+user registration and trusts only the integration's private-network address.
+No upstream password or API credential is reset during migration. Existing
+browser login settings are recorded in runtime/browser-auth-backup.json for
+operator recovery; this is not a public fallback or automatic fail-open path.
+Manager and its compatible executor must be installed before this package.
+Both recipe images, native tests, Manager browser acceptance and publication
+remain release gates. This version still has old image pins until qualification.
+Project-vault documentation is pending; repository notes are authoritative.
+
 ## Qualified caching candidate — 18 September 2026
 
 Candidate `0.1.0-beta.7.performance.20260918.1` selects integration images from

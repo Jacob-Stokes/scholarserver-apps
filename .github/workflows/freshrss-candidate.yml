@@ -24,7 +24,7 @@ jobs:
           npm ci --ignore-scripts
           npm run build -w packages/mcp-common
           sudo apt-get update -qq && sudo apt-get install -y zstd
-      - name: Build and qualify the changed integration only
+      - name: Build and qualify the reader and integration
         env:
           ARCH: ${{ matrix.arch }}
         run: |
@@ -32,8 +32,12 @@ jobs:
           node scripts/native-image-receipt.mjs assert-source --revision "$GITHUB_SHA"
           image="ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-$GITHUB_SHA-$ARCH"
           source_digest=$(node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe freshrss-app)
-          reader=$(node --input-type=module -e "import fs from 'node:fs'; import {parse} from 'yaml'; console.log(parse(fs.readFileSync('apps/freshrss/package/compose.yaml','utf8')).services.freshrss.image)")
-          docker pull "$reader"
+          reader="ghcr.io/jacob-stokes/scholarserver-freshrss-reader:sha-$GITHUB_SHA-$ARCH"
+          reader_digest=$(node scripts/native-image-receipt.mjs fingerprint --inventory scripts/image-source-inventory.json --recipe freshrss-reader)
+          docker build --pull --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
+            --label "com.scholarserver.source-digest=$reader_digest" \
+            -f apps/freshrss/reader/Dockerfile -t "$reader" .
           docker build --pull --build-arg TARGETARCH="$ARCH" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.source=https://github.com/Jacob-Stokes/scholarserver-apps" \
@@ -42,11 +46,14 @@ jobs:
           test "$(docker image inspect "$image" --format '{{.Architecture}}')" = "$ARCH"
           test "$(docker image inspect "$reader" --format '{{.Architecture}}')" = "$ARCH"
           python3 scripts/check-image-contents.py "$image"
+          python3 scripts/check-image-contents.py "$reader"
           node --test apps/freshrss/integration/*.test.mjs
           bash apps/freshrss/test-container.sh "$reader" "$image"
           mkdir -p .dev/freshrss-candidate
           docker image inspect "$image" > .dev/freshrss-candidate/image.json
+          docker image inspect "$reader" > .dev/freshrss-candidate/reader-image.json
           printf '%s\n' "$source_digest" > .dev/freshrss-candidate/source-digest.txt
+          printf '%s\n' "$reader_digest" > .dev/freshrss-candidate/reader-source-digest.txt
           node scripts/native-image-receipt.mjs assert-source --revision "$GITHUB_SHA"
       - uses: docker/login-action@v3
         with:
@@ -56,7 +63,9 @@ jobs:
       - name: Publish qualified immutable candidate
         env:
           ARCH: ${{ matrix.arch }}
-        run: docker push "ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-$GITHUB_SHA-$ARCH"
+        run: |
+          docker push "ghcr.io/jacob-stokes/scholarserver-freshrss-app:sha-$GITHUB_SHA-$ARCH"
+          docker push "ghcr.io/jacob-stokes/scholarserver-freshrss-reader:sha-$GITHUB_SHA-$ARCH"
       - uses: actions/upload-artifact@v4
         with:
           name: freshrss-${{ github.sha }}-${{ matrix.arch }}
@@ -74,7 +83,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the two qualified native variants
         run: |
-          image=ghcr.io/jacob-stokes/scholarserver-freshrss-app
-          docker buildx imagetools create --tag "$image:sha-$GITHUB_SHA" \
-            "$image:sha-$GITHUB_SHA-amd64" "$image:sha-$GITHUB_SHA-arm64"
-          docker buildx imagetools inspect "$image:sha-$GITHUB_SHA"
+          for recipe in app reader; do
+            image="ghcr.io/jacob-stokes/scholarserver-freshrss-$recipe"
+            docker buildx imagetools create --tag "$image:sha-$GITHUB_SHA" \
+              "$image:sha-$GITHUB_SHA-amd64" "$image:sha-$GITHUB_SHA-arm64"
+            docker buildx imagetools inspect "$image:sha-$GITHUB_SHA"
+          done

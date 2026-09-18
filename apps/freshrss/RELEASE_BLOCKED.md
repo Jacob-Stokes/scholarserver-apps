@@ -1,5 +1,13 @@
 # Source candidate — not for publication
 
+## Shared sign-in — 18 September 2026
+
+`0.1.0-beta.8.signin.20260918.1` requires compatible Manager/executor browser
+identity support and newly qualified reader and integration images. Its existing
+pins are placeholders until dual-native qualification; do not publish this package
+with those pins. Full source tests and lint pass. Native migration, restart,
+restore and authenticated Manager-to-reader acceptance remain required.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.1.0-beta.7.editorial.20260918.1` selects changed recipe images

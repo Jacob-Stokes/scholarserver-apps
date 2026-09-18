@@ -1,11 +1,19 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ReaderAccess } from "./ReaderAccess";
 import { ReaderAppearance } from "./ReaderAppearance";
 
-type Status = { phase: string; ready: boolean; username: string | null; error?: string; lastRefresh?: number };
+type Status = {
+  phase: string;
+  ready: boolean;
+  username: string | null;
+  signIn: "password" | "scholarserver";
+  error?: string;
+  lastRefresh?: number;
+};
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
+const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
 const tabs = [
   { id: "overview", label: "Overview" },
   { id: "configuration", label: "Configuration" }
@@ -14,8 +22,6 @@ const tabs = [
 export function App() {
   const [tab, setTab] = useState(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
   const [status, setStatus] = useState<Status | null>(null);
-  const [username, setUsername] = useState("researcher");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -43,19 +49,24 @@ export function App() {
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   }
-  async function connect(event: FormEvent) {
-    event.preventDefault();
+  async function connect() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`${base}/api/connect`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
-        body: JSON.stringify({ username, password })
-      });
+      const overview = await fetch("/api/v1/overview");
+      if (!overview.ok) throw new Error("Open ScholarServer and sign in before linking this reading list.");
+      const workspace = (await overview.json()).workspace.id;
+      const response = await fetch(
+        `/api/v1/instances/${encodeURIComponent(workspace)}/${instance}/actions/link-sign-in`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
+          body: "{}"
+        }
+      );
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-      setPassword("");
+      if (!response.ok)
+        throw new Error(result.detail ?? "Could not confirm the link. Check Configuration before trying again.");
       setStatus(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save. Your entries have been kept.");
@@ -64,6 +75,7 @@ export function App() {
     }
   }
   const preparing = status?.phase === "preparing";
+  const linked = status?.signIn === "scholarserver";
   return (
     <ApplicationScreen
       name="FreshRSS"
@@ -73,7 +85,7 @@ export function App() {
       onNavigate={navigate}
       loading={!status}
       error={error ?? statusError ?? status?.error}
-      status={<span className="ss-badge">{status?.ready ? "Ready" : "Setup needed"}</span>}
+      status={<span className="ss-badge">{status?.ready && linked ? "Ready" : "Setup needed"}</span>}
     >
       {tab === "configuration" ? (
         <SetupProgress
@@ -81,18 +93,16 @@ export function App() {
             { id: "account", label: "Your sign-in" },
             { id: "ready", label: "Ready" }
           ]}
-          current={status?.ready ? "ready" : "account"}
+          current={status?.ready && linked ? "ready" : "account"}
         />
       ) : null}
       {status?.ready && tab === "configuration" ? <ReaderAppearance base={base} /> : null}
-      {status?.ready ? (
+      {status?.ready && linked ? (
         <section className="ss-card ss-stack">
           <h2>Your reading list</h2>
           <p>Add a feed or import subscriptions in FreshRSS. New articles are checked every 30 minutes.</p>
           <ReaderAccess />
-          <p>
-            Sign in as <strong>{status.username}</strong> using the password you chose.
-          </p>
+          <p>You use your ScholarServer sign-in. Signing out of ScholarServer also stops access to this reader.</p>
           <p>
             Your AI connection can read articles, list feeds and organise read or starred articles. Add or remove
             subscriptions in the reader.
@@ -103,42 +113,30 @@ export function App() {
         <SetupPanel
           stage={1}
           total={2}
-          title="Create your reader sign-in"
-          description="This account stays on your server. No FreshRSS subscription or cloud account is needed."
+          title="Use your ScholarServer sign-in"
+          description={
+            status?.username
+              ? "Link your existing reading list. Your feeds, saved articles and API credentials stay unchanged."
+              : "Create your reading list with your ScholarServer account. No separate FreshRSS password is needed."
+          }
         >
           {preparing ? (
             <p role="status">Preparing your reading list… You can leave this page and come back.</p>
           ) : (
-            <form className="ss-stack" onSubmit={(event) => void connect(event)}>
-              <label>
-                Username
-                <input
-                  className="ss-input"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  required
-                  pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}"
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  className="ss-input"
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={12}
-                  maxLength={200}
-                  required
-                />
-              </label>
-              <p>Use at least 12 characters. Keep this password for opening the reader.</p>
-              <button className="ss-button" disabled={busy}>
-                {busy ? "Saving…" : "Create reading list"}
+            <div className="ss-stack">
+              <p>
+                First enable dashboard sign-in in <a href="/settings/access#browser-sign-in">Settings → Access</a>.
+              </p>
+              {status?.username ? (
+                <p>
+                  Reader account: <strong>{status.username}</strong>. Linking replaces its separate browser login with
+                  your ScholarServer sign-in.
+                </p>
+              ) : null}
+              <button className="ss-button" disabled={busy || !instance} onClick={() => void connect()}>
+                {busy ? "Linking…" : "Use ScholarServer sign-in"}
               </button>
-            </form>
+            </div>
           )}
         </SetupPanel>
       )}

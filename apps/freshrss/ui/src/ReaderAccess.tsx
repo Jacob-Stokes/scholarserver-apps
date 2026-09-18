@@ -6,7 +6,6 @@ const endpoint = `/api/v1/instances/${instance}/endpoints/reader/access-options`
 export function ReaderAccess() {
   const [options, setOptions] = useState<EndpointAccessOption[]>([]);
   const [optionId, setOptionId] = useState("tailscale");
-  const [authentication, setAuthentication] = useState<"none" | "authentik">("none");
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,7 +19,6 @@ export function ReaderAccess() {
         setUrl(value.selection?.url ?? null);
         if (value.selection) {
           setOptionId(value.selection.optionId);
-          setAuthentication(value.selection.authentication);
         }
       })
       .catch((caught) => setError(caught.message));
@@ -32,7 +30,7 @@ export function ReaderAccess() {
       const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ optionId, authentication })
+        body: JSON.stringify({ optionId, authentication: "authentik" })
       });
       if (!response.ok) throw new Error("Could not save the reader address. Your previous choice has been kept.");
       setUrl((await response.json()).selection.url);
@@ -58,9 +56,9 @@ export function ReaderAccess() {
           <EndpointAccessSelector
             options={options}
             optionId={optionId}
-            authentication={authentication}
+            authentication="authentik"
             onOptionChange={(option) => setOptionId(option.id)}
-            onAuthenticationChange={setAuthentication}
+            onAuthenticationChange={() => {}}
           />
           <button className="ss-button" disabled={busy} onClick={() => void save()}>
             {busy ? "Saving…" : "Save reader address"}
