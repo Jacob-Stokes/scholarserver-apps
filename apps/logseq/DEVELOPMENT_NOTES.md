@@ -1,5 +1,14 @@
 # Logseq development notes
 
+## Retained deployment — 18 September 2026
+
+`0.1.0-beta.4.editorial.20260918.1` is installed on Freelove at revision 3.
+The encrypted checkpoint, reviewed images/plan and operator runtime verification
+passed. Existing graph, runtime, sync and sync-configuration paths were preserved;
+no new grants or graph-sync acceptance were performed.
+See [the deployment record](../../docs/native-candidates-20260918.md#retained-freelove-updates--18-september-2026).
+Project-vault documentation remains pending.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.1.0-beta.4.editorial.20260918.1` selects changed recipe images

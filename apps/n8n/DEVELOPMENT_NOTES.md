@@ -1,5 +1,15 @@
 # n8n integration — development record
 
+## Retained deployment — 18 September 2026
+
+`0.1.0-guided.20260918.1` is now installed on Freelove at revision 7.
+Encrypted checkpoint, exact image/plan checks and operator runtime verification
+passed. Live native setup, existing schedule preservation and the PDF `Papers`
+folder picker passed draft-only checks. No automation or permission was saved.
+Legacy connection migration and real report execution remain unverified.
+See [the deployment record](../../docs/native-candidates-20260918.md#retained-freelove-updates--18-september-2026).
+Project-vault documentation remains pending.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.1.0-guided.20260918.1` selects changed recipe images

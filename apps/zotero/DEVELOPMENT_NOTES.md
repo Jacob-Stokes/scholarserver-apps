@@ -1,5 +1,16 @@
 # Zotero development notes
 
+## Retained development-instance update — 18 September 2026
+
+Only `zotero-sync-test` received `0.5.10-guided.20260918.1` (revision 3).
+Its encrypted checkpoint and Apply succeeded. Read-only reconciliation confirmed
+the reviewed images, plan, generated Compose and healthy runtime. The operator
+stopped before acceptance on its existing `gateway-integration-failed` warning;
+no credentials or grants were provisioned to hide it. Personal Zotero remains
+unchanged because image-changing updates with its shared folder need a supported
+recovery path. See [the deployment record](../../docs/native-candidates-20260918.md#retained-freelove-updates--18-september-2026).
+Project-vault documentation remains pending.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.5.10-guided.20260918.1` selects changed recipe images
