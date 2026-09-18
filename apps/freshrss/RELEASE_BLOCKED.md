@@ -7,9 +7,12 @@ identity support. Reader and integration images passed dual-native qualification
 in GitHub run 35383347325 from source 753228f69b9aa61daf78b487ca52297be5c7c65e.
 Fresh shared-sign-in setup, existing-account migration, unavailable-reader resume,
 restart, restore, all six MCP tools and untrusted-peer rejection passed on both
-architectures. Authenticated Manager-to-reader acceptance remains required before
-catalog publication; the generic platform range is not yet a release compatibility
-guarantee. This candidate is for the explicitly paired development deployment only.
+architectures. Authenticated Manager-to-reader navigation, restart and shared
+logout/re-login passed on the retained Freelove development installation with
+core ba923821048e7d3e259ff0fd03c63d44483c8887. Its pre-existing Gateway integration
+warning still needs review. The generic platform range is not yet a release
+compatibility guarantee. This candidate remains for the explicitly paired
+development deployment only, not unrestricted catalog publication.
 
 ## Published image refresh — 18 September 2026
 

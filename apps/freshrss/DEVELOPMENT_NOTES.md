@@ -16,8 +16,22 @@ Both recipe images passed native qualification on AMD64 and ARM64 in GitHub run
 shared-sign-in setup and migration of an existing password account, unavailable
 reader resume, signed navigation, all six MCP tools, restart and stopped-filesystem
 restore. A neighbouring container cannot spoof the native reader username.
-Manager browser acceptance and catalog publication remain separate gates.
-Project-vault documentation is pending; repository notes are authoritative.
+The paired Freelove development deployment now runs this package at revision 3
+with core ba923821048e7d3e259ff0fd03c63d44483c8887. The owner approved linking the
+existing reading list after a normal Authentik password login. Manager-to-reader
+navigation, favourites, subscriptions, reload, targeted service restarts and
+shared logout/re-login passed in the real browser. Anonymous and forged requests
+are denied. Existing API credentials still work; direct MCP discovers six tools
+and a read-only feed-list call succeeds. No feeds or reading state were changed.
+
+The guarded package update took a verified encrypted backup. Its pre-existing
+Gateway integration warning repeated and remains marked for review; direct MCP
+success is not proof of public Gateway routing. Do not replay Apply. The empty
+library does not qualify ingestion or large-library performance. Core
+`docs/testing/browser-sign-in-20260918.md` owns exact retained-host evidence.
+Official catalog compatibility/version qualification remains a separate gate.
+Project-vault documentation was updated on 18 September; repository notes remain
+authoritative for exact implementation and release status.
 
 ## Qualified caching candidate — 18 September 2026
 
