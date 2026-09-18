@@ -40,7 +40,11 @@ async function packages(root = applicationsRoot) {
       readFile(path.join(packageRoot, "scholarserver-app.yaml"), "utf8"),
       readFile(path.join(packageRoot, "compose.yaml"), "utf8")
     ]);
-    result.push({ directory: entry.name, manifest: parse(manifestText), compose: parse(composeText) });
+    result.push({
+      directory: entry.name,
+      manifest: parse(manifestText),
+      compose: parse(composeText)
+    });
   }
   return result;
 }
@@ -48,6 +52,16 @@ async function packages(root = applicationsRoot) {
 function unique(values, label) {
   assert.equal(new Set(values).size, values.length, `${label} must be unique`);
 }
+
+test("FreshRSS binds shared sign-in to its reader endpoint, not its data volume", async () => {
+  const { manifest } = (await packages()).find((item) => item.directory === "freshrss");
+  assert.equal(manifest.endpoints.find((endpoint) => endpoint.id === "reader").browserIdentity, true);
+  assert.equal(
+    manifest.onboarding.actions.find((action) => action.id === "link-sign-in").provisionBrowserIdentity,
+    true
+  );
+  for (const volume of manifest.data) assert.equal(volume.browserIdentity, undefined);
+});
 
 function checkArchitectures(architectures, label) {
   assert.ok(Array.isArray(architectures) && architectures.length > 0, `${label}: declared native architectures`);

@@ -11,8 +11,12 @@ No upstream password or API credential is reset during migration. Existing
 browser login settings are recorded in runtime/browser-auth-backup.json for
 operator recovery; this is not a public fallback or automatic fail-open path.
 Manager and its compatible executor must be installed before this package.
-Both recipe images, native tests, Manager browser acceptance and publication
-remain release gates. This version still has old image pins until qualification.
+Both recipe images passed native qualification on AMD64 and ARM64 in GitHub run
+35383347325 from source 753228f69b9aa61daf78b487ca52297be5c7c65e. Tests cover fresh
+shared-sign-in setup and migration of an existing password account, unavailable
+reader resume, signed navigation, all six MCP tools, restart and stopped-filesystem
+restore. A neighbouring container cannot spoof the native reader username.
+Manager browser acceptance and catalog publication remain separate gates.
 Project-vault documentation is pending; repository notes are authoritative.
 
 ## Qualified caching candidate — 18 September 2026

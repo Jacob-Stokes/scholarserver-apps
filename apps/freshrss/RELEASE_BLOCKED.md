@@ -3,10 +3,13 @@
 ## Shared sign-in — 18 September 2026
 
 `0.1.0-beta.8.signin.20260918.1` requires compatible Manager/executor browser
-identity support and newly qualified reader and integration images. Its existing
-pins are placeholders until dual-native qualification; do not publish this package
-with those pins. Full source tests and lint pass. Native migration, restart,
-restore and authenticated Manager-to-reader acceptance remain required.
+identity support. Reader and integration images passed dual-native qualification
+in GitHub run 35383347325 from source 753228f69b9aa61daf78b487ca52297be5c7c65e.
+Fresh shared-sign-in setup, existing-account migration, unavailable-reader resume,
+restart, restore, all six MCP tools and untrusted-peer rejection passed on both
+architectures. Authenticated Manager-to-reader acceptance remains required before
+catalog publication; the generic platform range is not yet a release compatibility
+guarantee. This candidate is for the explicitly paired development deployment only.
 
 ## Published image refresh — 18 September 2026
 

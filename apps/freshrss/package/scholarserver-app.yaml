@@ -21,12 +21,11 @@ permissions:
 hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
 images:
   - service: freshrss
-    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:5ec1cc8b87b5863cc03c4ed004af917444a9094415e2d808a09e34283ea753c7
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:16990382c1366082e5345af72aea5512e74f964ad6283984be07ff2d805e91b3
   - service: integration
-    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:047f3706cb207381ce339d2890b2ef9022f8d2924876e2f5514d4a85706043c1
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:833378a2a68d9427d999bb1070ef5d3ab0b861fff242154f03bd96ff6ba146c9
 data:
   - id: reader
-    browserIdentity: true
     mountPath: /var/www/FreshRSS/data
     owner: freshrss
     filesystem: { uid: 1000, gid: 1000, mode: "0700" }
@@ -47,6 +46,7 @@ endpoints:
     auth: platform-session
   - id: reader
     service: integration
+    browserIdentity: true
     port: 8082
     protocol: http
     exposure: human-optional
