@@ -1,5 +1,16 @@
 # Readability review notes
 
+## Obsidian informational reads — 20 September 2026
+
+The app-specific read module names payload projection and polling cadence;
+canonical shared UI owns lifecycle, stale response rejection and access retirement.
+The controller's public-status allowlist and separate device-detail reader make
+the credential boundary explicit. The mounted device setup panel deliberately
+does not use a retained read resource for its passphrase/link. This is a scoped
+review of status and credential lifetime, not all Obsidian workflows. The large
+screen still owns several forms; future panel extraction must preserve one draft
+owner rather than introduce a generic setup engine. Zotero/n8n remain deferred.
+
 ## Shared access lifetime and Logseq addresses — 20 September 2026
 
 `ReadScope` in canonical shared UI replaces repeated sibling-denial loops in

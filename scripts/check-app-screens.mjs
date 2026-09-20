@@ -855,6 +855,67 @@ try {
   await page.unroute("**/apps/obsidian/api/client/install");
   console.log("Obsidian: completed installation supersedes old polling without replacing the folder draft");
   obsidianStatus = {
+    state: "livesync-device-setup",
+    profile: "livesync",
+    scopePath: "/Research",
+    remoteVault: "Self-hosted LiveSync",
+    workerRunning: false,
+    lastError: null,
+    liveSyncOnboarding: { setupPassphrase: "legacy-secret-must-not-render" }
+  };
+  let deviceReads = 0;
+  let releaseDeviceRead;
+  let denyDeviceRead = false;
+  await page.route("**/apps/obsidian/api/livesync/onboarding", async (route) => {
+    const requestNumber = ++deviceReads;
+    if (requestNumber === 1)
+      await new Promise((resolve) => {
+        releaseDeviceRead = resolve;
+      });
+    if (denyDeviceRead) return route.fulfill({ status: 401, json: {} });
+    await route
+      .fulfill({
+        json: {
+          onboarding: {
+            accessMethod: "tailscale",
+            connectionUrl: "https://synthetic.example.test",
+            setupURI: `obsidian://setuplivesync?settings=synthetic-${requestNumber}`,
+            setupPassphrase: `synthetic-device-passphrase-${requestNumber}`
+          }
+        }
+      })
+      .catch(() => {});
+  });
+  await page.goto(`${origin}/apps/obsidian/overview`);
+  await page.getByRole("heading", { name: "Vault connection", exact: true }).waitFor();
+  assert.equal(deviceReads, 0, "Overview must not request device credentials");
+  assert(!(await page.getByText("legacy-secret-must-not-render").count()));
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByText("Loading device setup details", { exact: false }).waitFor();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  releaseDeviceRead();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  const setupLink = page.getByRole("link", { name: "Open setup link in Obsidian", exact: true });
+  await setupLink.waitFor();
+  assert.equal(await setupLink.getAttribute("href"), "obsidian://setuplivesync?settings=synthetic-2");
+  assert(!(await page.getByText("synthetic-device-passphrase-1", { exact: true }).count()));
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  assert(
+    !(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }).includes("synthetic-device")))
+  );
+  await page.screenshot({ path: join(output, "obsidian-device-setup-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  denyDeviceRead = true;
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByText("Open ScholarServer and sign in again, then retry.", { exact: false }).waitFor();
+  assert.equal(await setupLink.count(), 0);
+  denyDeviceRead = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await setupLink.waitFor();
+  assert.equal(await setupLink.getAttribute("href"), "obsidian://setuplivesync?settings=synthetic-4");
+  await page.unroute("**/apps/obsidian/api/livesync/onboarding");
+  console.log("Obsidian: device credentials load independently, expire on navigation and clear on child access denial");
+  obsidianStatus = {
     state: "recovery-required",
     profile: "livesync",
     scopePath: "/",

@@ -1,5 +1,27 @@
 # Obsidian development notes
 
+## Local read-lifecycle migration — 20 September 2026
+
+Informational status now uses the canonical shared read lifecycle and reserved
+feedback, retaining accepted data on ordinary refresh failure. Drafts remain
+app-owned. Polling and writes no longer compete to replace current setup status;
+access loss clears private forms and requires a fresh session on explicit retry.
+
+LiveSync device credentials have a separate no-store browser read at
+`/api/livesync/onboarding`. It checks the saved binding and device-setup phase,
+and discards a result if state changes during the read. Status, action responses
+and persisted public state exclude the onboarding credentials. The mounted
+device panel requests them on demand, drops late responses after navigation and
+does not retain them across configuration visits or in browser storage. Normal
+status parsing also excludes legacy credential fields. Existing secret files,
+vault binding, permissions and setup mutations are unchanged.
+
+The controller and UI must ship together in a newly qualified native image.
+The Dockerfile includes the new presentation helper. No existing package or
+image pins were changed and Freelove is untouched. See the repository
+`docs/read-lifecycle-migration.md` for verification and resume steps.
+Project-vault app note/index update remains pending; no vault connector was used.
+
 ## Retained deployment — 18 September 2026
 
 `0.5.0-guided.20260918.1` is installed on Freelove's personal instance (revision

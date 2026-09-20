@@ -15,6 +15,7 @@ import {
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
 import { createResearchNote } from "./research-note.mjs";
+import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 import { createVaultBinding } from "./vault-binding.mjs";
 import { browseVaultFolders } from "./vault-folders.mjs";
 
@@ -53,14 +54,9 @@ let state = {
   workerRunning: false
 };
 
-function publicState(value = state) {
-  const { setupURI: _setupURI, setupPassphrase: _setupPassphrase, ...safe } = value;
-  return safe;
-}
-
 async function updateStatus(patch = {}) {
   state = { ...state, ...patch, workerRunning: syncProcess !== null };
-  await atomicJson(statusPath, publicState(state), 0o644);
+  await atomicJson(statusPath, publicStatus(state), 0o644);
 }
 
 async function readJson(file, fallback = null) {
@@ -260,7 +256,7 @@ async function stopOfficialSync() {
 async function installOfficialClient(input) {
   if (state.profile !== "official" || input.confirmed !== true)
     throw new Error("Confirm the official Obsidian download and terms before proceeding");
-  if (installingClient) return statusWithPrivateOnboarding();
+  if (installingClient) return statusSummary();
   installingClient = true;
   try {
     await stopOfficialSync();
@@ -287,7 +283,7 @@ async function installOfficialClient(input) {
       installingClient = false;
       await updateStatus({ state: "client-install-required", lastError: error.message });
     });
-  return statusWithPrivateOnboarding();
+  return statusSummary();
 }
 
 async function selectProfile(input) {
@@ -299,10 +295,10 @@ async function selectProfile(input) {
   ) {
     throw new Error("Add a separate Obsidian installation to use a different sync method.");
   }
-  if (state.profile === profile && state.state !== "setup-required") return statusWithPrivateOnboarding();
+  if (state.profile === profile && state.state !== "setup-required") return statusSummary();
   await vaultBinding.restore();
   await updateStatus({ profile, state: "setup-required", lastError: null });
-  return statusWithPrivateOnboarding();
+  return statusSummary();
 }
 
 function normalizeScope(value) {
@@ -393,7 +389,7 @@ async function configureLiveSync(input) {
     scopePath: mcpScope,
     lastError: null
   });
-  return statusWithPrivateOnboarding();
+  return statusSummary();
 }
 
 async function completeLiveSync(input) {
@@ -401,12 +397,12 @@ async function completeLiveSync(input) {
   if (input.confirmedPluginConnected !== true)
     throw new Error("Confirm that the plugin connected successfully in Obsidian");
   await vaultBinding.assertCurrent();
-  if (state.state === "ready") return statusWithPrivateOnboarding();
-  if (state.state === "livesync-server-joining") return statusWithPrivateOnboarding();
+  if (state.state === "ready") return statusSummary();
+  if (state.state === "livesync-server-joining") return statusSummary();
   const worker = await readJson(liveSyncWorkerPath, null);
   await atomicJson(liveSyncWorkerPath, activateLiveSyncWorker(worker, Date.now()));
   await updateStatus({ state: "livesync-server-joining", lastError: null });
-  return statusWithPrivateOnboarding();
+  return statusSummary();
 }
 
 async function refreshLiveSyncCompletion() {
@@ -427,16 +423,11 @@ async function refreshLiveSyncCompletion() {
   }
 }
 
-async function statusWithPrivateOnboarding() {
+async function statusSummary() {
   const worker = await readJson(liveSyncWorkerStatusPath, null);
-  const onboarding =
-    state.profile === "livesync" && state.state === "livesync-device-setup"
-      ? await readJson(liveSyncOnboardingPath, null)
-      : null;
   return {
-    ...publicState(state),
+    ...publicStatus(state),
     liveSyncWorker: worker,
-    liveSyncOnboarding: onboarding,
     officialClient: state.profile === "official" ? await officialClient.status() : null
   };
 }
@@ -452,27 +443,27 @@ async function action(request) {
       await vaultBinding.assertCurrent();
       return createResearchNote(vaultPath, request.input ?? {});
     case "status": {
-      if (installingClient || mutationRunning) return statusWithPrivateOnboarding();
-      if (state.state === "recovery-required") return statusWithPrivateOnboarding();
+      if (installingClient || mutationRunning) return statusSummary();
+      if (state.state === "recovery-required") return statusSummary();
       if (state.profile === "official" && (await officialClient.status()).phase !== "installed") {
         await updateStatus({ state: "client-install-required" });
-        return statusWithPrivateOnboarding();
+        return statusSummary();
       }
       await refreshLiveSyncCompletion();
       if (state.profile === "livesync" || state.state === "ready" || state.state === "initial-sync")
-        return statusWithPrivateOnboarding();
-      if (state.profile === "none") return statusWithPrivateOnboarding();
+        return statusSummary();
+      if (state.profile === "none") return statusSummary();
       try {
         const vaults = await listRemoteVaults();
-        if (vaults.length === 0) return statusWithPrivateOnboarding();
+        if (vaults.length === 0) return statusSummary();
         if (state.state !== "vault-selection-required") {
           await updateStatus({ state: "vault-selection-required", lastError: null });
         }
-        return { ...(await statusWithPrivateOnboarding()), vaults };
+        return { ...(await statusSummary()), vaults };
       } catch {
         if (state.state !== "setup-required")
           await updateStatus({ state: "setup-required", profile: state.profile === "official" ? "official" : "none" });
-        return statusWithPrivateOnboarding();
+        return statusSummary();
       }
     }
     case "select-profile":
@@ -644,6 +635,14 @@ async function handleHttp(request, response) {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { status: "ok" });
     if (request.method === "GET" && url.pathname === "/api/status")
       return json(response, 200, await action({ action: "status" }));
+    if (request.method === "GET" && url.pathname === "/api/livesync/onboarding") {
+      const onboarding = await readDeviceOnboarding({
+        currentState: () => state,
+        assertBinding: () => vaultBinding.assertCurrent(),
+        readOnboarding: () => readJson(liveSyncOnboardingPath, null)
+      });
+      return json(response, 200, { onboarding });
+    }
     const actions = {
       "/api/profile/select": "select-profile",
       "/api/client/install": "install-client",

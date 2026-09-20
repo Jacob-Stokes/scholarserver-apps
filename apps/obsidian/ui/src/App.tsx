@@ -1,43 +1,21 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, type SetupPipelineStage, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
+import { useEffect, useRef, useState } from "react";
+import {
+  createObsidianReads,
+  type LiveSyncAccessMethod,
+  type LiveSyncOnboarding,
+  normalizeVaults,
+  type RemoteVault,
+  requestObsidian,
+  type Status,
+  type SyncProfile,
+  statusPollMilliseconds
+} from "./obsidian-reads";
 
-type RemoteVault = { id: string; name: string };
-type SyncProfile = "none" | "official" | "livesync";
-type LiveSyncAccessMethod = "tailscale" | "public";
-type Status = {
-  state:
-    | "setup-required"
-    | "client-install-required"
-    | "vault-selection-required"
-    | "initial-sync"
-    | "livesync-preparing"
-    | "livesync-device-setup"
-    | "livesync-server-joining"
-    | "recovery-required"
-    | "ready";
-  profile: SyncProfile;
-  remoteVault: string | null;
-  scopePath: string;
-  lastSyncAt: string | null;
-  lastError: string | null;
-  workerRunning: boolean;
-  officialClient?: {
-    phase: string;
-    version: string | null;
-    approvedVersion: string;
-    error: string | null;
-    receivedBytes?: number;
-  } | null;
-  vaults?: unknown;
-  liveSyncWorker?: { state: string; running: boolean; activeRevision?: number | null; lastError: string | null } | null;
-  liveSyncOnboarding?: {
-    accessMethod: LiveSyncAccessMethod;
-    connectionUrl: string;
-    setupURI: string;
-    setupPassphrase: string;
-  } | null;
-};
 type Tab = "overview" | "configuration";
 type LiveSyncSetupPage = "connection" | "security" | "scope";
 type OfficialSetupPage = "vault" | "scope";
@@ -66,31 +44,9 @@ function appBase(): string {
 
 const base = appBase();
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${base}/api/${url}`, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
-  });
-  const result = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok || result === null)
-    throw new Error((result as { error?: string } | null)?.error ?? "Obsidian returned an unreadable response");
-  return result as T;
-}
-
 function currentTab(): Tab {
   const value = window.location.pathname.split("/").filter(Boolean).at(-1);
   return tabs.some((tab) => tab.id === value) ? (value as Tab) : "overview";
-}
-
-function normalizeVaults(value: unknown): RemoteVault[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    if (typeof item === "string") return [{ id: item, name: item }];
-    if (!item || typeof item !== "object") return [];
-    const record = item as Record<string, unknown>;
-    const id = typeof record.id === "string" ? record.id : typeof record.vaultId === "string" ? record.vaultId : "";
-    return id ? [{ id, name: typeof record.name === "string" ? record.name : id }] : [];
-  });
 }
 
 function profileLabel(profile: SyncProfile): string {
@@ -100,9 +56,19 @@ function profileLabel(profile: SyncProfile): string {
 }
 
 export function App() {
+  const [session, setSession] = useState(0);
+  return <ObsidianSession key={session} onAccessRetry={() => setSession((value) => value + 1)} />;
+}
+
+function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
+  const [reads] = useState(() => createObsidianReads(base));
+  async function request<T>(url: string, init?: RequestInit): Promise<T> {
+    const result = await requestObsidian<T>(base, url, { ...init, signal: reads.accessSignal });
+    reads.accessSignal.throwIfAborted();
+    return result;
+  }
   const [tab, setTab] = useState<Tab>(currentTab);
-  const [status, setStatus] = useState<Status | null>(null);
-  const statusRead = useRef<AbortController | null>(null);
+
   const scopeEdited = useRef(false);
   const [vaults, setVaults] = useState<RemoteVault[]>([]);
   const [email, setEmail] = useState("");
@@ -123,46 +89,43 @@ export function App() {
   const [officialPage, setOfficialPage] = useState<OfficialSetupPage>("vault");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
+
   const [notice, setNotice] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    statusRead.current?.abort();
-    const controller = new AbortController();
-    statusRead.current = controller;
-    try {
-      const next = await request<Status>("status", {
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
-      });
-      if (controller.signal.aborted || statusRead.current !== controller) return;
-      const nextVaults = normalizeVaults(next.vaults);
-      setStatus(next);
-      if (!scopeEdited.current) setScopePath(next.scopePath || "/");
-      if (nextVaults.length) {
-        setVaults(nextVaults);
-        setVault((current) => current || nextVaults[0].id);
-      }
-      setStatusError(null);
-    } catch (caught) {
-      if (!controller.signal.aborted && statusRead.current === controller) {
-        setStatusError(caught instanceof Error ? caught.message : "Could not inspect Obsidian");
-      }
-    } finally {
-      if (statusRead.current === controller) statusRead.current = null;
+  const statusRead = useReadResource(reads.status, statusPollMilliseconds, !busy);
+  const status = statusRead.data ?? null;
+  async function refresh() {
+    reads.status.invalidate();
+    await reads.status.refresh();
+  }
+  useEffect(() => {
+    if (!status) return;
+    if (!scopeEdited.current) setScopePath(status.scopePath || "/");
+    const nextVaults = normalizeVaults(status.vaults);
+    if (nextVaults.length) {
+      setVaults(nextVaults);
+      setVault((current) => current || nextVaults[0].id);
     }
-  }, []);
+  }, [status]);
+  useEffect(
+    () =>
+      reads.status.subscribe(() => {
+        if (!reads.status.getSnapshot().blocked) return;
+        setEmail("");
+        setPassword("");
+        setMfa("");
+        setEncryptionPassword("");
+        setVaultPassphrase("");
+        setVaultPassphraseAgain("");
+        setPluginConnected(false);
+        setVaults([]);
+        setVault("");
+        setError(null);
+        setNotice(null);
+      }),
+    [reads]
+  );
 
-  useEffect(() => {
-    void refresh();
-    return () => statusRead.current?.abort();
-  }, [refresh]);
-  useEffect(() => {
-    if (status?.state !== "livesync-server-joining" && status?.state !== "client-install-required") return;
-    const timer = window.setInterval(() => {
-      if (!statusRead.current) void refresh();
-    }, 2_000);
-    return () => window.clearInterval(timer);
-  }, [refresh, status?.state]);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
@@ -178,6 +141,7 @@ export function App() {
     setScopePath(value);
   };
   const run = async (operation: () => Promise<unknown>, success?: string) => {
+    reads.status.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -186,7 +150,8 @@ export function App() {
       if (success) setNotice(success);
       await refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The operation failed");
+      if (caught instanceof ReadAccessRequired) reads.block(caught.message);
+      if (!reads.accessSignal.aborted) setError(caught instanceof Error ? caught.message : "The operation failed");
     } finally {
       setBusy(false);
     }
@@ -196,6 +161,7 @@ export function App() {
     run(() => request("profile/select", { method: "POST", body: JSON.stringify({ profile }) }));
 
   const signIn = async () => {
+    reads.status.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -212,7 +178,9 @@ export function App() {
       setOfficialPage("vault");
       await refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not connect the account");
+      if (caught instanceof ReadAccessRequired) reads.block(caught.message);
+      if (!reads.accessSignal.aborted)
+        setError(caught instanceof Error ? caught.message : "Could not connect the account");
     } finally {
       setBusy(false);
     }
@@ -260,7 +228,7 @@ export function App() {
   const copy = async (value: string, label: string) => {
     setNotice(null);
     await navigator.clipboard.writeText(value);
-    setNotice(`${label} copied.`);
+    if (!reads.accessSignal.aborted) setNotice(`${label} copied.`);
   };
 
   const ready = status?.state === "ready";
@@ -288,8 +256,16 @@ export function App() {
       currentTab={tab}
       onNavigate={navigate}
       notice={notice}
-      error={error || statusError || (needsRecovery ? status?.lastError : null)}
-      loading={!status}
+      error={error || (needsRecovery ? status?.lastError : null)}
+      feedback={
+        <SectionFeedback
+          pending={statusRead.pending}
+          hasData={!!status}
+          label="Obsidian status"
+          error={statusRead.error}
+          onRetry={statusRead.blocked ? onAccessRetry : () => void refresh()}
+        />
+      }
     >
       {status && tab === "overview" ? (
         <div className="ss-stack">
@@ -434,9 +410,10 @@ export function App() {
               </SetupPanel>
             </>
           ) : null}
-          {status.profile === "livesync" && status.state === "livesync-device-setup" && status.liveSyncOnboarding ? (
-            <LiveSyncDevice
-              onboarding={status.liveSyncOnboarding}
+          {status.profile === "livesync" && status.state === "livesync-device-setup" ? (
+            <LiveSyncDevicePanel
+              accessSignal={reads.accessSignal}
+              onAccessRequired={reads.block}
               busy={busy}
               pluginConnected={pluginConnected}
               setPluginConnected={setPluginConnected}
@@ -899,13 +876,73 @@ function LiveSyncPrepare(props: PrepareProps) {
 }
 
 type DeviceProps = {
-  onboarding: NonNullable<Status["liveSyncOnboarding"]>;
+  onboarding: LiveSyncOnboarding;
   busy: boolean;
   pluginConnected: boolean;
   setPluginConnected: (value: boolean) => void;
   copy: (value: string, label: string) => Promise<void>;
   complete: () => Promise<void>;
 };
+function LiveSyncDevicePanel(
+  props: Omit<DeviceProps, "onboarding"> & {
+    accessSignal: AbortSignal;
+    onAccessRequired: (message: string) => void;
+  }
+) {
+  // Credentials live only in this mounted setup step, never in a read resource.
+  const [onboarding, setOnboarding] = useState<LiveSyncOnboarding | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(true);
+  const [attempt, setAttempt] = useState(0);
+  const { accessSignal, onAccessRequired } = props;
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, accessSignal, AbortSignal.timeout(15000)]);
+    setOnboarding(null);
+    setError(null);
+    setPending(true);
+    void requestObsidian<{ onboarding: LiveSyncOnboarding | null }>(base, "livesync/onboarding", {
+      signal,
+      cache: "no-store"
+    })
+      .then((result) => {
+        if (signal.aborted) return;
+        const value = result.onboarding;
+        if (
+          !value ||
+          typeof value.setupURI !== "string" ||
+          !value.setupURI.startsWith("obsidian://setuplivesync?") ||
+          typeof value.setupPassphrase !== "string"
+        ) {
+          throw new Error("Setup details are unavailable. Refresh the application status before continuing.");
+        }
+        setOnboarding(value);
+      })
+      .catch((caught) => {
+        if (controller.signal.aborted || accessSignal.aborted) return;
+        if (caught instanceof ReadAccessRequired) onAccessRequired(caught.message);
+        else setError("Could not load the setup details. Try again.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted && !accessSignal.aborted) setPending(false);
+      });
+    return () => controller.abort();
+  }, [accessSignal, onAccessRequired, attempt]);
+  if (onboarding) return <LiveSyncDevice {...props} onboarding={onboarding} />;
+  return (
+    <section className="ss-card ss-stack" style={{ minHeight: "14rem" }}>
+      <h2>Connect your first Obsidian device</h2>
+      <SectionFeedback
+        pending={pending}
+        hasData={false}
+        label="device setup details"
+        error={error}
+        onRetry={() => setAttempt((value) => value + 1)}
+      />
+    </section>
+  );
+}
+
 function LiveSyncDevice(props: DeviceProps) {
   return (
     <>

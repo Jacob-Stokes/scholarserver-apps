@@ -3,7 +3,7 @@
 ## Current checkpoint — 20 September 2026
 
 Core owns `packages/ui/read-resource.ts` and `use-read-resource.ts`; the vendor
-snapshot contains their exact bytes. Manager, all three FreshRSS panels and Logseq status
+snapshot contains their exact bytes. Manager, all three FreshRSS panels, Obsidian and Logseq status
 use that same implementation. Docling's queue, defaults and PDF discovery now
 also use it, with one app-owned access scope. The previous app-specific observer loops were
 removed. `ApplicationScreen` and `SectionFeedback` continue to own presentation
@@ -26,7 +26,7 @@ names, routes, schemas, provisioning or save rules.
 | FreshRSS address/appearance | Migrated; independent retained snapshots, app-wide denial, separate drafts preserved across tabs | Qualify the next native app candidate; address permissions remain server-validated on save |
 | Docling queue/defaults/PDF discovery | Migrated; app-owned access scope, retained files, separate OCR drafts and canonical saved defaults | Qualify the next native app candidate; conversion commands remain outside read resources |
 | Logseq private address | Migrated; independent sync/editor discovery with retained links, local feedback and shared access scope | Qualify the next native candidate; provisioning and partial-write recovery remain app-owned |
-| Obsidian setup/status | Existing app-owned polling and draft guards | Classify status first: LiveSync onboarding includes a setup URI/passphrase; never cache the entire response in a retained owner |
+| Obsidian setup/status | Shared informational status; separate short-lived device credentials; drafts remain app-owned | Qualify the paired controller/UI candidate; device credentials are no longer in status or mailbox responses |
 | Zotero setup/status | Existing app-owned polling and draft guards | Separate informational status from account/session/storage credential state before adoption |
 | n8n configuration/setup | Existing app-owned workflows; Manager collections already independent | Inventory read sections; retain per-vault consent and uncertain-workflow reconciliation, not cached approval tokens |
 
@@ -173,6 +173,40 @@ retained-link refresh and child-denial recovery. Canonical/vendor byte parity
 passes. Full apps `npm test` remains blocked by the missing Paperless workspace.
 No Docker builds, packages or live services were changed. Vault notes remain pending.
 
-Next: classify Obsidian/Zotero setup payloads before retaining their informational
-parts. In particular, do not move setup passphrases, account-return URLs or
-permission tokens into a cross-page cache just to make adoption mechanical.
+The Obsidian continuation below supersedes its classification item. Zotero's
+account-return URLs and storage credentials still need a separate review; do not
+move them into a cross-page cache just to make adoption mechanical.
+
+## Obsidian status and device-setup checkpoint
+
+`obsidian-reads.ts` declares the app's informational payload, request and cadence.
+It reuses shared `ReadScope`, `ReadResource`, `useReadResource` and feedback;
+the old status AbortController/timer and duplicate loading owner are removed.
+Polling retains accepted status and leaves scope drafts alone. Active transitions
+poll every two seconds; idle/connected states every thirty seconds. Writes cancel
+old status reads and reconcile once; they are not replayed on read failure.
+
+The controller no longer adds LiveSync setup links/passphrases to status,
+mutation responses or mailbox status. The explicit no-store browser endpoint
+checks the saved vault binding and current device-setup phase. A transition while
+reading discards the result. The UI defensively excludes legacy credential fields
+from its retained status snapshot. Device credentials belong only to the mounted
+configuration step, with independent feedback and cancellation on leaving it.
+Access loss retires the shared scope, clears private forms and removes the device
+panel; explicit retry creates a fresh session. Nothing is persisted in browser storage.
+
+This requires the updated controller and UI together in the next native image;
+an old controller does not provide the new device-detail endpoint. No package
+version/image pins, vault configuration, permissions or live services change here.
+Next: migrate one Zotero informational status section, keeping account handoff,
+API keys, storage credentials and mutations outside the retained read owner.
+
+Verification: ten focused boundary/lifecycle tests, `test:ui`, `check:controller`,
+Obsidian's UI build and the compiled four-app browser suite pass. Browser checks
+include slow independent credential loading, navigation before completion,
+fresh device details on return, child-read denial and explicit recovery, mobile
+overflow, and the existing superseded-poll/draft-preservation regression. The
+390px device panel was visually inspected. Canonical/vendor parity remains 70
+files. Full `npm test` was attempted and has the same single failing pretest:
+the unrelated absent Paperless workspace. These are source and synthetic-browser
+checks, not container startup or live-vault acceptance. Vault notes remain pending.
