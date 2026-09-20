@@ -662,8 +662,39 @@ try {
   console.log("Logseq: honest cold state, stable refresh, authentication blocking and explicit recovery passed");
 
   logseqStatus = { ...logseqStatus, addressRequired: true, syncAddress: null, browserAvailable: true };
+  let holdEditorRead = true;
+  let releaseEditorRead;
+  let editorReadDenied = false;
+  let editorReadFailed = false;
+  let editorReads = 0;
+  await page.route("**/instances/logseq/endpoints/editor/access-options", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    editorReads++;
+    if (holdEditorRead)
+      await new Promise((resolve) => {
+        releaseEditorRead = resolve;
+      });
+    if (editorReadDenied) return route.fulfill({ status: 401, json: {} });
+    if (editorReadFailed) return route.fulfill({ status: 503, json: {} });
+    return route.fallback();
+  });
   await page.goto(`${origin}/apps/logseq/configuration`);
-  await page.getByRole("button", { name: "Set up private connection", exact: true }).waitFor();
+  const privateSetup = page.getByRole("button", { name: "Set up private connection", exact: true });
+  await privateSetup.waitFor();
+  await page.getByRole("status").filter({ hasText: "Loading Logseq browser address" }).waitFor();
+  await page.getByRole("radio", { name: /Private Tailscale/ }).waitFor();
+  assert.equal(await privateSetup.isDisabled(), true, "Unknown editor discovery cannot enable provisioning");
+  holdEditorRead = false;
+  releaseEditorRead();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent === "Set up private connection" && !button.disabled
+    )
+  );
+  const freshEditorReads = editorReads;
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  assert.equal(editorReads, freshEditorReads, "Fresh tab return reuses endpoint discovery");
   assert.equal(Object.keys(logseqAddresses).length, 0, "reading options must not publish a route");
   failEditorRoute = true;
   await page.getByRole("button", { name: "Set up private connection", exact: true }).click();
@@ -678,6 +709,46 @@ try {
   await page.getByRole("button", { name: "Start Logseq sign-in", exact: true }).waitFor();
   await page.reload();
   await page.getByRole("link", { name: "Open Logseq", exact: true }).waitFor();
+  const previousViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const logseqLaunch = page.getByRole("link", { name: "Open Logseq", exact: true });
+  await logseqLaunch.scrollIntoViewIfNeeded();
+  const launchBeforeRefresh = await logseqLaunch.boundingBox();
+  holdEditorRead = true;
+  editorReadFailed = true;
+  await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 31000));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByRole("status").filter({ hasText: "Refreshing Logseq browser address" }).waitFor();
+  const launchDuringRefresh = await logseqLaunch.boundingBox();
+  assert.ok(
+    Math.abs(launchBeforeRefresh.y - launchDuringRefresh.y) < 1,
+    "Refreshing a known browser address does not move its launch link"
+  );
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(output, "logseq-private-refresh-mobile.png"), fullPage: true });
+  holdEditorRead = false;
+  releaseEditorRead();
+  await page.getByText("ScholarServer could not prepare this address.", { exact: false }).waitFor();
+  assert.equal(
+    await page.getByRole("link", { name: "Open Logseq", exact: true }).isVisible(),
+    true,
+    "Failed address refresh retains the known launch link"
+  );
+  editorReadFailed = false;
+  editorReadDenied = true;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByText("Open ScholarServer and sign in again, then retry.", { exact: false }).waitFor();
+  assert.equal(await page.getByRole("link", { name: "Open Logseq", exact: true }).count(), 0);
+  assert.equal(
+    await page.getByRole("heading", { name: "Private connection", exact: true }).count(),
+    0,
+    "Child denial clears the entire setup scope"
+  );
+  editorReadDenied = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("link", { name: "Open Logseq", exact: true }).waitFor();
+  await page.unroute("**/instances/logseq/endpoints/editor/access-options");
+  await page.setViewportSize(previousViewport);
   console.log("Logseq: private route creation, partial failure, retry and reload passed");
   logseqStatus.accountConnected = true;
   await page.goto(`${origin}/apps/logseq/configuration`);

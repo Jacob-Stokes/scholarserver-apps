@@ -1,5 +1,14 @@
 # FreshRSS integration
 
+## Shared access-scope adoption — 20 September 2026
+
+The sibling-denial coordinator now uses canonical `ReadScope`, also consumed by
+Docling and Logseq. FreshRSS still owns its routes, validation, form drafts and
+save semantics. The shared helper never selects apps or performs writes; denied
+owners remain retired after explicit recovery creates a new owner. Existing
+focused and compiled-browser tests cover this substitution. No image publication
+or deployment is implied; project-vault notes/index remain pending.
+
 ## Shared panel lifecycle — 20 September 2026
 
 Status, reader-address discovery and appearance now use the same shared resource

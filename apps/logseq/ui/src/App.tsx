@@ -1,9 +1,10 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
-import { ReadAccessRequired, ReadResource } from "@scholarserver/ui/read-resource";
+import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
+import { createLogseqReads } from "./logseq-reads";
 import { PrivateConnection } from "./PrivateConnection";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
@@ -59,10 +60,18 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
 }
 
 export function App() {
+  const [session, setSession] = useState(0);
+  return <LogseqSession key={session} onAccessRetry={() => setSession((value) => value + 1)} />;
+}
+
+function LogseqSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   const [tab, setTab] = useState(currentTab);
-  const [statusResource] = useState(
-    () => new ReadResource<Status>((signal) => request("status", undefined, signal), 2000)
+  const [reads] = useState(() =>
+    createLogseqReads(window.location.pathname.match(/\/apps\/([^/]+)/)?.[1] ?? "", (signal) =>
+      request<Status>("status", undefined, signal)
+    )
   );
+  const statusResource = reads.status;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [returnLink, setReturnLink] = useState("");
@@ -79,7 +88,7 @@ export function App() {
     await statusResource.refresh();
   }
   function clearAuthenticationState(message: string) {
-    statusResource.invalidate(true, message);
+    reads.block(message);
   }
   useEffect(() => {
     return statusResource.subscribe(() => {
@@ -149,7 +158,8 @@ export function App() {
           label="Logseq status"
           error={statusRead.error}
           onRetry={() => {
-            void statusRead.refresh(true);
+            if (statusRead.blocked) onAccessRetry();
+            else void statusRead.refresh(true);
           }}
         />
       }
@@ -167,6 +177,7 @@ export function App() {
       {tab === "configuration" && status ? <SetupProgress stages={setupStages} current={stage} /> : null}
       {status?.addressRequired ? (
         <PrivateConnection
+          reads={reads}
           browserAvailable={Boolean(status.browserAvailable)}
           syncAddress={status.syncAddress ?? null}
           configure={async (url, signal) => {

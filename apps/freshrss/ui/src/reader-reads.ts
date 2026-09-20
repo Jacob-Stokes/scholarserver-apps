@@ -1,6 +1,6 @@
 import type { EndpointAccessOption } from "@scholarserver/ui/endpoint-access";
-import { ReadResource } from "@scholarserver/ui/read-resource";
-import { ReaderSignInRequired, type ReaderStatus, readReaderJson } from "./reader-status";
+import { ReadScope } from "@scholarserver/ui/read-resource";
+import { type ReaderStatus, readReaderJson } from "./reader-status";
 
 export type ReaderAppearanceValue = { style: "original" | "scholarserver" };
 export type ReaderAddresses = {
@@ -42,31 +42,21 @@ export function readerAddresses(value: ReaderAddresses): ReaderAddresses {
 
 /** One mounted reader owns informational snapshots; forms and writes remain in its panels. */
 export function createReaderReads(base: string, instance: string | undefined) {
+  const scope = new ReadScope();
   const addressEndpoint = `/api/v1/instances/${encodeURIComponent(instance ?? "")}/endpoints/reader/access-options`;
   async function read<T>(url: string, signal: AbortSignal, failure: string): Promise<T> {
-    try {
-      return await readReaderJson<T>(await fetch(url, { signal }), failure);
-    } catch (error) {
-      // A cancelled request from an older observation cannot revoke a newer one.
-      if (!signal.aborted && error instanceof ReaderSignInRequired) block(error.message);
-      throw error;
-    }
+    return readReaderJson<T>(await fetch(url, { signal }), failure);
   }
-  const status = new ReadResource<ReaderStatus>((signal) =>
+  const status = scope.create<ReaderStatus>((signal) =>
     read(`${base}/api/status`, signal, "Could not check FreshRSS.")
   );
-  const appearance = new ReadResource<ReaderAppearanceValue>(async (signal) =>
+  const appearance = scope.create<ReaderAppearanceValue>(async (signal) =>
     readerAppearance(await read(`${base}/api/appearance`, signal, "Could not load the reader appearance."))
   );
-  const addresses = new ReadResource<ReaderAddresses>(async (signal) => {
+  const addresses = scope.create<ReaderAddresses>(async (signal) => {
     if (!instance) throw new Error("Open this application from ScholarServer to choose its reader address.");
     return readerAddresses(await read(addressEndpoint, signal, "Could not load the reader addresses."));
   });
-  function block(message: string) {
-    status.invalidate(true, message);
-    appearance.invalidate(true, message);
-    addresses.invalidate(true, message);
-  }
-  return { status, appearance, addresses, addressEndpoint, block };
+  return { status, appearance, addresses, addressEndpoint, block: scope.block };
 }
 export type ReaderReads = ReturnType<typeof createReaderReads>;

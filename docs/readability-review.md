@@ -1,5 +1,22 @@
 # Readability review notes
 
+## Shared access lifetime and Logseq addresses — 20 September 2026
+
+`ReadScope` in canonical shared UI replaces repeated sibling-denial loops in
+Docling and FreshRSS and supplies the same mechanism to Logseq. It holds related
+resources and an access-cancellation signal; it has no routes, app names, schemas
+or mutation workflow. The app selects related readers and creates a new scope on
+explicit recovery. This keeps late operations confined to their original owner.
+
+Logseq's private-address panel derives two independent snapshots, not another
+fetch effect or loading-state owner. Provisioning remains an explicit, bounded
+app-owned sequence with cancellation between steps and read-only reconciliation
+after completion/failure. No provisioning occurs during discovery. Confirmed
+absence of an available private route has guidance rather than an unexplained
+disabled button. Status still includes account-handoff information with a
+component-local lifetime; it must not become a persistent/shared registry cache.
+Deeper Obsidian/Zotero setup payload classification remains unfinished.
+
 ## Docling and Logseq loading — 20 September 2026
 
 Docling now creates shared read resources for queue, settings and file discovery

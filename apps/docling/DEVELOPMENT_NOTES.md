@@ -1,5 +1,13 @@
 # Docling development notes
 
+## Shared access-scope adoption — 20 September 2026
+
+The app still chooses its queue, settings and file readers, but common sibling
+denial/retirement now comes from canonical `ReadScope` rather than an app-specific
+loop. Request validation, drafts and conversion operations are unchanged. The
+existing focused and compiled browser regressions remain the acceptance checks;
+this source change does not publish or deploy an image. Vault notes/index pending.
+
 ## Shared read resource adoption — 20 September 2026
 
 Queue, defaults and PDF discovery now consume the canonical shared read resource

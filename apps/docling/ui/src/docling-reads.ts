@@ -1,4 +1,4 @@
-import { ReadAccessRequired, ReadResource } from "@scholarserver/ui/read-resource";
+import { ReadAccessRequired, ReadScope } from "@scholarserver/ui/read-resource";
 
 export type JobState = "queued" | "running" | "succeeded" | "failed";
 export type Job = {
@@ -55,23 +55,18 @@ export function queuePollMilliseconds(status: Status | undefined): number {
 
 /** One mounted Docling instance owns these informational reads; drafts and writes stay outside. */
 export function createDoclingReads(base: string) {
+  const scope = new ReadScope();
   async function read<T>(path: string, signal: AbortSignal): Promise<T> {
-    try {
-      return await requestDocling<T>(base, path, { signal });
-    } catch (error) {
-      // A cancelled/retired owner's late denial must not affect current observations.
-      if (!signal.aborted && error instanceof ReadAccessRequired) block(error.message);
-      throw error;
-    }
+    return requestDocling<T>(base, path, { signal });
   }
 
-  const status = new ReadResource<Status>((signal) => read("status", signal));
-  const files = new ReadResource<FileEntry[]>(async (signal) => {
+  const status = scope.create<Status>((signal) => read("status", signal));
+  const files = scope.create<FileEntry[]>(async (signal) => {
     const result = await read<{ files: FileEntry[] }>("files?limit=100", signal);
     if (!Array.isArray(result.files)) throw new Error("Could not list PDFs.");
     return result.files;
   });
-  const settings = new ReadResource<Settings>(async (signal) => {
+  const settings = scope.create<Settings>(async (signal) => {
     try {
       const result = await read<Settings>("settings", signal);
       if (typeof result.defaultOcr !== "boolean") throw new Error("Invalid settings response");
@@ -82,13 +77,5 @@ export function createDoclingReads(base: string) {
     }
   });
 
-  function block(message: string) {
-    // These three endpoints use the same Manager session. Cancel siblings before
-    // any late successful response can restore private queue or file information.
-    status.invalidate(true, message);
-    files.invalidate(true, message);
-    settings.invalidate(true, message);
-  }
-
-  return { status, files, settings, block };
+  return { status, files, settings, block: scope.block };
 }

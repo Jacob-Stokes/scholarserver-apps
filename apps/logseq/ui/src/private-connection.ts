@@ -1,4 +1,5 @@
 import type { EndpointAccessOption } from "@scholarserver/ui/endpoint-access";
+import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 
 export type Access = { options: EndpointAccessOption[]; selection: { url: string } | null };
 export type Endpoint = "sync" | "editor";
@@ -17,7 +18,7 @@ export async function readAccess(
       headers: enable ? { "content-type": "application/json" } : undefined,
       body: enable ? JSON.stringify({ optionId: "tailscale", authentication: "none" }) : undefined,
       signal,
-      redirect: "error"
+      redirect: enable ? "error" : "manual"
     });
   } catch {
     throw new Error(
@@ -26,8 +27,15 @@ export async function readAccess(
         : "Could not reach ScholarServer. Check your connection and try again."
     );
   }
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("Open ScholarServer and sign in again, then return to Logseq setup.");
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    response.type === "opaqueredirect" ||
+    (response.status >= 300 && response.status < 400) ||
+    response.redirected ||
+    response.headers.get("content-type")?.includes("text/html")
+  ) {
+    throw new ReadAccessRequired("Open ScholarServer and sign in again, then retry.");
   }
   if (response.status === 409) {
     throw new Error(

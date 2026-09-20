@@ -1,5 +1,27 @@
 # Logseq development notes
 
+## Shared private-address reads — 20 September 2026
+
+Status, sync-address discovery and editor-address discovery now belong to one
+app-owned shared `ReadScope`. The shared resource/hook manages independent loading,
+retained refresh, timeout and sibling access loss. The panel no longer owns read
+AbortControllers or duplicate options/editor/loading state. Known links remain
+available during transient failure; provisioning waits for successful discovery
+and declared private options. Discovery never creates a route.
+
+Logseq's explicit sync-route/editor-route/configuration sequence remains local.
+It combines the scope's cancellation signal with its own timeout/unmount signal,
+so access loss stops its next write even if a prior request ignores cancellation.
+Partial or uncertain completion reconciles through GETs, not automatic PUT replay.
+Read redirects are inspected without following them; redirects/login HTML and
+401/403 retire the scope. Recovery remounts the app owner and clears old drafts.
+
+Focused source tests cover independent reads, denial propagation and stopping a
+multi-step operation, alongside existing partial-route/uncertain-response tests.
+No immutable package metadata, images or Freelove services changed. Native/live
+acceptance and project-vault notes/index remain pending. The migration ledger
+records final local test evidence and the next bounded slice.
+
 ## Shared read owner — 20 September 2026
 
 Status now derives from the canonical `ReadResource` / `useReadResource` pair

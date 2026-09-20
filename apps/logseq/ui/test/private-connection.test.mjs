@@ -3,7 +3,17 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
 
-const source = await readFile(new URL("../src/private-connection.ts", import.meta.url), "utf8");
+function moduleUrl(source) {
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext }
+  });
+  return `data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`;
+}
+const shared = moduleUrl(await readFile(new URL(import.meta.resolve("@scholarserver/ui/read-resource")), "utf8"));
+const source = (await readFile(new URL("../src/private-connection.ts", import.meta.url), "utf8")).replace(
+  '"@scholarserver/ui/read-resource"',
+  JSON.stringify(shared)
+);
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext }
 });
@@ -11,6 +21,7 @@ const { connectPrivateAddresses, readAccess } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`
 );
 const address = (endpoint) => ({ options: [], selection: { url: `https://${endpoint}.example.test/` } });
+const { ReadAccessRequired } = await import(shared);
 
 test("both routes must exist before the notebook address is configured", async () => {
   const calls = [];
@@ -119,4 +130,71 @@ test("HTML or incomplete success responses cannot advance setup", async () => {
       /incomplete/
     );
   }
+});
+
+test("login redirects and HTML revoke access without following an external redirect", async () => {
+  for (const response of [
+    new Response("", { status: 302, headers: { location: "https://login.example.test" } }),
+    new Response("Login", { headers: { "content-type": "text/html" } })
+  ]) {
+    await assert.rejects(
+      readAccess("logseq", "sync", false, new AbortController().signal, async (_url, init) => {
+        assert.equal(init.redirect, "manual");
+        return response;
+      }),
+      ReadAccessRequired
+    );
+  }
+});
+
+const readsSource = (await readFile(new URL("../src/logseq-reads.ts", import.meta.url), "utf8"))
+  .replace('"@scholarserver/ui/read-resource"', JSON.stringify(shared))
+  .replace('"./private-connection"', JSON.stringify(moduleUrl(source)));
+const { createLogseqReads } = await import(moduleUrl(readsSource));
+
+test("address readers settle independently and never provision while discovering", async (t) => {
+  let releaseEditor;
+  t.mock.method(globalThis, "fetch", async (url, init) => {
+    assert.equal(init.method, "GET");
+    if (url.includes("/editor/"))
+      await new Promise((resolve) => {
+        releaseEditor = resolve;
+      });
+    return Response.json(address(url.includes("/editor/") ? "editor" : "sync"));
+  });
+  const reads = createLogseqReads("logseq", async () => ({ ready: true }));
+  const editor = reads.editor.refresh();
+  await reads.sync.refresh();
+  await reads.status.refresh();
+  assert.equal(reads.sync.getSnapshot().data.selection.url, "https://sync.example.test/");
+  assert.equal(reads.status.getSnapshot().data.ready, true);
+  assert.equal(reads.editor.getSnapshot().pending, true);
+  releaseEditor();
+  await editor;
+});
+
+test("an address denial clears status and aborts a multi-step setup before its next write", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response("{}", { status: 401 }));
+  const reads = createLogseqReads("logseq", async () => ({ ready: true }));
+  await reads.status.refresh();
+  let releaseWrite;
+  const calls = [];
+  const setup = connectPrivateAddresses({
+    browserAvailable: true,
+    signal: reads.accessSignal,
+    access: async (endpoint) => {
+      calls.push(endpoint);
+      await new Promise((resolve) => {
+        releaseWrite = resolve;
+      });
+      return address(endpoint);
+    },
+    configure: async () => calls.push("configure")
+  });
+  await reads.editor.refresh();
+  releaseWrite();
+  await assert.rejects(setup, { name: "AbortError" });
+  assert.deepEqual(calls, ["sync"]);
+  assert.equal(reads.status.getSnapshot().data, undefined);
+  assert.equal(reads.sync.getSnapshot().blocked, true);
 });

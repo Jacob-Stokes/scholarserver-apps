@@ -63,6 +63,11 @@ release checklist or proof that a particular application is ready.
   classify its payload and lifetime first. Keep drafts and mutations outside the
   resource and invalidate sibling resources on access loss. See the
   [adoption and resume checklist](read-lifecycle-migration.md).
+  Use the canonical `ReadScope` for readers with one authentication lifetime,
+  rather than repeating invalidation loops. A denied scope is retired; explicit
+  recovery creates a new form/read owner. Multi-step operations can combine its
+  signal with their own cancellation/timeout and check it before the next write.
+  Cancellation is not rollback and never authorizes automatically replaying a write.
 
 ## Test the artifact we actually ship
 

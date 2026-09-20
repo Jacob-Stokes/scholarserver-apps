@@ -1,72 +1,70 @@
-import { type EndpointAccessOption, EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
+import { EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
+import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
+import type { PrivateAddressReads } from "./logseq-reads";
 import { connectPrivateAddresses, readAccess } from "./private-connection";
 
 const instanceId = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1] ?? "";
 
 export function PrivateConnection({
+  reads,
   browserAvailable,
   syncAddress,
   configure
 }: {
+  reads: PrivateAddressReads;
   browserAvailable: boolean;
   syncAddress: string | null;
   configure: (url: string, signal: AbortSignal) => Promise<unknown>;
 }) {
-  const [options, setOptions] = useState<EndpointAccessOption[]>([]);
-  const [editor, setEditor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const reads = useRef<AbortController | null>(null);
   const writing = useRef<AbortController | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    reads.current = controller;
-    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
-    setEditor(null);
-    setError(null);
-    setBusy(false);
-    void readAccess(instanceId, "sync", false, signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setOptions(result.options);
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(error.message);
-      });
-    if (browserAvailable)
-      void readAccess(instanceId, "editor", false, signal)
-        .then((result) => {
-          if (!controller.signal.aborted) setEditor(result.selection?.url ?? null);
-        })
-        .catch((error) => {
-          if (!controller.signal.aborted) setError(error.message);
-        });
-    return () => {
-      controller.abort();
+  const syncRead = useReadResource(reads.sync, undefined, !busy);
+  const editorRead = useReadResource(reads.editor, undefined, browserAvailable && !busy);
+  const options = syncRead.data?.options ?? [];
+  const editor = editorRead.data?.selection?.url;
+  const syncReady = !!syncRead.data && !syncRead.pending && !syncRead.error;
+  const editorReady = !browserAvailable || (!!editorRead.data && !editorRead.pending && !editorRead.error);
+  const hasPrivateSync = options.some((option) => option.id === "tailscale");
+  const hasPrivateEditor = !browserAvailable || !!editorRead.data?.options.some((option) => option.id === "tailscale");
+  const canEnable = syncReady && editorReady && hasPrivateSync && hasPrivateEditor && !busy;
+
+  useEffect(
+    () => () => {
       writing.current?.abort();
       writing.current = null;
-    };
-  }, [browserAvailable]);
+    },
+    []
+  );
 
   async function enable() {
-    if (writing.current) return;
-    reads.current?.abort();
+    if (writing.current || !canEnable) return;
+    reads.sync.cancel();
+    reads.editor.cancel();
     const controller = new AbortController();
     writing.current = controller;
-    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(180000)]);
+    const signal = AbortSignal.any([controller.signal, reads.accessSignal, AbortSignal.timeout(180000)]);
     setBusy(true);
     setError(null);
     try {
-      const url = await connectPrivateAddresses({
+      await connectPrivateAddresses({
         browserAvailable,
-        access: (endpoint) => readAccess(instanceId, endpoint, true, signal),
+        access: async (endpoint) => {
+          const result = await readAccess(instanceId, endpoint, true, signal);
+          signal.throwIfAborted();
+          reads[endpoint].seed(result);
+          return result;
+        },
         configure: (url) => configure(url, signal),
         signal
       });
-      if (!controller.signal.aborted) setEditor(url);
     } catch (error) {
-      if (!controller.signal.aborted) {
-        let message = "Connection setup failed. Please retry.";
+      if (error instanceof ReadAccessRequired && !controller.signal.aborted) reads.block(error.message);
+      if (!controller.signal.aborted && !reads.sync.getSnapshot().blocked) {
+        let message = "Could not confirm connection setup. Check the saved addresses before retrying.";
         if (error instanceof Error) message = error.message;
         if (signal.aborted) {
           message = "Setup took too long. An address may already be saved. Reopen setup to check before retrying.";
@@ -77,6 +75,11 @@ export function PrivateConnection({
       if (writing.current === controller) {
         writing.current = null;
         setBusy(false);
+        // Observe partial/accepted routes after either outcome; never replay provisioning.
+        reads.sync.invalidate();
+        reads.editor.invalidate();
+        void reads.sync.refresh();
+        if (browserAvailable) void reads.editor.refresh();
       }
     }
   }
@@ -85,6 +88,22 @@ export function PrivateConnection({
     <section className="ss-card ss-stack">
       <h2>Private connection</h2>
       <p>Keep Tailscale connected on devices using this notebook. Logseq handles notebook sign-in and encryption.</p>
+      <SectionFeedback
+        pending={syncRead.pending}
+        hasData={!!syncRead.data}
+        label="private sync address"
+        error={syncRead.error}
+        onRetry={!busy ? () => void reads.sync.refresh(true) : undefined}
+      />
+      {browserAvailable ? (
+        <SectionFeedback
+          pending={editorRead.pending}
+          hasData={!!editorRead.data}
+          label="Logseq browser address"
+          error={editorRead.error}
+          onRetry={!busy ? () => void reads.editor.refresh(true) : undefined}
+        />
+      ) : null}
       {error ? <p role="alert">{error}</p> : null}
       {syncAddress ? (
         <>
@@ -92,7 +111,7 @@ export function PrivateConnection({
           <code>{syncAddress}</code>
           <p>Save and reload Logseq, then sign in. Create or open an encrypted notebook.</p>
           <p>For a new notebook, click its sync icon and confirm the upload to your server.</p>
-          {editor ? (
+          {browserAvailable && editor ? (
             <a className="ss-button" href={editor} target="_blank" rel="noreferrer">
               Open Logseq
             </a>
@@ -100,14 +119,21 @@ export function PrivateConnection({
         </>
       ) : (
         <>
-          <EndpointAccessSelector
-            options={options}
-            optionId="tailscale"
-            authentication="none"
-            onOptionChange={() => {}}
-            onAuthenticationChange={() => {}}
-          />
-          <button className="ss-button" disabled={busy} onClick={() => void enable()}>
+          {syncRead.data ? (
+            <EndpointAccessSelector
+              options={options}
+              optionId="tailscale"
+              authentication="none"
+              onOptionChange={() => {}}
+              onAuthenticationChange={() => {}}
+            />
+          ) : null}
+          {syncReady && editorReady && (!hasPrivateSync || !hasPrivateEditor) ? (
+            <p>
+              No private address is available. Check <a href="/settings/access">Access in ScholarServer</a>.
+            </p>
+          ) : null}
+          <button className="ss-button" disabled={!canEnable} onClick={() => void enable()}>
             {busy ? "Setting up private addresses…" : "Set up private connection"}
           </button>
           {busy ? <progress aria-label="Setting up private addresses" /> : null}

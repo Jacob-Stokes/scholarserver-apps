@@ -11,6 +11,41 @@ export interface ReadSnapshot<T> {
 /** Throw from an app-owned reader after a confirmed access denial or login redirect. */
 export class ReadAccessRequired extends Error {}
 
+/** Related reads with one access lifetime. Recovery creates a new scope, not a reopened old owner. */
+export class ReadScope {
+  private resources = new Set<Pick<ReadResource<unknown>, "invalidate">>();
+  private denied: string | null = null;
+  private lifetime = new AbortController();
+  readonly signal = this.lifetime.signal;
+
+  create<T>(read: (signal: AbortSignal) => Promise<T>, maxAge = 30_000, timeoutMilliseconds = 15_000): ReadResource<T> {
+    const resource = new ReadResource<T>(
+      async (signal) => {
+        if (this.denied !== null) throw new ReadAccessRequired(this.denied);
+        try {
+          return await read(signal);
+        } catch (error) {
+          // An obsolete request must not revoke a newer observation's access.
+          if (!signal.aborted && error instanceof ReadAccessRequired) this.block(error.message);
+          throw error;
+        }
+      },
+      maxAge,
+      timeoutMilliseconds
+    );
+    this.resources.add(resource);
+    if (this.denied !== null) resource.invalidate(true, this.denied);
+    return resource;
+  }
+
+  block = (message: string) => {
+    this.denied = message;
+    // App-owned multi-step operations may opt in to stop their next step on denial.
+    this.lifetime.abort();
+    for (const resource of this.resources) resource.invalidate(true, message);
+  };
+}
+
 export class ReadResource<T> {
   private snapshot: ReadSnapshot<T> = {
     data: undefined,

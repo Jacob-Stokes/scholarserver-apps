@@ -13,6 +13,10 @@ The contract and worked example are in core `packages/ui/README.md`. A new app
 supplies its read function and polling cadence, creates a stable resource, renders
 its snapshot, and uses shared feedback. It does not copy an AbortController loop,
 timer, stale-response guard or a second set of loading/status state variables.
+Related readers use shared `ReadScope` for sibling denial and retirement, rather
+than copying that coordination into each app. The app chooses the related readers
+and owns explicit session recovery and form clearing. Shared code contains no app
+names, routes, schemas, provisioning or save rules.
 
 | Read surface | Current state | Next bounded work |
 | --- | --- | --- |
@@ -21,7 +25,7 @@ timer, stale-response guard or a second set of loading/status state variables.
 | Logseq status | Migrated; drafts/discovery clear on access loss; setup responses remain component-local | Retest with the next native app candidate |
 | FreshRSS address/appearance | Migrated; independent retained snapshots, app-wide denial, separate drafts preserved across tabs | Qualify the next native app candidate; address permissions remain server-validated on save |
 | Docling queue/defaults/PDF discovery | Migrated; app-owned access scope, retained files, separate OCR drafts and canonical saved defaults | Qualify the next native app candidate; conversion commands remain outside read resources |
-| Logseq private address | Existing app-owned endpoint workflow | Separate informational route discovery from provisioning and partial-write recovery |
+| Logseq private address | Migrated; independent sync/editor discovery with retained links, local feedback and shared access scope | Qualify the next native candidate; provisioning and partial-write recovery remain app-owned |
 | Obsidian setup/status | Existing app-owned polling and draft guards | Classify status first: LiveSync onboarding includes a setup URI/passphrase; never cache the entire response in a retained owner |
 | Zotero setup/status | Existing app-owned polling and draft guards | Separate informational status from account/session/storage credential state before adoption |
 | n8n configuration/setup | Existing app-owned workflows; Manager collections already independent | Inventory read sections; retain per-vault consent and uncertain-workflow reconciliation, not cached approval tokens |
@@ -145,3 +149,30 @@ with unsaved appearance/address choices, fresh tab return without extra requests
 `pnpm check` and the compiled four-app shared-screen regression also pass. No Docker
 build, image publication or installed-service change was made. Vault notes/index
 remain pending.
+
+## Generic access scope and Logseq checkpoint
+
+The canonical `ReadScope` now coordinates related readers in FreshRSS, Docling
+and Logseq. The same implementation handles sibling denial, obsolete rejection
+and permanently retired owners. An optional cancellation signal stops an
+app-owned multi-step operation before its next step; it does not roll back an
+accepted write. These rules have shared tests independent of any app or route.
+
+Logseq sync/editor discovery now uses shared resources and per-section feedback.
+Fresh navigation reuses accepted reads, ordinary failure retains known links and
+unknown/failed discovery cannot enable provisioning. Setup still owns its ordered
+route mutations and read-only reconciliation after partial failure. Status and
+address reads use one scope; a child denial clears private status/forms and stops
+the next setup write. Explicit recovery creates a fresh owner.
+
+Verification: eleven canonical resource tests, 29 focused app tests, apps
+`test:ui`, core `pnpm check`, shared React lifecycle, FreshRSS compiled browser
+and the four-app compiled browser suite pass. The Logseq browser exercises slow
+independent discovery, fresh navigation, partial provisioning failure, retry,
+retained-link refresh and child-denial recovery. Canonical/vendor byte parity
+passes. Full apps `npm test` remains blocked by the missing Paperless workspace.
+No Docker builds, packages or live services were changed. Vault notes remain pending.
+
+Next: classify Obsidian/Zotero setup payloads before retaining their informational
+parts. In particular, do not move setup passphrases, account-return URLs or
+permission tokens into a cross-page cache just to make adoption mechanical.
