@@ -5,6 +5,7 @@ import test from "node:test";
 const source = await readFile(new URL("../src/AutomationCatalog.tsx", import.meta.url), "utf8");
 const install = await readFile(new URL("../src/InstallAutomation.tsx", import.meta.url), "utf8");
 const research = await readFile(new URL("../src/ResearchSettings.tsx", import.meta.url), "utf8");
+const reads = await readFile(new URL("../src/n8n-reads.ts", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/automations.css", import.meta.url), "utf8");
 
 test("embedded catalog uses a borderless selected form and leaves the template title to Manager", () => {
@@ -72,12 +73,11 @@ test("folder and availability guidance stays visible with existing permission an
   assert.match(research, /resultingFolder.length <= 200/);
   assert.match(research, /app.workspaceId === selectedSource\?\.workspaceId/);
   assert.match(research, /setSource\(event.target.value\);\s*setTarget\(""\)/);
-  assert.match(research, /loading \? <p role="status">Checking available research apps/);
+  assert.match(research, /SectionFeedback[\s\S]*pending=\{discovery.pending\}[\s\S]*label="available research apps"/);
   assert.match(research, /!loading && !error && sources.length === 0/);
-  assert.match(research, /<p role="alert">\{error\}<\/p>/);
-  assert.match(research, /Retry app discovery/);
-  assert.match(research, /research_connection_required/);
-  assert.match(research, /Allow research app access in n8n Configuration before choosing apps\./);
+  assert.match(research, /error=\{error\}[\s\S]*onRetry=\{\(\) => void reads.applications.refresh\(true\)\}/);
+  assert.match(reads, /research_connection_required/);
+  assert.match(reads, /Allow research app access in n8n Configuration before choosing apps\./);
   assert.match(research, /FolderPicker/);
   assert.match(research, /browse-folders/);
   assert.match(research, /docling: selectedTarget\.id/);

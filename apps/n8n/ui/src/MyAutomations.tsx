@@ -1,3 +1,4 @@
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { AppRoles } from "./AppRoles";
 import type { AppIcons } from "./app-icons";
 import type { Inventory, Run } from "./automation-types";
@@ -15,7 +16,13 @@ export function MyAutomations({
   inventory: Inventory;
   icons: AppIcons;
   busy: boolean;
-  runs: { automationId: string; values: Run[] } | null;
+  runs: {
+    automationId: string;
+    values: Run[] | undefined;
+    pending: boolean;
+    error: string | null;
+    retry: () => void;
+  } | null;
   onAction: (route: string, body: unknown) => void;
   onRuns: (automationId: string) => void;
   onCatalog: () => void;
@@ -148,17 +155,28 @@ export function MyAutomations({
               </details>
             ) : null}
             {runs?.automationId === automationId ? (
-              <ul>
-                {runs.values.length ? (
-                  runs.values.map((run) => (
-                    <li key={run.id}>
-                      {run.status} · {new Date(run.startedAt).toLocaleString()}
-                    </li>
-                  ))
-                ) : (
-                  <li>No recorded runs. This does not prove that the workflow has never run.</li>
-                )}
-              </ul>
+              <section>
+                <SectionFeedback
+                  pending={runs.pending}
+                  hasData={!!runs.values}
+                  label="recent runs"
+                  error={runs.error}
+                  onRetry={runs.retry}
+                />
+                {runs.values ? (
+                  <ul>
+                    {runs.values.length ? (
+                      runs.values.map((run) => (
+                        <li key={run.id}>
+                          {run.status} · {new Date(run.startedAt).toLocaleString()}
+                        </li>
+                      ))
+                    ) : (
+                      <li>No recorded runs. This does not prove that the workflow has never run.</li>
+                    )}
+                  </ul>
+                ) : null}
+              </section>
             ) : null}
           </section>
         );

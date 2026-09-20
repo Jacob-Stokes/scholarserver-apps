@@ -1,13 +1,15 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { EmbeddedSetupSurface } from "@scholarserver/ui/embedded-setup";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useState } from "react";
 import { AutomationCatalog } from "./AutomationCatalog";
-import { type AppIcons, catalogAppIcons } from "./app-icons";
-import type { Application, Inventory, Run } from "./automation-types";
 import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
 import { parseEmbeddedSetup, resolveEmbeddedSetup } from "./embedded-setup";
 import { InstallAutomation } from "./InstallAutomation";
 import { MyAutomations } from "./MyAutomations";
+import { createN8nReads } from "./n8n-reads";
+import { N8nReadContext, useN8nReads } from "./read-context";
 
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
 const tabs = [
@@ -16,75 +18,96 @@ const tabs = [
   { id: "configuration", label: "Configuration" }
 ];
 
-async function request<T>(route: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${base}/api/${route}`, {
-    method: body === undefined ? "GET" : "POST",
-    headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? "The request could not be completed");
-  return result;
-}
-
 export function App() {
+  const [session, setSession] = useState(0);
+  return <N8nSession key={session} onAccessRetry={() => setSession((value) => value + 1)} />;
+}
+function N8nSession({ onAccessRetry }: { onAccessRetry: () => void }) {
+  const [reads] = useState(() => createN8nReads(base));
+  return (
+    <N8nReadContext.Provider value={reads}>
+      <N8nScreen onAccessRetry={onAccessRetry} />
+    </N8nReadContext.Provider>
+  );
+}
+function N8nScreen({ onAccessRetry }: { onAccessRetry: () => void }) {
+  const reads = useN8nReads();
+  const { request } = reads;
   const embeddedSetup = parseEmbeddedSetup(window.location.search);
   const [tab, setTab] = useState("automations");
-  const [connection, setConnection] = useState<ConnectionStatus | null>(null);
-  const connected = connection?.connected;
-  const [inventory, setInventory] = useState<Inventory | null>(null);
-  const [runs, setRuns] = useState<{ automationId: string; values: Run[] } | null>(null);
-  const [applications, setApplications] = useState<Application[] | null>(null);
-  const [icons, setIcons] = useState<AppIcons>({});
+  const [runsId, setRunsId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [embeddedCompleted, setEmbeddedCompleted] = useState(false);
 
-  async function refresh() {
-    const status = await request<ConnectionStatus>("status");
-    setConnection(status);
-    if (status.connected) {
-      setInventory(await request<Inventory>("automations"));
-      try {
-        setApplications(await request<Application[]>("research-applications"));
-      } catch {
-        setApplications(null);
+  const connectionRead = useReadResource(
+    reads.status,
+    (status) => (status?.phase === "setting-up" ? 2000 : 30000),
+    !busy
+  );
+  const connection = connectionRead.data ?? null;
+  const connected = connection?.connected === true;
+  const inventoryRead = useReadResource(reads.inventory, 30000, connected && !busy);
+  const applicationsRead = useReadResource(reads.applications, 30000, connected && !busy);
+  const iconsRead = useReadResource(reads.icons);
+  const runsResource = reads.runs(runsId ?? "");
+  const runsRead = useReadResource(runsResource, 10000, connected && !!runsId && tab === "automations");
+  const inventory = inventoryRead.data ?? null;
+  const applications = applicationsRead.data ?? null;
+  const icons = iconsRead.data ?? {};
+  const runs = runsId
+    ? {
+        automationId: runsId,
+        values: runsRead.data,
+        pending: runsRead.pending,
+        error: runsRead.error,
+        retry: () => void runsResource.refresh(true)
       }
-    } else {
-      setInventory(null);
+    : null;
+  async function refresh() {
+    reads.status.invalidate();
+    await reads.status.refresh();
+    if (reads.status.getSnapshot().data?.connected) {
+      await Promise.all([reads.inventory.refresh(true), reads.applications.refresh(true)]);
     }
   }
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 5000);
-    // Browser-session metadata only; no service identity and no effect on setup readiness.
-    void fetch("/api/v1/catalog", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) return;
-        const catalog = await response.json();
-        if (!controller.signal.aborted) setIcons(catalogAppIcons(catalog?.applications));
-      })
-      .catch(() => undefined)
-      .finally(() => window.clearTimeout(timeout));
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, []);
-  useEffect(() => {
-    void refresh().catch(() => {
-      setError("Could not check the saved n8n connection.");
-    });
-  }, [embeddedSetup.enabled]);
-  useEffect(() => {
-    if (connection?.phase !== "setting-up") return;
-    const timer = window.setInterval(() => {
-      void refresh().catch(() => setError("Could not check setup progress. Check status before continuing."));
-    }, 2000);
-    return () => window.clearInterval(timer);
-  }, [connection?.phase]);
+    if (!connection || connected) return;
+    reads.inventory.invalidate(true);
+    reads.applications.invalidate(true);
+    setRunsId(null);
+  }, [connection?.connected, reads]);
+  const connectionFeedback = (
+    <SectionFeedback
+      pending={connectionRead.pending}
+      hasData={!!connection}
+      label="n8n status"
+      error={connectionRead.error}
+      onRetry={connectionRead.blocked ? onAccessRetry : () => void refresh()}
+    />
+  );
+  const inventoryFeedback = (
+    <SectionFeedback
+      pending={inventoryRead.pending}
+      hasData={!!inventory}
+      label="automations"
+      error={inventoryRead.error}
+      onRetry={() => void reads.inventory.refresh(true)}
+    />
+  );
+  const applicationsFeedback = (
+    <SectionFeedback
+      pending={applicationsRead.pending}
+      hasData={!!applications}
+      label="research applications"
+      error={applicationsRead.error}
+      onRetry={() => void reads.applications.refresh(true)}
+    />
+  );
 
   async function act(operation: () => Promise<unknown>, refreshAfter = true) {
+    reads.status.cancel();
+    reads.inventory.cancel();
     setBusy(true);
     setError(null);
     try {
@@ -102,26 +125,38 @@ export function App() {
     return act(async () => {
       const instanceId = window.location.pathname.match(/^\/apps\/([^/]+)/)?.[1];
       if (!instanceId) throw new Error("Open this application through ScholarServer to finish installation.");
-      const overviewResponse = await fetch("/api/v1/overview");
-      if (!overviewResponse.ok) throw new Error("Could not locate this installation. Check status and try again.");
-      const overview = await overviewResponse.json();
+      const overview = await reads.json<{ instances: Array<{ id: string; packageId: string; workspaceId: string }> }>(
+        "/api/v1/overview"
+      );
       const instance = overview.instances.find(
         (candidate: { id: string; packageId: string }) =>
           candidate.id === instanceId && candidate.packageId === "org.scholarserver.n8n"
       );
       if (!instance) throw new Error("This n8n installation is no longer available.");
       const endpoint = `/api/v1/instances/${encodeURIComponent(instance.workspaceId)}/${encodeURIComponent(instanceId)}/actions/setup`;
-      const response = await fetch(endpoint, {
+      const result = await reads.json<ConnectionStatus>(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json", "x-scholarserver-request": "1" },
         body: JSON.stringify(input)
       });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.detail ?? "Setup could not be confirmed. Check status before continuing.");
-      setConnection(result);
+      reads.status.seed(result);
       setTab("automations");
     });
+  }
+  if (connectionRead.blocked) {
+    if (embeddedSetup.enabled) return <EmbeddedSetupSurface>{connectionFeedback}</EmbeddedSetupSurface>;
+    return (
+      <ApplicationScreen
+        name="Automations"
+        description="Reconnect to continue."
+        tabs={tabs}
+        currentTab={tab}
+        onNavigate={setTab}
+        feedback={connectionFeedback}
+      >
+        {null}
+      </ApplicationScreen>
+    );
   }
   const diagnostics = inventory?.templates.filter((template) => !template.research) ?? [];
 
@@ -155,7 +190,8 @@ export function App() {
             onRefresh={() => void act(refresh, false)}
           />
         ) : null}
-        {!connection && !error ? <p role="status">Checking n8n status…</p> : null}
+        {connectionFeedback}
+        {connected ? inventoryFeedback : null}
         {!connection && error ? (
           <button className="ss-button" disabled={busy} onClick={() => void act(refresh, false)}>
             Refresh status
@@ -214,7 +250,7 @@ export function App() {
       tabs={tabs}
       currentTab={tab}
       onNavigate={setTab}
-      loading={connection === null && !error}
+      feedback={connectionFeedback}
       error={error}
     >
       {connection && !connected ? (
@@ -237,10 +273,12 @@ export function App() {
               Refresh status
             </button>
           </div>
+          {tab !== "configuration" ? inventoryFeedback : null}
           {tab === "catalog" && inventory ? (
             <AutomationCatalog
               templates={inventory.templates.filter((template) => template.research)}
               applications={applications}
+              discoveryFeedback={applicationsFeedback}
               icons={icons}
               busy={busy}
               onInstall={async (templateId, automationId, name, settings, retryOperationId) => {
@@ -260,14 +298,10 @@ export function App() {
               runs={runs}
               onCatalog={() => setTab("catalog")}
               onAction={(route, input) => void act(() => request(route, input))}
-              onRuns={(automationId) =>
-                void act(async () => {
-                  const result = await request<{ runs: Run[] }>(
-                    `runs?automationId=${encodeURIComponent(automationId)}`
-                  );
-                  setRuns({ automationId, values: result.runs });
-                }, false)
-              }
+              onRuns={(automationId) => {
+                setRunsId(automationId);
+                void reads.runs(automationId).refresh(true);
+              }}
             />
           ) : null}
           {tab === "configuration" ? (

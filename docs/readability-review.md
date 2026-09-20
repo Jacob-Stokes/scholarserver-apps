@@ -1,5 +1,20 @@
 # Readability review notes
 
+## Consolidated existing UI readers — 20 September 2026
+
+Zotero and n8n now supply app-specific requests and typed resources to the existing
+shared lifecycle, replacing their remaining status/discovery/list timers. n8n's
+small app-session context lets a nested setup form share discovery with its
+catalog; it has no permissions, provisioning or workflow engine. Zotero retains
+account progress separately from its transient handoff URL and editable forms.
+The existing mutation ordering and app APIs remain visible in the screens.
+
+This closes the ordinary reader-adoption inventory for the six current app UIs,
+not a review of all setup logic. The large Zotero/Obsidian form components and
+n8n's legacy embedded setup remain separate complexity; do not expand routine
+loading work into another serial application rewrite. The automatic source guard
+detects direct polling/effect-fetch regressions, not all possible indirect calls.
+
 ## Obsidian informational reads — 20 September 2026
 
 The app-specific read module names payload projection and polling cadence;

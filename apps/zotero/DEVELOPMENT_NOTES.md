@@ -1,5 +1,19 @@
 # Zotero development notes
 
+## Shared loading migration — 20 September 2026
+
+Status, desktop access, account progress and the existing automation list now use
+the shared read lifecycle and independent feedback. Accepted content survives
+transient refresh errors; old reads cannot replace completed actions or form
+drafts. Access denial clears related data and private forms; explicit retry starts
+a fresh app session. Status uses an allowlist. Account handoff URLs stay outside
+retained progress snapshots; storage passwords and API keys remain form-owned.
+No controller API, permission, storage setting or schedule changed.
+
+See `docs/read-lifecycle-migration.md` for batch checks and remaining native-image
+qualification. No image pins or live installation changed in this source pass.
+Project-vault app note/index updates are pending; no vault connector was used.
+
 ## Retained development-instance update — 18 September 2026
 
 Only `zotero-sync-test` received `0.5.10-guided.20260918.1` (revision 3).

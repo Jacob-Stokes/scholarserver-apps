@@ -65,8 +65,10 @@ test("role presentation subscribes to the shared browser preference and keeps na
   assert.match(roles, /className=\{editorial \? "ss-editorial-icon" : undefined\}/);
   assert.doesNotMatch(roles, /localStorage|fetch\(/);
   const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
-  assert.match(app, /fetch\("\/api\/v1\/catalog", \{ signal: controller.signal \}\)/);
+  const reads = await readFile(new URL("../src/n8n-reads.ts", import.meta.url), "utf8");
+  assert.match(app, /useReadResource\(reads.icons\)/);
+  assert.match(reads, /"\/api\/v1\/catalog", \{ signal \}/);
   // Setup still needs the installation lookup; icon discovery must not reuse that broader response.
-  assert.match(app, /const overviewResponse = await fetch\("\/api\/v1\/overview"\)/);
+  assert.match(app, /reads.json<[\s\S]*?"\/api\/v1\/overview"/);
   assert.doesNotMatch(app, /overview\.catalog/);
 });

@@ -3,9 +3,9 @@
 ## Current checkpoint — 20 September 2026
 
 Core owns `packages/ui/read-resource.ts` and `use-read-resource.ts`; the vendor
-snapshot contains their exact bytes. Manager, all three FreshRSS panels, Obsidian and Logseq status
-use that same implementation. Docling's queue, defaults and PDF discovery now
-also use it, with one app-owned access scope. The previous app-specific observer loops were
+snapshot contains their exact bytes. Manager and the existing FreshRSS, Docling,
+Logseq, Obsidian, Zotero and n8n UIs use that same implementation for informational
+reads. The previous app-specific observer loops were
 removed. `ApplicationScreen` and `SectionFeedback` continue to own presentation
 only. No release manifest, image, permission or installed application changes.
 
@@ -27,16 +27,17 @@ names, routes, schemas, provisioning or save rules.
 | Docling queue/defaults/PDF discovery | Migrated; app-owned access scope, retained files, separate OCR drafts and canonical saved defaults | Qualify the next native app candidate; conversion commands remain outside read resources |
 | Logseq private address | Migrated; independent sync/editor discovery with retained links, local feedback and shared access scope | Qualify the next native candidate; provisioning and partial-write recovery remain app-owned |
 | Obsidian setup/status | Shared informational status; separate short-lived device credentials; drafts remain app-owned | Qualify the paired controller/UI candidate; device credentials are no longer in status or mailbox responses |
-| Zotero setup/status | Existing app-owned polling and draft guards | Separate informational status from account/session/storage credential state before adoption |
-| n8n configuration/setup | Existing app-owned workflows; Manager collections already independent | Inventory read sections; retain per-vault consent and uncertain-workflow reconciliation, not cached approval tokens |
+| Zotero status, desktop access, account progress, automations | Migrated; independent resources and feedback, shared access retirement, app-owned drafts | Qualify next native UI candidate; transient account handoff URL stays outside snapshots |
+| n8n status, inventory, research discovery, icons, recent runs | Migrated; concurrent independent readers, shared discovery across catalog/forms, per-automation run feedback | Qualify next native UI candidate; permissions and uncertain-workflow reconciliation unchanged |
 
 ## How to resume
 
 1. Check both worktrees and this ledger. Preserve unrelated root package/lockfile
    edits; they currently reference an absent Paperless integration workspace.
-2. Take the next row's **one independent read section**, not an entire app rewrite.
-   List its payload fields, owner lifetime, authentication scope and action guards.
-   Exclude passwords, one-time credentials, review tokens and editable drafts.
+2. The existing informational-reader migration is complete in source. Do not
+   restart a serial app-by-app refactor. Review any new reader against this
+   inventory and the shared contract; exclude passwords, one-time credentials,
+   review tokens and editable drafts. Keep genuine workflow changes separate.
 3. Reuse `ReadResource` / `useReadResource` and the existing feedback slot. Remove
    the old read owner/timer once all its callers move; do not leave both running.
    Keep requests, validation, cadence and write reconciliation in the app.
@@ -100,6 +101,46 @@ when shared source changes.
 
 Project-vault app notes/index remain pending; no vault connector was used for
 this local source pass. Repository notes remain the implementation record.
+
+## Consolidated legacy-reader pass — 20 September 2026
+
+Zotero's status, desktop access, account progress and legacy automation list now
+use shared observation. Status and automation writes cancel old reads before
+reconciliation. Existing folder/storage drafts are not replaced by polling;
+failed reads are not presented as empty lists or unavailable desktop routes.
+Only account progress is retained: the validated handoff URL remains with the
+app's transient account form and clears on access loss. Passwords/API keys are
+never moved into snapshots. No account, storage or automation API changed.
+
+n8n status, inventory, research-app discovery, icons and recent runs have one
+app-session owner using shared resources. Inventory and discovery start
+independently after connection status; the selected research form reuses the
+same discovery result. Run feedback belongs beside the selected automation,
+without making the whole page busy. Missing research permission remains a
+configuration error (409), separate from browser access expiry (401/403).
+No grant, schedule or setup/provisioning rule changed.
+
+`tests/read-lifecycle-contract.test.mjs` scans every app UI source directory for
+shared-hook adoption and direct polling/effect-fetch patterns. It is a regression
+guard, not proof that arbitrary indirect calls are absent. Intentional exceptions:
+Obsidian's mounted one-time device credential read, app-owned mutations and
+handoffs, and the existing shared interactive folder picker. None is a second
+informational polling system. New apps copy a working resource/feedback example,
+not an app-specific observer. There is no new generic workflow engine.
+
+The batched check is `npm run test:ui`, followed by `npm run test:ui:browser`
+(now including the n8n build) and the separate FreshRSS browser test. Then qualify
+changed immutable images together. Source pushes do not update installed apps.
+Project-vault documentation remains pending.
+
+Verification for this pass: apps `test:ui`, eleven canonical resource tests,
+canonical/vendor byte parity, the compiled five-app screen suite and FreshRSS's
+separate compiled browser suite pass. New browser cases cover delayed desktop
+discovery, private-draft retirement, parallel n8n discovery/inventory, retained
+refresh failure and independent recent runs. Mobile overflow checks pass and
+the n8n mobile result was visually inspected. Full apps `npm test` was attempted;
+its only failing pretest is still the unrelated absent Paperless workspace.
+No Docker images were built, no packages published and no retained host changed.
 
 ## Docling continuation checkpoint
 
@@ -198,8 +239,9 @@ panel; explicit retry creates a fresh session. Nothing is persisted in browser s
 This requires the updated controller and UI together in the next native image;
 an old controller does not provide the new device-detail endpoint. No package
 version/image pins, vault configuration, permissions or live services change here.
-Next: migrate one Zotero informational status section, keeping account handoff,
-API keys, storage credentials and mutations outside the retained read owner.
+The consolidated pass above completes the formerly pending Zotero/n8n reader
+adoption. Account handoff, API keys, storage credentials and mutations remain
+outside the retained informational read owner.
 
 Verification: ten focused boundary/lifecycle tests, `test:ui`, `check:controller`,
 Obsidian's UI build and the compiled four-app browser suite pass. Browser checks

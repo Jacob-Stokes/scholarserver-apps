@@ -1,5 +1,20 @@
 # n8n integration — development record
 
+## Shared loading migration — 20 September 2026
+
+Status, inventory, research discovery, icon metadata and recent runs now use
+canonical shared read resources. Independent reads no longer wait in a serial
+refresh chain. Catalog and research forms share one discovery owner, preserving
+choices through background refresh. Recent-run loading/error feedback stays by
+its automation. Shared sign-in expiry retires the app session and private forms;
+research-connection-required remains its existing configuration error.
+
+Setup credentials, grants, folder browsing, installation receipts and uncertain
+write reconciliation retain their app-owned rules. No integration API, schedule,
+permission or immutable package changed. See `docs/read-lifecycle-migration.md`
+for batch verification and pending native-image qualification. Project-vault app
+note/index update is pending; no vault connector was used.
+
 ## Retained deployment — 18 September 2026
 
 `0.1.0-guided.20260918.1` is now installed on Freelove at revision 7.

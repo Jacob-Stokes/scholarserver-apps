@@ -1,6 +1,9 @@
 import { type FolderListing, FolderPicker } from "@scholarserver/ui/folder-picker";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { ArrowLeft, ChevronRight, CircleAlert, CircleCheck, Clock3, Play, Search, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ZoteroReads } from "./zotero-reads";
 
 type AutomationRun = {
   id: string;
@@ -12,7 +15,7 @@ type AutomationRun = {
   error: string | null;
 };
 
-type AutomationView = {
+export type AutomationView = {
   definition: {
     id: string;
     name: string;
@@ -88,39 +91,34 @@ function dependencyName(value: string) {
 
 export function AutomationsTab({
   base,
-  request,
+  reads,
   setNotice,
   setError
 }: {
   base: string;
-  request: <T>(url: string, init?: RequestInit) => Promise<T>;
+  reads: ZoteroReads;
   setNotice: (message: string | null) => void;
   setError: (message: string | null) => void;
 }) {
-  const [views, setViews] = useState<AutomationView[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { request } = reads;
   const [selectedId, setSelectedId] = useState<string | null>(() => routeAutomationId(base));
   const [draft, setDraft] = useState<Draft | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(async () => {
-    try {
-      const result = await request<{ automations: AutomationView[] }>("automations");
-      setViews(result.automations);
-      setLoaded(true);
-    } catch (caught) {
-      setLoaded(true);
-      setError(caught instanceof Error ? caught.message : "Could not load Zotero automations");
-    }
-  }, [request, setError]);
-
-  useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 5000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
+  const read = useReadResource(reads.automations, 5000, !busy);
+  const views = read.data ?? [];
+  const refresh = () => reads.automations.refresh(true);
+  const feedback = (
+    <SectionFeedback
+      pending={read.pending}
+      hasData={!!read.data}
+      label="Zotero automations"
+      error={read.error}
+      onRetry={() => void refresh()}
+    />
+  );
   useEffect(() => {
     const pop = () => {
       setSelectedId(routeAutomationId(base));
@@ -145,6 +143,7 @@ export function AutomationsTab({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const saveValue = async (view: AutomationView, value: Update, message: string) => {
+    reads.automations.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -166,6 +165,7 @@ export function AutomationsTab({
       active ? `${view.definition.name} was activated.` : `${view.definition.name} was deactivated.`
     );
   const runNow = async (view: AutomationView) => {
+    reads.automations.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -193,16 +193,16 @@ export function AutomationsTab({
     });
   }, [views, query, filter]);
 
-  if (!loaded)
+  if (!read.data)
     return (
-      <div className="ss-card ss-loading">
-        <span className="ss-spinner" />
-        Loading Zotero automations…
-      </div>
+      <section className="ss-card" style={{ minHeight: "12rem" }}>
+        {feedback}
+      </section>
     );
   if (selectedId && !selected)
     return (
       <section className="ss-card ss-empty-state">
+        {feedback}
         <CircleAlert size={28} />
         <h2>Automation unavailable</h2>
         <p>This automation is not included in the installed Zotero package.</p>
@@ -215,6 +215,7 @@ export function AutomationsTab({
   if (!selected || !draft)
     return (
       <div className="ss-stack">
+        {feedback}
         <div className="ss-section-heading">
           <div>
             <h2>Automation catalogue</h2>
@@ -317,6 +318,7 @@ export function AutomationsTab({
   const browse = (folder: string) => request<FolderListing>(`automations/folders?path=${encodeURIComponent(folder)}`);
   return (
     <div className="ss-stack">
+      {feedback}
       <button className="ss-back-link" onClick={() => navigate(null)}>
         <ArrowLeft size={16} />
         All automations

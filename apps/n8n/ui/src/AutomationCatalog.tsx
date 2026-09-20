@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { AppRoles } from "./AppRoles";
 import type { AppIcons } from "./app-icons";
 import { type Application, type Template } from "./automation-types";
@@ -9,6 +9,7 @@ import { type AutomationSettings, InstallAutomation } from "./InstallAutomation"
 export function AutomationCatalog({
   templates,
   applications,
+  discoveryFeedback,
   icons,
   busy,
   onInstall,
@@ -20,6 +21,7 @@ export function AutomationCatalog({
 }: {
   templates: Template[];
   applications: Application[] | null;
+  discoveryFeedback?: ReactNode;
   icons: AppIcons;
   busy: boolean;
   onInstall: (
@@ -92,6 +94,7 @@ export function AutomationCatalog({
   const visibleTemplates = filterTemplates(templates, filters);
   return (
     <div className="ss-stack">
+      {discoveryFeedback}
       <CatalogToolbar templates={templates} filters={filters} count={visibleTemplates.length} onChange={setFilters} />
       {!visibleTemplates.length ? (
         <section className="ss-card">

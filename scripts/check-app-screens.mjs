@@ -17,7 +17,7 @@ await mkdir(output, { recursive: true });
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, "http://localhost").pathname;
   const [, app, asset] = path.match(/^\/apps\/([^/]+)(?:\/assets\/([\w.-]+))?/) ?? [];
-  if (!apps.includes(app) || path.includes("/api/")) {
+  if (![...apps, "n8n"].includes(app) || path.includes("/api/")) {
     response.writeHead(404).end();
     return;
   }
@@ -948,6 +948,7 @@ try {
   });
   await page.goto(`${origin}/apps/zotero/overview`);
   await page.getByText("Old account", { exact: true }).waitFor();
+  await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 6000));
   await page.waitForTimeout(5500);
   assert.equal(zoteroReads, 2);
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
@@ -990,6 +991,7 @@ try {
   const password = page.getByLabel("WebDAV password", { exact: false });
   await password.fill("synthetic-password");
   const beforePoll = reads;
+  await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 6000));
   await page.waitForTimeout(5500);
   assert.ok(reads > beforePoll, "Health polling ran while the form was being edited");
   assert.equal(await password.inputValue(), "synthetic-password");
@@ -1011,9 +1013,140 @@ try {
     optionId: "private",
     authentication: "none"
   });
-  assert.deepEqual(errors, [], "No browser runtime errors");
   console.log(
     "Zotero: both setup modes, save failures, polling/draft preservation, password clearing and resume passed"
+  );
+
+  // The remaining legacy surfaces share the same access lifetime and keep slow
+  // child reads independent from already available page information.
+  let releaseDesktop;
+  let denyDesktop = false;
+  await page.route("**/api/v1/instances/zotero/endpoints/desktop/access-options", async (route) => {
+    if (denyDesktop) return route.fulfill({ status: 401, json: {} });
+    await new Promise((resolve) => {
+      releaseDesktop = resolve;
+    });
+    await route.fulfill({ json: { options: [option], selection: null } }).catch(() => {});
+  });
+  status = { ...zoteroStatus(), state: "storage-required", username: "Visible while desktop loads" };
+  await page.goto(`${origin}/apps/zotero/overview`);
+  await page.getByText("Visible while desktop loads", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByRole("combobox").first().selectOption("webdav");
+  await password.fill("synthetic-discard-on-denial");
+  while (!releaseDesktop) await page.waitForTimeout(20);
+  releaseDesktop();
+  await page.waitForTimeout(100);
+  assert.equal(await password.inputValue(), "synthetic-discard-on-denial");
+  denyDesktop = true;
+  await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 31000));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByText("Open ScholarServer and sign in again, then retry.", { exact: false }).waitFor();
+  assert.equal(await password.count(), 0);
+  await page.unroute("**/api/v1/instances/zotero/endpoints/desktop/access-options");
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("combobox").first().selectOption("webdav");
+  assert.equal(await password.inputValue(), "");
+  console.log("Zotero: slow desktop discovery leaves status and drafts usable; child denial clears private forms");
+
+  const template = {
+    id: "synthetic-reading",
+    name: "Synthetic reading notes",
+    description: "Synthetic description",
+    schedule: null,
+    research: "reading-notes",
+    requirements: [],
+    presentation: null
+  };
+  const engineInventory = {
+    templates: [template],
+    installations: {
+      synthetic: {
+        templateId: template.id,
+        name: "Synthetic installed automation",
+        state: "installed",
+        workflowId: "one",
+        operationId: "op",
+        editing: "guided",
+        researchAccess: "ready"
+      }
+    },
+    workflows: [{ id: "one", name: "Synthetic installed automation", active: false, hoursInterval: 24 }],
+    moreAvailable: false
+  };
+  let inventoryCalls = 0;
+  let discoveryCalls = 0;
+  let releaseInventory;
+  let failInventory = false;
+  let denyDiscovery = false;
+  let releaseRuns;
+  await page.route("**/api/v1/catalog", (route) => route.fulfill({ json: { applications: [] } }));
+  await page.route("**/apps/n8n/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/status")) return route.fulfill({ json: { connected: true, phase: "ready" } });
+    if (url.pathname.endsWith("/research-applications")) {
+      discoveryCalls++;
+      return route.fulfill({ status: denyDiscovery ? 401 : 200, json: [] });
+    }
+    if (url.pathname.endsWith("/automations")) {
+      inventoryCalls++;
+      if (inventoryCalls === 1)
+        await new Promise((resolve) => {
+          releaseInventory = resolve;
+        });
+      return route.fulfill({
+        status: failInventory ? 503 : 200,
+        json: failInventory ? { error: "Synthetic inventory unavailable" } : engineInventory
+      });
+    }
+    if (url.pathname.endsWith("/runs")) {
+      await new Promise((resolve) => {
+        releaseRuns = resolve;
+      });
+      return route.fulfill({ json: { runs: [] } });
+    }
+    throw new Error(`Unexpected n8n read: ${url.pathname}`);
+  });
+  await page.goto(`${origin}/apps/n8n/automations`);
+  await page.getByText("Loading automations…", { exact: true }).waitFor();
+  assert.equal(discoveryCalls, 1, "Discovery does not wait for automation inventory");
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByRole("heading", { name: "Platform connection", exact: true }).waitFor();
+  releaseInventory();
+  await page.getByRole("button", { name: "My automations", exact: true }).click();
+  await page.getByRole("heading", { name: "Synthetic installed automation", exact: true }).waitFor();
+  failInventory = true;
+  await page.getByRole("button", { name: "Refresh status", exact: true }).click();
+  await page.getByText("Synthetic inventory unavailable", { exact: false }).waitFor();
+  assert(await page.getByRole("heading", { name: "Synthetic installed automation", exact: true }).isVisible());
+  failInventory = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("button", { name: "Show recent runs", exact: true }).click();
+  await page.getByText("Loading recent runs…", { exact: true }).waitFor();
+  assert(await page.getByRole("button", { name: "Enable schedule", exact: true }).isEnabled());
+  releaseRuns();
+  await page.getByText("No recorded runs.", { exact: false }).waitFor();
+  await page.getByRole("button", { name: "Catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Set up", exact: true }).click();
+  await page.getByLabel("Automation name", { exact: true }).fill("Unsaved automation name");
+  const discoveryBeforeReturn = discoveryCalls;
+  await page.waitForTimeout(100);
+  assert.equal(discoveryCalls, discoveryBeforeReturn, "Setup form reuses the shared discovery resource");
+  await page.getByRole("button", { name: "Refresh status", exact: true }).click();
+  await page.waitForTimeout(200);
+  assert.equal(await page.getByLabel("Automation name", { exact: true }).inputValue(), "Unsaved automation name");
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  denyDiscovery = true;
+  await page.getByRole("button", { name: "Refresh status", exact: true }).click();
+  await page.getByText("Open ScholarServer and sign in again, then retry.", { exact: false }).waitFor();
+  assert.equal(await page.getByLabel("Automation name", { exact: true }).count(), 0);
+  denyDiscovery = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("heading", { name: "Synthetic installed automation", exact: true }).waitFor();
+  await page.screenshot({ path: join(output, "n8n-shared-loading-mobile.png"), fullPage: true });
+  assert.deepEqual(errors, [], "No browser runtime errors");
+  console.log(
+    "n8n: parallel sections, retained refresh failure, independent recent runs, discovery reuse and private-draft retirement passed"
   );
 } finally {
   await browser?.close();

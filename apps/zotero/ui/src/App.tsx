@@ -1,6 +1,8 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
-import { type EndpointAccessOption, EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
+import { EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountStep } from "./AccountStep";
 import { AuthorizationStep } from "./AuthorizationStep";
@@ -11,7 +13,6 @@ import {
   approvedLoginUrl,
   canEmbedDesktop,
   type DesktopAccessResponse,
-  type DesktopAccessSelection,
   defaultDesktopAuthentication,
   initialSetupStage,
   onlineStorageOptions,
@@ -23,6 +24,7 @@ import {
   stageAfterAccessLoad,
   storageOptions
 } from "./setup-model";
+import { accountPresentation, createZoteroReads } from "./zotero-reads";
 
 type Tab = "overview" | "attachments" | "automations" | "configuration";
 
@@ -62,26 +64,6 @@ function desktopUrl(endpointUrl: string): string {
   return target.toString();
 }
 
-async function platformRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
-  });
-  const result = (await response.json().catch(() => null)) as T | { detail?: string } | null;
-  if (!response.ok) throw new Error((result as { detail?: string } | null)?.detail ?? "ScholarServer request failed");
-  return result as T;
-}
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${base}/api/${url}`, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
-  });
-  const result = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok) throw new Error((result as { error?: string } | null)?.error ?? "Zotero request failed");
-  return result as T;
-}
-
 function currentTab(): Tab {
   const relative =
     base && window.location.pathname.startsWith(base)
@@ -99,8 +81,12 @@ function storageName(value: string | null) {
 }
 
 export function App() {
+  const [session, setSession] = useState(0);
+  return <ZoteroSession key={session} onAccessRetry={() => setSession((value) => value + 1)} />;
+}
+
+function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   const [tab, setTab] = useState<Tab>(currentTab);
-  const [status, setStatus] = useState<Status | null>(null);
   const [storageSettings, setStorageSettings] = useState<StorageSettings>({
     storageMode: "zotero-storage",
     downloadMode: "on-demand",
@@ -112,13 +98,10 @@ export function App() {
   const { storageMode, downloadMode, groupFileSync, webdavUrl, webdavUsername, webdavPassword } = storageSettings;
   const [onlineApiKey, setOnlineApiKey] = useState("");
   const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
-  const [desktopAccessOptions, setDesktopAccessOptions] = useState<EndpointAccessOption[]>([]);
+  const [reads] = useState(() => createZoteroReads(base, instanceId, setAuthorizationUrl));
+  const { request, platformRequest } = reads;
   const [desktopAccessOption, setDesktopAccessOption] = useState("");
   const [desktopAuthentication, setDesktopAuthentication] = useState<"none" | "authentik">("none");
-  const [desktopAccessSelection, setDesktopAccessSelection] = useState<DesktopAccessSelection | null>(null);
-  const [desktopAccessLoading, setDesktopAccessLoading] = useState(false);
-  const [checkingAccount, setCheckingAccount] = useState(false);
-  const [accountSession, setAccountSession] = useState<AccountSession>({ state: "idle" });
   const [showSetupDesktop, setShowSetupDesktop] = useState(false);
   const accountWindow = useRef<Window | null>(null);
   const accountWasPending = useRef(false);
@@ -127,146 +110,121 @@ export function App() {
   const [attachmentResult, setAttachmentResult] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [setupStage, setSetupStage] = useState<SetupStage>("account");
   const setupInitialized = useRef(false);
   const settingsInitialized = useRef(false);
-  const statusRequest = useRef<AbortController | null>(null);
+  const desktopInitialized = useRef(false);
+  const statusRead = useReadResource(reads.status, 5000, !busy);
+  const status = statusRead.data ?? null;
   const connectionMode = status?.connectionMode;
   const online = connectionMode === "online-library";
+  const desktopRead = useReadResource(
+    reads.desktop,
+    30000,
+    connectionMode === "complete-workspace" && !!instanceId && !busy
+  );
+  const desktopAccessOptions = desktopRead.data?.options ?? [];
+  const desktopAccessSelection = desktopRead.data?.selection ?? null;
+  const desktopAccessLoading = !desktopRead.data && !desktopRead.error;
+  const accountRead = useReadResource(
+    reads.account,
+    (value) => (value?.state === "pending" || value?.state === "starting" ? 2500 : 30000),
+    connectionMode === "complete-workspace" && !busy
+  );
+  const accountSession = accountRead.data ?? { state: "idle" as const };
+  const checkingAccount = accountSession.state === "pending" || accountSession.state === "starting";
 
-  const refresh = useCallback(async (poll = false) => {
-    if (poll && statusRequest.current) return;
-    statusRequest.current?.abort();
-    const controller = new AbortController();
-    statusRequest.current = controller;
-    try {
-      const next = await request<Status>("status", { signal: controller.signal });
-      if (controller.signal.aborted) return;
-      setStatus(next);
-      // Polling updates health, not the choices the researcher is editing.
-      if (!settingsInitialized.current) {
-        setStorageSettings((current) => {
-          let savedStorageMode = current.storageMode;
-          if ([...storageOptions, ...onlineStorageOptions].some((item) => item.value === next.storageMode)) {
-            savedStorageMode = next.storageMode as StorageMode;
-          } else if (next.connectionMode === "online-library") {
-            savedStorageMode = "metadata-only";
-          }
-          let savedDownloadMode = current.downloadMode;
-          if (next.downloadMode === "on-sync" || next.downloadMode === "on-demand") {
-            savedDownloadMode = next.downloadMode;
-          }
-          return {
-            ...current,
-            storageMode: savedStorageMode,
-            downloadMode: savedDownloadMode,
-            groupFileSync: next.groupFileSync
-          };
-        });
-        settingsInitialized.current = true;
-      }
-      setStatusError(null);
-    } catch (caught) {
-      if (controller.signal.aborted) return;
-      setStatusError(caught instanceof Error ? caught.message : "Could not inspect Zotero");
-    } finally {
-      if (statusRequest.current === controller) statusRequest.current = null;
-    }
-  }, []);
-
+  const refresh = useCallback(async () => {
+    reads.status.invalidate();
+    await reads.status.refresh();
+  }, [reads]);
   useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(true), 5000);
-    return () => {
-      window.clearInterval(timer);
-      statusRequest.current?.abort();
-      statusRequest.current = null;
-    };
-  }, [refresh]);
+    const next = status;
+    if (!next) return;
+    // Polling updates health, not the choices the researcher is editing.
+    if (!settingsInitialized.current) {
+      setStorageSettings((current) => {
+        let savedStorageMode = current.storageMode;
+        if ([...storageOptions, ...onlineStorageOptions].some((item) => item.value === next.storageMode)) {
+          savedStorageMode = next.storageMode as StorageMode;
+        } else if (next.connectionMode === "online-library") {
+          savedStorageMode = "metadata-only";
+        }
+        let savedDownloadMode = current.downloadMode;
+        if (next.downloadMode === "on-sync" || next.downloadMode === "on-demand") {
+          savedDownloadMode = next.downloadMode;
+        }
+        return {
+          ...current,
+          storageMode: savedStorageMode,
+          downloadMode: savedDownloadMode,
+          groupFileSync: next.groupFileSync
+        };
+      });
+      settingsInitialized.current = true;
+    }
+  }, [status]);
+  useEffect(() => {
+    if (!statusRead.blocked) return;
+    setStorageSettings((current) => ({ ...current, webdavUrl: "", webdavUsername: "", webdavPassword: "" }));
+    setOnlineApiKey("");
+    setAuthorizationUrl(null);
+    setAttachmentKey("");
+    setSourcePath("");
+    setAttachmentResult(null);
+    setShowSetupDesktop(false);
+    setError(null);
+    setNotice(null);
+    accountWindow.current?.close();
+    accountWindow.current = null;
+  }, [statusRead.blocked]);
   useEffect(() => {
     if (!status || setupInitialized.current) return;
     setupInitialized.current = true;
     setSetupStage(initialSetupStage(status.state));
   }, [status]);
   useEffect(() => {
-    if (connectionMode !== "complete-workspace" || !instanceId) return;
-    let cancelled = false;
-    setDesktopAccessLoading(true);
-    void platformRequest<DesktopAccessResponse>(
-      `/api/v1/instances/${encodeURIComponent(instanceId)}/endpoints/desktop/access-options`
-    )
-      .then(({ options, selection }) => {
-        if (cancelled) return;
-        setDesktopAccessOptions(options);
-        setDesktopAccessSelection(selection);
-        const preferred =
-          options.find((option) => option.id === selection?.optionId) ??
-          options.find((option) => option.recommended) ??
-          options[0];
-        if (selection) setDesktopAuthentication(selection.authentication);
-        else if (preferred) setDesktopAuthentication(defaultDesktopAuthentication(preferred));
-        setDesktopAccessOption((current) => selectedDesktopOptionId(options, selection?.optionId, current));
-        setSetupStage((current) => stageAfterAccessLoad(current, Boolean(selection)));
-      })
-      .catch((caught) => {
-        if (!cancelled) setError(caught instanceof Error ? caught.message : "Could not inspect desktop access");
-      })
-      .finally(() => {
-        if (!cancelled) setDesktopAccessLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [connectionMode]);
+    if (!desktopRead.data || desktopInitialized.current) return;
+    desktopInitialized.current = true;
+    const { options, selection } = desktopRead.data;
+    const preferred =
+      options.find((option) => option.id === selection?.optionId) ??
+      options.find((option) => option.recommended) ??
+      options[0];
+    if (selection) setDesktopAuthentication(selection.authentication);
+    else if (preferred) setDesktopAuthentication(defaultDesktopAuthentication(preferred));
+    setDesktopAccessOption((current) => selectedDesktopOptionId(options, selection?.optionId, current));
+    setSetupStage((current) => stageAfterAccessLoad(current, Boolean(selection)));
+  }, [desktopRead.data]);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
   useEffect(() => {
-    if (connectionMode !== "complete-workspace") return;
-    let cancelled = false;
-    let timer: number;
-    const check = async () => {
-      if (cancelled) return;
-      try {
-        const result = await request<AccountSession>("account/session");
-        if (cancelled) return;
-        setAccountSession(result);
-        setCheckingAccount(result.state === "pending" || result.state === "starting");
-        setAuthorizationUrl(result.loginUrl ? approvedLoginUrl(result.loginUrl) : null);
-        if (result.state === "pending" || result.state === "starting") accountWasPending.current = true;
-        if (result.state === "connected" && accountWasPending.current) {
-          accountWasPending.current = false;
-          accountWindow.current?.close();
-          accountWindow.current = null;
-          await refresh();
-          setSetupStage((current) => (current === "account" ? "storage" : current));
-          setNotice("Your Zotero account is connected.");
-        }
-        if (result.state === "cancelled") accountWasPending.current = false;
-      } catch (caught) {
-        if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : "Could not finish Zotero account linking");
-        }
-      } finally {
-        if (!cancelled) timer = window.setTimeout(check, 2500);
-      }
-    };
-    timer = window.setTimeout(check, 1500);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [connectionMode, refresh]);
+    const result = accountRead.data;
+    if (!result) return;
+    if (result.state === "pending" || result.state === "starting") accountWasPending.current = true;
+    if (result.state === "connected" && accountWasPending.current) {
+      accountWasPending.current = false;
+      accountWindow.current?.close();
+      accountWindow.current = null;
+      void refresh();
+      setSetupStage((current) => (current === "account" ? "storage" : current));
+      setNotice("Your Zotero account is connected.");
+    }
+    if (result.state === "cancelled") accountWasPending.current = false;
+  }, [accountRead.data, refresh]);
 
   const navigate = (next: Tab) => {
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   };
   const run = async <T,>(operation: () => Promise<T>, success: string, result?: (value: T) => void) => {
+    reads.status.cancel();
+    reads.desktop.cancel();
+    reads.account.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -282,6 +240,7 @@ export function App() {
     }
   };
   const connectAccount = async () => {
+    reads.account.cancel();
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -293,8 +252,8 @@ export function App() {
       popup.document.body.textContent = "Preparing your secure Zotero sign-in…";
     }
     try {
-      const result = await request<AccountSession>("account/start", { method: "POST" });
-      setAccountSession(result);
+      const result = accountPresentation(await request<AccountSession>("account/start", { method: "POST" }));
+      reads.account.seed({ state: result.state, error: result.error });
       if (result.state !== "pending" || !result.loginUrl) {
         popup?.close();
         throw new Error(result.error ?? "Open Zotero to inspect the existing account connection.");
@@ -306,7 +265,6 @@ export function App() {
         popup.location.replace(loginUrl);
       }
       accountWasPending.current = true;
-      setCheckingAccount(true);
     } catch (caught) {
       popup?.close();
       setError(caught instanceof Error ? caught.message : "Could not start Zotero account linking");
@@ -352,8 +310,7 @@ export function App() {
             body: JSON.stringify({ optionId: selected.id, authentication: desktopAuthentication })
           }
         );
-        setDesktopAccessSelection(response.selection);
-        return refresh();
+        reads.desktop.seed(response);
       },
       "Zotero Desktop access is ready.",
       () => setSetupStage("authorization")
@@ -381,6 +338,27 @@ export function App() {
       }
     );
   };
+  if (statusRead.blocked)
+    return (
+      <ApplicationScreen
+        name="Zotero"
+        description="Reconnect to continue."
+        tabs={tabs}
+        currentTab={tab}
+        onNavigate={navigate}
+        feedback={
+          <SectionFeedback
+            pending={false}
+            hasData={false}
+            label="Zotero status"
+            error={statusRead.error}
+            onRetry={onAccessRetry}
+          />
+        }
+      >
+        {null}
+      </ApplicationScreen>
+    );
   const ready = status?.state === "ready";
   const selectedDesktopAccess = desktopAccessOptions.find((option) => option.id === desktopAccessOption) ?? null;
   const visibleTabs = status?.features.automations ? tabs : tabs.filter((item) => item.id !== "automations");
@@ -407,8 +385,16 @@ export function App() {
       currentTab={tab}
       onNavigate={navigate}
       notice={notice}
-      error={error || statusError || status?.lastError}
-      loading={!status}
+      error={error || status?.lastError}
+      feedback={
+        <SectionFeedback
+          pending={statusRead.pending}
+          hasData={!!status}
+          label="Zotero status"
+          error={statusRead.error}
+          onRetry={statusRead.blocked ? onAccessRetry : () => void refresh()}
+        />
+      }
     >
       {status && tab === "overview" ? (
         <div className="ss-stack">
@@ -598,28 +584,37 @@ export function App() {
       ) : null}
 
       {status?.features.automations && tab === "automations" ? (
-        <AutomationsTab base={base} request={request} setNotice={setNotice} setError={setError} />
+        <AutomationsTab base={base} reads={reads} setNotice={setNotice} setError={setError} />
       ) : null}
 
       {status && tab === "configuration" ? (
         <div className="ss-stack">
           <SetupProgress stages={activeSetupStages} current={setupStage} />
           {setupStage === "account" ? (
-            <AccountStep
-              online={online}
-              status={status}
-              busy={busy}
-              checkingAccount={checkingAccount}
-              session={accountSession}
-              recoveryUrl={desktopAccessSelection?.url ? desktopUrl(desktopAccessSelection.url) : null}
-              onPrepareRecovery={() => setSetupStage("access")}
-              authorizationUrl={authorizationUrl}
-              onlineApiKey={onlineApiKey}
-              onApiKeyChange={setOnlineApiKey}
-              onConnectOnline={() => void connectOnlineLibrary()}
-              onConnectAccount={() => void connectAccount()}
-              onContinue={() => setSetupStage("storage")}
-            />
+            <>
+              <SectionFeedback
+                pending={accountRead.pending}
+                hasData={!!accountRead.data}
+                label="account connection"
+                error={accountRead.error}
+                onRetry={() => void reads.account.refresh(true)}
+              />
+              <AccountStep
+                online={online}
+                status={status}
+                busy={busy}
+                checkingAccount={checkingAccount}
+                session={accountSession}
+                recoveryUrl={desktopAccessSelection?.url ? desktopUrl(desktopAccessSelection.url) : null}
+                onPrepareRecovery={() => setSetupStage("access")}
+                authorizationUrl={authorizationUrl}
+                onlineApiKey={onlineApiKey}
+                onApiKeyChange={setOnlineApiKey}
+                onConnectOnline={() => void connectOnlineLibrary()}
+                onConnectAccount={() => void connectAccount()}
+                onContinue={() => setSetupStage("storage")}
+              />
+            </>
           ) : null}
 
           {setupStage === "storage" ? (
@@ -646,10 +641,15 @@ export function App() {
               nextDisabled={!selectedDesktopAccess}
               busy={busy || desktopAccessLoading}
             >
-              {desktopAccessLoading ? (
-                <div className="ss-loading">
-                  <span className="ss-spinner" /> Checking your available connections…
-                </div>
+              <SectionFeedback
+                pending={desktopRead.pending}
+                hasData={!!desktopRead.data}
+                label="desktop connections"
+                error={desktopRead.error}
+                onRetry={() => void reads.desktop.refresh(true)}
+              />
+              {!desktopRead.data ? (
+                <div style={{ minHeight: "6rem" }} />
               ) : desktopAccessOptions.length > 0 ? (
                 <div className="ss-stack">
                   <EndpointAccessSelector

@@ -1,6 +1,9 @@
 import { type FolderListing, FolderPicker } from "@scholarserver/ui/folder-picker";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useId, useState } from "react";
 import { type AppRequirement, availableForRole } from "./automation-types";
+import { useN8nReads } from "./read-context";
 
 export type ResearchKind =
   | "reading-notes"
@@ -16,7 +19,6 @@ export type ResearchBindings = {
   docling?: string;
   folder: string;
 };
-type Application = { id: string; workspaceId: string; packageId: string; actions: string[] };
 export type ResearchAvailability =
   | "loading"
   | "error"
@@ -54,10 +56,11 @@ export function ResearchSettings({
   onChange: (bindings: ResearchBindings | null) => void;
   onAvailabilityChange?: (availability: ResearchAvailability) => void;
 }) {
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [discoveryAttempt, setDiscoveryAttempt] = useState(0);
+  const reads = useN8nReads();
+  const discovery = useReadResource(reads.applications, 30000, !busy);
+  const applications = discovery.data ?? [];
+  const error = discovery.error;
+  const loading = !discovery.data && !error;
   const folderHintId = useId();
   const folderErrorId = useId();
   const [source, setSource] = useState("");
@@ -74,36 +77,6 @@ export function ResearchSettings({
   );
   const selectedTarget = targets.find((app) => app.id === target);
   const canBrowse = destination === "docling" && selectedTarget?.actions.includes("browse-folders") === true;
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
-    setLoading(true);
-    setError(null);
-    void fetch(`${base}/api/research-applications`, { signal: controller.signal })
-      .then(async (response) => {
-        const result = await response.json().catch(() => null);
-        if (!response.ok) {
-          if (result?.code === "research_connection_required") {
-            throw new Error("Allow research app access in n8n Configuration before choosing apps.");
-          }
-          throw new Error("Could not check research applications. Retry app discovery.");
-        }
-        if (!Array.isArray(result))
-          throw new Error("Research app discovery returned an invalid response. Retry app discovery.");
-        setApplications(result);
-      })
-      .catch((caught) => {
-        if (!controller.signal.aborted)
-          setError(
-            caught instanceof Error ? caught.message : "Could not check research applications. Retry app discovery."
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [discoveryAttempt]);
 
   const resultingFolder = reportSubfolder ? `${folder}/${reportSubfolder}` : folder;
   const validFolder =
@@ -140,11 +113,9 @@ export function ResearchSettings({
       docling: selectedTarget.id,
       folder: folderPath
     });
-    const response = await fetch(`${base}/api/research-folders?${params.toString()}`, {
+    const result = await reads.json<FolderListing>(`${base}/api/research-folders?${params.toString()}`, {
       headers: { "x-requested-with": "ScholarServer" }
     });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) throw new Error("Could not browse the shared research folder.");
     if (
       !result ||
       typeof result.path !== "string" ||
@@ -185,20 +156,13 @@ export function ResearchSettings({
   return (
     <fieldset className="research-bindings automation-setup-group ss-stack" disabled={busy}>
       <legend>Research apps</legend>
-      {loading ? <p role="status">Checking available research apps…</p> : null}
-      {error ? (
-        <div>
-          <p role="alert">{error}</p>
-          <button
-            type="button"
-            className="ss-button ss-button-secondary"
-            disabled={busy}
-            onClick={() => setDiscoveryAttempt((attempt) => attempt + 1)}
-          >
-            Retry app discovery
-          </button>
-        </div>
-      ) : null}
+      <SectionFeedback
+        pending={discovery.pending}
+        hasData={!!discovery.data}
+        label="available research apps"
+        error={error}
+        onRetry={() => void reads.applications.refresh(true)}
+      />
       <div className="automation-field-grid">
         <label>
           Zotero library
