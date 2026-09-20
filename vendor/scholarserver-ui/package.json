@@ -11,6 +11,7 @@
     "./motion": "./motion.tsx",
     "./motion-preference": "./motion-preference.ts",
     "./application-screen": "./application-screen.tsx",
+    "./section-feedback": "./section-feedback.tsx",
     "./appearance": "./appearance.ts",
     "./themes": "./themes.ts",
     "./endpoint-access": "./endpoint-access.tsx",

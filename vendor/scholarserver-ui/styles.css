@@ -640,3 +640,19 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
     width: 100%;
   }
 }
+/* A reserved feedback row prevents routine background refreshes moving content. */
+.ss-section-feedback { min-height: 1.5rem; font-size: .8125rem; line-height: 1.5rem; }
+.ss-section-feedback span { display: inline; }
+.ss-section-feedback [role="status"] { visibility: hidden; animation: ss-section-reveal 0s 150ms forwards; }
+:root[data-motion="off"] .ss-section-feedback [role="status"] { visibility: visible; }
+@media (prefers-reduced-motion: reduce) {
+  .ss-section-feedback [role="status"] { visibility: visible; }
+}
+.ss-section-feedback button { margin-inline-start: .5rem; text-decoration: underline; }
+.ss-section-spinner { display: inline-block; width: .875rem; height: .875rem; margin-inline-end: .4rem; vertical-align: -.125rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .ss-section-spinner { animation: ss-section-spin 1s linear infinite; }
+}
+@keyframes ss-section-spin { to { transform: rotate(360deg); } }
+/* Delay feedback, not data. Instant reads should not flash a spinner. */
+@keyframes ss-section-reveal { to { visibility: visible; } }

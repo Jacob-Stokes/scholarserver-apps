@@ -17,6 +17,7 @@ test("shared screen retains inline errors and loading but uses one toast host fo
   assert.equal(source.match(/<Notifications \/>/g)?.length, 1);
   assert.match(source, /<SuccessNotice message=\{notice\} \/>/);
   assert.match(source, /ss-alert-error/);
-  assert.match(source, /ss-loading/);
+  assert.match(source, /<SectionFeedback pending=\{loading && !error\}/);
+  assert.doesNotMatch(source, /ss-card ss-loading/);
   assert.doesNotMatch(source, /ss-alert-success/);
 });

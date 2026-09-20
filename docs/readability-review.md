@@ -1,5 +1,15 @@
 # Readability review notes
 
+## FreshRSS observation and feedback — 20 September 2026
+
+One app-owned status observer bounds and serialises status reads. It contains no
+route registry, cross-app cache or form state. Appearance and reader-address
+forms keep their own drafts; their reads can fail independently. Shared UI owns
+only frame/feedback presentation. Delayed-response browser checks cover the
+actual compiled components, not just source patterns. Deep loading behaviour in
+other apps and real Manager-to-FreshRSS latency remain separate work; the shared
+snapshot update does not qualify those paths or deploy installed packages.
+
 ## Zotero setup boundary — 12 September 2026
 
 Reviewed the setup controller, login adapter, local API relay, setup panels and

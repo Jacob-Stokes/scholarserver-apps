@@ -1,17 +1,11 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReaderAccess } from "./ReaderAccess";
 import { ReaderAppearance } from "./ReaderAppearance";
+import { observeReaderStatus, ReaderSignInRequired, type ReaderStatus, readReaderJson } from "./reader-status";
 
-type Status = {
-  phase: string;
-  ready: boolean;
-  username: string | null;
-  signIn: "password" | "scholarserver";
-  error?: string;
-  lastRefresh?: number;
-};
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
 const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
 const tabs = [
@@ -21,25 +15,40 @@ const tabs = [
 
 export function App() {
   const [tab, setTab] = useState(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
-  const [status, setStatus] = useState<Status | null>(null);
+  const [status, setStatus] = useState<ReaderStatus | null>(null);
+  const [statusPending, setStatusPending] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const observer = useRef<ReturnType<typeof observeReaderStatus> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   useEffect(() => {
-    async function refresh() {
-      try {
-        const response = await fetch(`${base}/api/status`);
-        if (!response.ok) throw new Error("Could not check FreshRSS. Retrying shortly.");
-        setStatus(await response.json());
+    if (busy) return;
+    const observation = observeReaderStatus({
+      read: async (signal) =>
+        readReaderJson(await fetch(`${base}/api/status`, { signal }), "Could not check FreshRSS."),
+      accept: (value) => {
+        setStatus(value);
         setStatusError(null);
-      } catch (caught) {
+      },
+      failed: (caught) => {
+        if (caught instanceof ReaderSignInRequired) setStatus(null);
         setStatusError(caught instanceof Error ? caught.message : "Could not check FreshRSS.");
-      }
-    }
-    void refresh();
-    const timer = setInterval(() => void refresh(), 2000);
-    return () => clearInterval(timer);
-  }, []);
+      },
+      pending: setStatusPending,
+      visible: () => document.visibilityState !== "hidden"
+    });
+    observer.current = observation;
+    const visible = () => {
+      if (document.visibilityState !== "hidden") void observation.refresh();
+    };
+    void observation.refresh();
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      observation.stop();
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [busy, retry]);
   useEffect(() => {
     const pop = () => setTab(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
     window.addEventListener("popstate", pop);
@@ -50,6 +59,8 @@ export function App() {
     setTab(next);
   }
   async function connect() {
+    observer.current?.stop();
+    setStatusPending(false);
     setBusy(true);
     setError(null);
     try {
@@ -76,6 +87,10 @@ export function App() {
   }
   const preparing = status?.phase === "preparing";
   const linked = status?.signIn === "scholarserver";
+  let statusLabel = "Not checked";
+  if (status) {
+    statusLabel = status.ready && linked ? "Ready" : "Setup needed";
+  }
   return (
     <ApplicationScreen
       name="FreshRSS"
@@ -83,11 +98,22 @@ export function App() {
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}
-      loading={!status}
-      error={error ?? statusError ?? status?.error}
-      status={<span className="ss-badge">{status?.ready && linked ? "Ready" : "Setup needed"}</span>}
+      error={error ?? status?.error}
+      status={<span className="ss-badge">{statusLabel}</span>}
+      feedback={
+        <SectionFeedback
+          pending={statusPending}
+          hasData={status !== null}
+          label="FreshRSS status"
+          error={statusError}
+          onRetry={() => {
+            setStatusError(null);
+            setRetry((value) => value + 1);
+          }}
+        />
+      }
     >
-      {tab === "configuration" ? (
+      {status && tab === "configuration" ? (
         <SetupProgress
           stages={[
             { id: "account", label: "Your sign-in" },
@@ -97,6 +123,9 @@ export function App() {
         />
       ) : null}
       {status?.ready && tab === "configuration" ? <ReaderAppearance base={base} /> : null}
+      {!status ? (
+        <section className="ss-card ss-stack" aria-label="Reading list status" style={{ minHeight: "14rem" }} />
+      ) : null}
       {status?.ready && linked ? (
         <section className="ss-card ss-stack">
           <h2>Your reading list</h2>
@@ -109,7 +138,8 @@ export function App() {
           </p>
           <p>Feeds, saved articles and settings are included in ScholarServer backups.</p>
         </section>
-      ) : (
+      ) : null}
+      {status && !(status.ready && linked) ? (
         <SetupPanel
           stage={1}
           total={2}
@@ -133,13 +163,17 @@ export function App() {
                   your ScholarServer sign-in.
                 </p>
               ) : null}
-              <button className="ss-button" disabled={busy || !instance} onClick={() => void connect()}>
+              <button
+                className="ss-button"
+                disabled={busy || !instance || !!statusError}
+                onClick={() => void connect()}
+              >
                 {busy ? "Linking…" : "Use ScholarServer sign-in"}
               </button>
             </div>
           )}
         </SetupPanel>
-      )}
+      ) : null}
     </ApplicationScreen>
   );
 }

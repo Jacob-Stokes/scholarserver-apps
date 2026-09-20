@@ -2,6 +2,7 @@ import React from "react";
 import { ScholarServerLogo } from "./logo.tsx";
 import { MotionSurface } from "./motion.tsx";
 import { Notifications, SuccessNotice } from "./notifications.tsx";
+import { SectionFeedback } from "./section-feedback.tsx";
 
 export interface ApplicationTab<T extends string> {
   id: T;
@@ -18,6 +19,7 @@ type ApplicationScreenProps<T extends string> = {
   notice?: string | null;
   error?: string | null;
   loading?: boolean;
+  feedback?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -32,6 +34,7 @@ export function ApplicationScreen<T extends string>({
   notice,
   error,
   loading = false,
+  feedback,
   children
 }: ApplicationScreenProps<T>) {
   return (
@@ -84,11 +87,7 @@ export function ApplicationScreen<T extends string>({
             {error}
           </div>
         ) : null}
-        {loading ? (
-          <div className="ss-card ss-loading" role="status">
-            <span className="ss-spinner" /> Loading {name}…
-          </div>
-        ) : null}
+        {feedback ?? <SectionFeedback pending={loading && !error} hasData={false} label={name} />}
         <MotionSurface change={currentTab}>{children}</MotionSurface>
       </main>
     </div>

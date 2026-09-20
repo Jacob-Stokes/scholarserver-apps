@@ -1,5 +1,35 @@
 # FreshRSS integration
 
+## Independent UI loading — 20 September 2026
+
+Status, reader address and appearance retain separate request ownership. Unknown
+status no longer renders setup claims or sign-in mutation controls. A ready
+reader remains visible during background status checks and transient failures;
+401/403 and HTML sign-in responses remove private status and stop automatic
+retry. One status request runs at a time, with a 15-second bound, 30-second idle
+polling and two-second checks during preparation. Hidden tabs do not poll. A
+setup action stops the preceding observation before writing; no writes replay.
+
+Appearance cannot save guessed defaults. Its initial failure has local retry,
+and failed saves retain the draft. Reader-address failure has its own feedback;
+advanced address editing is behind a disclosure. Failed saves keep the selected
+address. Neither panel is held up by the other's request.
+
+The shared build snapshot matches core's runtime bytes, including reserved
+feedback and visible nonanimated indicators. `reader-status.test.mjs` covers
+observation ordering, failure, cancellation, cadence and authentication blocking.
+`loading-browser.mjs` tests compiled UI against synthetic, loopback-only APIs:
+delayed panels, failures/retries, drafts, retained content, sub-pixel background
+refresh stability, both motion-off settings and 390px mobile width. Shared-screen
+browser regressions pass for Docling, Obsidian, Logseq and Zotero. `npm run test:ui`
+passes. Full `npm test` was attempted but is blocked by pre-existing root-manifest
+changes referencing a missing Paperless integration workspace; these edits were
+not removed. Tests of this source are not native-container or live acceptance.
+
+No image, immutable package manifest, account, permission or Freelove service
+was changed. Package rebuilding/publication is a later batch. The project-vault
+note/index update is pending; this local pass did not access the vault.
+
 ## Main-interface shortcut — 18 September 2026
 
 Candidate `0.1.0-beta.9.launch.20260918.1` declares `launchLabel: Reader` on

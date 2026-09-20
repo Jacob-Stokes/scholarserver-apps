@@ -82,7 +82,7 @@ try {
     return route.continue();
   });
   await config.getByRole("button", { name: "Save appearance", exact: true }).click();
-  await config.getByRole("alert").filter({ hasText: "Could not save" }).waitFor();
+  await config.getByText("Could not confirm the save.", { exact: false }).waitFor();
   assert.equal(await choice.inputValue(), "original", "failed save preserves the draft");
   await config.unroute("**/api/appearance");
   await config.getByRole("button", { name: "Save appearance", exact: true }).click();
