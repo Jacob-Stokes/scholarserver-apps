@@ -434,6 +434,8 @@ try {
   await page.getByRole("button", { name: "Refresh files", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Refreshing PDFs" }).waitFor();
   expiredQueue = true;
+  await page.clock.install();
+  await page.clock.setSystemTime(new Date(Date.now() + 31_000));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.getByText("Sign in to ScholarServer again, then retry.", { exact: false }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "Process one PDF" }).count(), 0);
@@ -452,6 +454,11 @@ try {
   expiredQueue = false;
   await page.getByRole("button", { name: "Try again", exact: true }).click();
   await page.getByRole("heading", { name: "Process one PDF" }).waitFor();
+  assert.equal(
+    await page.getByRole("textbox", { name: /Zotero attachment key/ }).inputValue(),
+    "",
+    "Access recovery does not restore a previous session's attachment draft"
+  );
   await page.unroute("**/apps/docling/api/status");
   await page.unroute("**/apps/docling/api/files?limit=100");
   console.log(
@@ -485,11 +492,16 @@ try {
   await page.unroute("**/apps/docling/api/settings");
   let failDefaults = true;
   let failDefaultsSave = false;
+  let savedDefaultOcr = true;
   await page.route("**/apps/docling/api/settings", (route) => {
-    if (route.request().method() === "PUT" && failDefaultsSave) {
-      return route.fulfill({ status: 503, json: { error: "Synthetic defaults save failure" } });
+    if (route.request().method() === "PUT") {
+      if (failDefaultsSave) return route.fulfill({ status: 503, json: { error: "Synthetic defaults save failure" } });
+      savedDefaultOcr = route.request().postDataJSON().defaultOcr;
     }
-    return route.fulfill({ status: failDefaults ? 503 : 200, json: failDefaults ? {} : { defaultOcr: true } });
+    return route.fulfill({
+      status: failDefaults ? 503 : 200,
+      json: failDefaults ? {} : { defaultOcr: savedDefaultOcr }
+    });
   });
   await page.goto(`${origin}/apps/docling/configuration`);
   await page.getByText("Could not load conversion defaults", { exact: false }).waitFor();
@@ -505,10 +517,19 @@ try {
   assert.equal(await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(), true);
   assert.equal(await saveDefaults.isEnabled(), true);
   await page.getByRole("checkbox", { name: /Use OCR by default/ }).uncheck();
+  await page.getByRole("button", { name: "Process PDF", exact: true }).click();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  assert.equal(await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(), false);
   failDefaultsSave = true;
   await saveDefaults.click();
   await page.getByRole("alert").filter({ hasText: "Synthetic defaults save failure" }).waitFor();
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.clock.setSystemTime(new Date(Date.now() + 62_000));
+  await Promise.all([
+    page.waitForResponse(
+      (response) => response.url().endsWith("/api/settings") && response.request().method() === "GET"
+    ),
+    page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
+  ]);
   assert.equal(
     await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(),
     false,
@@ -517,6 +538,14 @@ try {
   failDefaultsSave = false;
   await saveDefaults.click();
   await page.getByText("Docling defaults were saved.", { exact: true }).waitFor();
+  assert.equal(savedDefaultOcr, false, "Save uses the edited value, not the background snapshot");
+  await page.reload();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "Save defaults" && !button.disabled
+    )
+  );
+  assert.equal(await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(), false);
   await page.unroute("**/apps/docling/api/settings");
   console.log("Docling: delayed defaults cannot be saved or overwrite the job draft");
 

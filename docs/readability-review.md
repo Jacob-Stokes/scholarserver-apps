@@ -2,22 +2,23 @@
 
 ## Docling and Logseq loading — 20 September 2026
 
-Docling keeps queue, settings and file-read lifetimes explicit in its app owner.
-Each has local feedback; authentication invalidates all private observations at
-one boundary. Logseq extends its existing observer rather than adding a second
-cache or polling owner. Shared feedback remains presentation-only. No workflow
-rules moved into Manager or the shared UI package.
+Docling now creates shared read resources for queue, settings and file discovery
+in `docling-reads.ts`. That app-owned module declares requests, cadence and their
+common authentication boundary; shared code owns cancellation, freshness and
+observation. The UI derives snapshots and owns only its editable drafts and
+actions. Logseq and FreshRSS status also use the shared resource/hook instead of
+their former observers. No workflow rules moved into Manager or shared UI.
 
-Deferred: Docling's screen is large and still owns both request coordination and
-tab rendering. A later extraction should separate complete panels without moving
+Deferred: Docling's screen still combines forms and tab rendering. A later
+extraction should separate complete panels without moving
 their drafts into competing owners. Logseq's private-address discovery and deeper
 Obsidian/Zotero/n8n reads remain separate review items. Browser checks of selected
 flows are not a completed architectural or application-wide review.
 
 ## FreshRSS observation and feedback — 20 September 2026
 
-One app-owned status observer bounds and serialises status reads. It contains no
-route registry, cross-app cache or form state. Appearance and reader-address
+The shared read resource/hook now bounds and serialises status reads. The
+app supplies its parser and cadence, not a route registry or cross-app cache. Appearance and reader-address
 forms keep their own drafts; their reads can fail independently. Shared UI owns
 only frame/feedback presentation. Delayed-response browser checks cover the
 actual compiled components, not just source patterns. Deep loading behaviour in

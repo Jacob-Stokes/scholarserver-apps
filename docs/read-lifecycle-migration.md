@@ -4,7 +4,8 @@
 
 Core owns `packages/ui/read-resource.ts` and `use-read-resource.ts`; the vendor
 snapshot contains their exact bytes. Manager, FreshRSS status and Logseq status
-use that same implementation. The previous two app-specific observer loops were
+use that same implementation. Docling's queue, defaults and PDF discovery now
+also use it, with one app-owned access scope. The previous app-specific observer loops were
 removed. `ApplicationScreen` and `SectionFeedback` continue to own presentation
 only. No release manifest, image, permission or installed application changes.
 
@@ -19,7 +20,7 @@ timer, stale-response guard or a second set of loading/status state variables.
 | FreshRSS status | Migrated; app owns preparation/idle cadence and parser | Retest with the next native app candidate |
 | Logseq status | Migrated; drafts/discovery clear on access loss; setup responses remain component-local | Retest with the next native app candidate |
 | FreshRSS address/appearance | Existing bounded readers and individual feedback | Adopt resource per panel; propagate access loss to sibling readers; keep appearance draft separate |
-| Docling queue/defaults/PDF discovery | Existing independent readers and auth-wide invalidation; delayed/empty/failure tests | Replace read ownership without losing selection guards or shared auth clearing; keep conversion commands outside it |
+| Docling queue/defaults/PDF discovery | Migrated; app-owned access scope, retained files, separate OCR drafts and canonical saved defaults | Qualify the next native app candidate; conversion commands remain outside read resources |
 | Logseq private address | Existing app-owned endpoint workflow | Separate informational route discovery from provisioning and partial-write recovery |
 | Obsidian setup/status | Existing app-owned polling and draft guards | Classify status first: LiveSync onboarding includes a setup URI/passphrase; never cache the entire response in a retained owner |
 | Zotero setup/status | Existing app-owned polling and draft guards | Separate informational status from account/session/storage credential state before adoption |
@@ -58,6 +59,7 @@ From this repository:
 node scripts/check-shared-ui.mjs --core-ui /path/to/academic-system/packages/ui
 npm run test:ui
 node --test apps/freshrss/ui/test/reader-status.test.mjs
+npm test -w apps/docling/ui
 npm test
 ```
 
@@ -94,3 +96,24 @@ when shared source changes.
 
 Project-vault app notes/index remain pending; no vault connector was used for
 this local source pass. Repository notes remain the implementation record.
+
+## Docling continuation checkpoint
+
+The app-local `docling-reads.ts` contains payload types, requests, queue cadence
+and the three-reader access scope. Lifecycle mechanics come from shared UI; no
+new timer/cache framework was introduced. The UI derives snapshots directly and
+keeps conversion-default/job drafts separate. After access denial, explicit retry
+creates a fresh scope; late completions keep the retired, blocked owner.
+
+Verification: eight focused Docling tests, UI typecheck/build, the full compiled
+app-screen browser script, apps `test:ui`, core `pnpm check` and shared snapshot
+parity pass. Docling's tests now run inside `test:ui` as well as through its own
+workspace test command. Browser checks include defaults retained through tab
+changes and an actual background settings refresh, accepted defaults after
+reload, and clearing attachment drafts on access recovery. Full apps `npm test`
+still stops at the existing absent Paperless workspace; no unrelated root
+manifest/lockfile edits were included in the checkpoint.
+
+Next: adopt shared resources in FreshRSS's address/appearance panels, including
+app-wide denial propagation. Then review Logseq private-address discovery and
+classify sensitive Obsidian/Zotero setup responses before retaining any data.

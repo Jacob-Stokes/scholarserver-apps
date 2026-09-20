@@ -1,5 +1,35 @@
 # Docling development notes
 
+## Shared read resource adoption — 20 September 2026
+
+Queue, defaults and PDF discovery now consume the canonical shared read resource
+and observation hook. `docling-reads.ts` owns payload types, same-origin requests,
+idle/active cadence and the three readers' common access boundary. The image
+recipe already copies the entire UI source tree, including this module.
+
+The UI no longer keeps duplicate snapshot/pending/error state or app-specific
+poll timers. Known file results (including empty lists) survive tab changes;
+failed refreshes retain selection. Conversion defaults are a saved snapshot plus
+a separate draft, so a background read cannot undo editing. Accepted saves seed
+the canonical resource and retire older reads; job OCR edits stay independent.
+
+Access expiry clears all three resources and private document/attachment drafts.
+Explicit retry creates a new scope, leaving old reads and mutation callbacks with
+their retired blocked owner. Ordinary failures do not clear drafts. No writes
+are automatically replayed. This is UI/source work, not a claim of server-job
+restart recovery, container qualification, package publication or deployment.
+
+Run `npm test -w apps/docling/ui` for focused access-scope/cadence tests and
+`scripts/check-app-screens.mjs` after a UI build for compiled delayed/error/draft
+and setup-resume checks. See the [migration ledger](../../docs/read-lifecycle-migration.md).
+Project-vault note/index updates remain pending; this pass uses no vault connection.
+
+Verification: eight focused tests, UI typecheck/build, `npm run test:ui`, shared
+snapshot parity and the compiled multi-app browser checks pass. Defaults editing
+survives tab changes and a real background GET; an accepted value survives reload.
+The Docling tests are included in the normal `test:ui` command. Full `npm test`
+was attempted and remains blocked by the existing absent Paperless workspace.
+
 ## Independent loading follow-up — 20 September 2026
 
 Queue observation, conversion defaults and PDF discovery now have separate

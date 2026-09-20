@@ -1,34 +1,17 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  createDoclingReads,
+  type Job,
+  type JobState,
+  queuePollMilliseconds,
+  requestDocling,
+  type Settings
+} from "./docling-reads";
 
-type JobState = "queued" | "running" | "succeeded" | "failed";
-type Job = {
-  id: string;
-  sourcePath: string;
-  sourceBytes: number;
-  sourceAttachmentKey: string | null;
-  profile: string;
-  state: JobState;
-  attempts: number;
-  outputPath: string | null;
-  error: string | null;
-  createdAt: string;
-  startedAt: string | null;
-  finishedAt: string | null;
-  updatedAt: string;
-};
-type Status = {
-  state: "ready" | "paused";
-  engine: "available" | "unavailable";
-  workerConcurrency: number;
-  counts: Record<JobState, number>;
-  jobs: Job[];
-  outputFolder: string;
-  updatedAt: string;
-};
-type FileEntry = { path: string; bytes: number };
-type Settings = { defaultOcr: boolean };
 type Tab = "queue" | "process" | "configuration";
 
 const tabs: Array<{ id: Tab; label: string }> = [
@@ -48,24 +31,8 @@ function appBase(): string {
 
 const base = appBase();
 
-class SignInRequired extends Error {}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${base}/api/${path}`, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
-  });
-  if (
-    response.status === 401 ||
-    response.status === 403 ||
-    response.headers.get("content-type")?.includes("text/html")
-  ) {
-    throw new SignInRequired("Sign in to ScholarServer again, then retry.");
-  }
-  const value = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok || value === null)
-    throw new Error((value as { error?: string } | null)?.error ?? "Docling returned an unreadable response");
-  return value as T;
+function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return requestDocling<T>(base, path, init);
 }
 
 function currentTab(): Tab {
@@ -89,21 +56,8 @@ function badge(state: JobState): string {
 
 export function App() {
   const [tab, setTab] = useState<Tab>(currentTab);
-  const [status, setStatus] = useState<Status | null>(null);
-  const statusRead = useRef<AbortController | null>(null);
-  const [statusPending, setStatusPending] = useState(true);
-  const blocked = useRef(false);
-  const [accessBlocked, setAccessBlocked] = useState(false);
-  const [files, setFiles] = useState<FileEntry[]>([]);
-  const filesRead = useRef<AbortController | null>(null);
-  const [filesLoaded, setFilesLoaded] = useState(false);
-  const [filesPending, setFilesPending] = useState(false);
-  const [filesError, setFilesError] = useState<string | null>(null);
-  const [settings, setSettings] = useState<Settings>({ defaultOcr: false });
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [settingsPending, setSettingsPending] = useState(true);
-  const [settingsError, setSettingsError] = useState<string | null>(null);
-  const settingsRead = useRef<AbortController | null>(null);
+  const [reads, setReads] = useState(() => createDoclingReads(base));
+  const [settingsDraft, setSettingsDraft] = useState<Settings | null>(null);
   const ocrEdited = useRef(false);
   const [sourcePath, setSourcePath] = useState("");
   const [attachmentKey, setAttachmentKey] = useState("");
@@ -111,161 +65,61 @@ export function App() {
   const [limit, setLimit] = useState(10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const statusRead = useReadResource(reads.status, queuePollMilliseconds);
+  const filesRead = useReadResource(reads.files, undefined, tab === "process");
+  const settingsRead = useReadResource(reads.settings);
+  const status = statusRead.data ?? null;
+  const files = filesRead.data ?? [];
+  const settings = settingsDraft ?? settingsRead.data ?? { defaultOcr: false };
+  const settingsLoaded = settingsRead.data !== undefined;
+  const filesLoaded = filesRead.data !== undefined;
+  const accessBlocked = statusRead.blocked;
 
-  // An expired Manager session invalidates every private observation, including
-  // sibling reads that could otherwise complete after the denial.
-  const blockReads = useCallback((message: string) => {
-    blocked.current = true;
-    setAccessBlocked(true);
-    for (const current of [statusRead, filesRead, settingsRead]) {
-      current.current?.abort();
-      current.current = null;
-    }
-    setStatus(null);
-    setFiles([]);
-    setFilesLoaded(false);
-    setSettingsLoaded(false);
-    setStatusPending(false);
-    setFilesPending(false);
-    setSettingsPending(false);
+  useEffect(() => {
+    if (filesRead.data) setSourcePath((current) => current || filesRead.data?.[0]?.path || "");
+  }, [filesRead.data]);
+  useEffect(() => {
+    if (settingsRead.data && !ocrEdited.current) setOcr(settingsRead.data.defaultOcr);
+  }, [settingsRead.data]);
+  useEffect(() => {
+    if (!accessBlocked) return;
+    setSourcePath("");
+    setAttachmentKey("");
+    setSettingsDraft(null);
+    ocrEdited.current = false;
+    setOcr(false);
     setNotice(null);
     setError(null);
-    setStatusError(message);
-  }, []);
+  }, [accessBlocked]);
 
-  const refresh = useCallback(async () => {
-    if (blocked.current) return;
-    statusRead.current?.abort();
-    const controller = new AbortController();
-    statusRead.current = controller;
-    setStatusPending(true);
-    setStatusError(null);
-    try {
-      const next = await request<Status>("status", {
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
-      });
-      if (controller.signal.aborted || statusRead.current !== controller) return;
-      setStatus(next);
-      setStatusError(null);
-    } catch (caught) {
-      if (!controller.signal.aborted && statusRead.current === controller) {
-        if (caught instanceof SignInRequired) {
-          blockReads(caught.message);
-          return;
-        }
-        setStatusError(caught instanceof Error ? caught.message : "Could not load the queue");
-      }
-    } finally {
-      if (statusRead.current === controller) {
-        statusRead.current = null;
-        setStatusPending(false);
-      }
-    }
-  }, [blockReads]);
+  function refresh() {
+    // Accepted changes supersede an older poll; ordinary invalidation cannot reopen access.
+    reads.status.invalidate();
+    return reads.status.refresh();
+  }
 
-  const discover = useCallback(async () => {
-    if (blocked.current) return;
-    filesRead.current?.abort();
-    const controller = new AbortController();
-    filesRead.current = controller;
-    setFilesPending(true);
-    setFilesError(null);
-    try {
-      const result = await request<{ files: FileEntry[] }>("files?limit=100", {
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
-      });
-      if (controller.signal.aborted || filesRead.current !== controller) return;
-      setFiles(result.files);
-      setFilesLoaded(true);
-      setSourcePath((current) => current || result.files[0]?.path || "");
-    } catch (caught) {
-      if (controller.signal.aborted || filesRead.current !== controller) return;
-      if (caught instanceof SignInRequired) {
-        blockReads(caught.message);
-        return;
-      }
-      setFilesError(caught instanceof Error ? caught.message : "Could not list PDFs");
-    } finally {
-      if (filesRead.current === controller) {
-        filesRead.current = null;
-        setFilesPending(false);
-      }
-    }
-  }, [blockReads]);
+  function discover() {
+    if (reads.status.getSnapshot().blocked) return;
+    return reads.files.refresh(true);
+  }
 
-  const loadSettings = useCallback(async () => {
-    if (blocked.current) return;
-    settingsRead.current?.abort();
-    const controller = new AbortController();
-    settingsRead.current = controller;
-    setSettingsError(null);
-    setSettingsPending(true);
-    try {
-      const value = await request<Settings>("settings", {
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
-      });
-      if (controller.signal.aborted || settingsRead.current !== controller) return;
-      if (!value || typeof value.defaultOcr !== "boolean") throw new Error("Invalid settings response");
-      setSettings(value);
-      // Initial defaults may arrive after the user has chosen options for a job.
-      if (!ocrEdited.current) setOcr(value.defaultOcr);
-      setSettingsLoaded(true);
-    } catch (caught) {
-      if (!controller.signal.aborted && settingsRead.current === controller) {
-        if (caught instanceof SignInRequired) {
-          blockReads(caught.message);
-          return;
-        }
-        setSettingsError("Could not load conversion defaults. Check your connection and try again.");
-      }
-    } finally {
-      if (settingsRead.current === controller) {
-        settingsRead.current = null;
-        setSettingsPending(false);
-      }
-    }
-  }, [blockReads]);
+  function loadSettings() {
+    if (reads.status.getSnapshot().blocked) return;
+    return reads.settings.refresh(true);
+  }
 
   const editOcr = (value: boolean) => {
     ocrEdited.current = true;
     setOcr(value);
   };
 
-  useEffect(() => {
-    void refresh();
-    void loadSettings();
-    return () => {
-      settingsRead.current?.abort();
-      statusRead.current?.abort();
-      filesRead.current?.abort();
-    };
-  }, [refresh, loadSettings]);
-
-  const activeJobs = (status?.counts.running ?? 0) + (status?.counts.queued ?? 0);
-  useEffect(() => {
-    const observe = () => {
-      if (document.visibilityState !== "hidden" && !statusRead.current && !blocked.current) void refresh();
-    };
-    const timer = window.setInterval(observe, activeJobs > 0 ? 3000 : 30000);
-    document.addEventListener("visibilitychange", observe);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", observe);
-    };
-  }, [refresh, activeJobs]);
-
-  useEffect(() => {
-    if (tab === "process" && !filesLoaded) void discover();
-  }, [discover, filesLoaded, tab]);
-
   function retryStatus() {
-    if (blocked.current) {
-      blocked.current = false;
-      setAccessBlocked(false);
-      void loadSettings();
-      if (tab === "process") void discover();
+    if (reads.status.getSnapshot().blocked) {
+      // Retire the denied scope. Older reads/writes keep their blocked owner;
+      // only currently mounted sections start fresh observations after this explicit retry.
+      setReads(createDoclingReads(base));
+      return;
     }
     void refresh();
   }
@@ -282,17 +136,21 @@ export function App() {
   };
 
   const run = async (operation: () => Promise<unknown>, success: string) => {
-    if (blocked.current) return;
+    if (reads.status.getSnapshot().blocked) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await operation();
-      if (blocked.current) return;
+      if (reads.status.getSnapshot().blocked) return;
       setNotice(success);
       await refresh();
     } catch (caught) {
-      if (caught instanceof SignInRequired) blockReads(caught.message);
+      if (reads.status.getSnapshot().blocked) return;
+      if (caught instanceof ReadAccessRequired) {
+        reads.block(caught.message);
+        return;
+      }
       setError(caught instanceof Error ? caught.message : "The operation failed");
     } finally {
       setBusy(false);
@@ -310,7 +168,7 @@ export function App() {
     );
 
   const queueBackfill = async () => {
-    if (blocked.current) return;
+    if (reads.status.getSnapshot().blocked) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -319,18 +177,33 @@ export function App() {
         method: "POST",
         body: JSON.stringify({ limit, ocr })
       });
-      if (blocked.current) return;
+      if (reads.status.getSnapshot().blocked) return;
       setNotice(
         `${result.discovered} PDFs checked: ${result.queued} waiting or running, ${result.existing} already converted.`
       );
       await refresh();
     } catch (caught) {
-      if (caught instanceof SignInRequired) blockReads(caught.message);
+      if (reads.status.getSnapshot().blocked) return;
+      if (caught instanceof ReadAccessRequired) {
+        reads.block(caught.message);
+        return;
+      }
       setError(caught instanceof Error ? caught.message : "Could not queue the backfill");
     } finally {
       setBusy(false);
     }
   };
+
+  const saveDefaults = () =>
+    run(async () => {
+      const saved = await request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) });
+      if (reads.status.getSnapshot().blocked) return;
+      if (typeof saved.defaultOcr !== "boolean") {
+        throw new Error("Could not confirm saved conversion defaults. Refresh before saving again.");
+      }
+      reads.settings.seed(saved);
+      setSettingsDraft(null);
+    }, "Docling defaults were saved.");
 
   const selected = useMemo(() => files.find((file) => file.path === sourcePath), [files, sourcePath]);
   let queueControlLabel = "Queue status not loaded";
@@ -356,10 +229,10 @@ export function App() {
       error={error}
       feedback={
         <SectionFeedback
-          pending={statusPending}
+          pending={statusRead.pending}
           hasData={status !== null}
           label="queue status"
-          error={statusError}
+          error={statusRead.error}
           onRetry={retryStatus}
         />
       }
@@ -461,15 +334,19 @@ export function App() {
                 <h2>Process one PDF</h2>
                 <p className="ss-card-description">Choose a document from the attached research storage.</p>
               </div>
-              <button className="ss-button ss-button-ghost" onClick={() => void discover()} disabled={filesPending}>
+              <button
+                className="ss-button ss-button-ghost"
+                onClick={() => void discover()}
+                disabled={filesRead.pending}
+              >
                 Refresh files
               </button>
             </div>
             <SectionFeedback
-              pending={filesPending}
+              pending={filesRead.pending}
               hasData={filesLoaded}
               label="PDFs"
-              error={filesError}
+              error={filesRead.error}
               onRetry={() => void discover()}
             />
             {files.length ? (
@@ -521,9 +398,9 @@ export function App() {
               onClick={() => void queueOne()}
               disabled={
                 busy ||
-                !!filesError ||
-                filesPending ||
-                !!statusError ||
+                !!filesRead.error ||
+                filesRead.pending ||
+                !!statusRead.error ||
                 !selected ||
                 status?.engine !== "available" ||
                 (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))
@@ -562,9 +439,9 @@ export function App() {
               onClick={() => void queueBackfill()}
               disabled={
                 busy ||
-                filesPending ||
-                !!filesError ||
-                !!statusError ||
+                filesRead.pending ||
+                !!filesRead.error ||
+                !!statusRead.error ||
                 files.length === 0 ||
                 status?.engine !== "available"
               }
@@ -590,7 +467,7 @@ export function App() {
                 type="checkbox"
                 checked={settings.defaultOcr}
                 disabled={busy || !settingsLoaded}
-                onChange={(event) => setSettings({ defaultOcr: event.target.checked })}
+                onChange={(event) => setSettingsDraft({ defaultOcr: event.target.checked })}
               />
               <span>
                 <strong>Use OCR by default</strong>
@@ -598,23 +475,14 @@ export function App() {
               </span>
             </label>
             <SectionFeedback
-              pending={settingsPending}
+              pending={settingsRead.pending}
               hasData={settingsLoaded}
               label="conversion defaults"
-              error={settingsError}
+              error={settingsRead.error}
               onRetry={() => void loadSettings()}
             />
             <div>
-              <button
-                className="ss-button"
-                disabled={busy || !settingsLoaded}
-                onClick={() =>
-                  void run(
-                    () => request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) }),
-                    "Docling defaults were saved."
-                  )
-                }
-              >
+              <button className="ss-button" disabled={busy || !settingsLoaded} onClick={() => void saveDefaults()}>
                 Save defaults
               </button>
             </div>
@@ -627,7 +495,7 @@ export function App() {
               </div>
               <button
                 className="ss-button ss-button-secondary"
-                disabled={busy || !status || !!statusError}
+                disabled={busy || !status || !!statusRead.error}
                 onClick={() =>
                   void run(
                     () => request(`queue/${status?.state === "paused" ? "resume" : "pause"}`, { method: "POST" }),
