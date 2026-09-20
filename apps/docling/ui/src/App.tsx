@@ -1,4 +1,5 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type JobState = "queued" | "running" | "succeeded" | "failed";
@@ -47,11 +48,20 @@ function appBase(): string {
 
 const base = appBase();
 
+class SignInRequired extends Error {}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${base}/api/${path}`, {
     ...init,
     headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers
   });
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    response.headers.get("content-type")?.includes("text/html")
+  ) {
+    throw new SignInRequired("Sign in to ScholarServer again, then retry.");
+  }
   const value = (await response.json().catch(() => null)) as T | { error?: string } | null;
   if (!response.ok || value === null)
     throw new Error((value as { error?: string } | null)?.error ?? "Docling returned an unreadable response");
@@ -81,9 +91,17 @@ export function App() {
   const [tab, setTab] = useState<Tab>(currentTab);
   const [status, setStatus] = useState<Status | null>(null);
   const statusRead = useRef<AbortController | null>(null);
+  const [statusPending, setStatusPending] = useState(true);
+  const blocked = useRef(false);
+  const [accessBlocked, setAccessBlocked] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
+  const filesRead = useRef<AbortController | null>(null);
+  const [filesLoaded, setFilesLoaded] = useState(false);
+  const [filesPending, setFilesPending] = useState(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>({ defaultOcr: false });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsPending, setSettingsPending] = useState(true);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const settingsRead = useRef<AbortController | null>(null);
   const ocrEdited = useRef(false);
@@ -96,10 +114,34 @@ export function App() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // An expired Manager session invalidates every private observation, including
+  // sibling reads that could otherwise complete after the denial.
+  const blockReads = useCallback((message: string) => {
+    blocked.current = true;
+    setAccessBlocked(true);
+    for (const current of [statusRead, filesRead, settingsRead]) {
+      current.current?.abort();
+      current.current = null;
+    }
+    setStatus(null);
+    setFiles([]);
+    setFilesLoaded(false);
+    setSettingsLoaded(false);
+    setStatusPending(false);
+    setFilesPending(false);
+    setSettingsPending(false);
+    setNotice(null);
+    setError(null);
+    setStatusError(message);
+  }, []);
+
   const refresh = useCallback(async () => {
+    if (blocked.current) return;
     statusRead.current?.abort();
     const controller = new AbortController();
     statusRead.current = controller;
+    setStatusPending(true);
+    setStatusError(null);
     try {
       const next = await request<Status>("status", {
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
@@ -109,28 +151,57 @@ export function App() {
       setStatusError(null);
     } catch (caught) {
       if (!controller.signal.aborted && statusRead.current === controller) {
+        if (caught instanceof SignInRequired) {
+          blockReads(caught.message);
+          return;
+        }
         setStatusError(caught instanceof Error ? caught.message : "Could not load the queue");
       }
     } finally {
-      if (statusRead.current === controller) statusRead.current = null;
+      if (statusRead.current === controller) {
+        statusRead.current = null;
+        setStatusPending(false);
+      }
     }
-  }, []);
+  }, [blockReads]);
 
   const discover = useCallback(async () => {
+    if (blocked.current) return;
+    filesRead.current?.abort();
+    const controller = new AbortController();
+    filesRead.current = controller;
+    setFilesPending(true);
+    setFilesError(null);
     try {
-      const result = await request<{ files: FileEntry[] }>("files?limit=100");
+      const result = await request<{ files: FileEntry[] }>("files?limit=100", {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
+      });
+      if (controller.signal.aborted || filesRead.current !== controller) return;
       setFiles(result.files);
+      setFilesLoaded(true);
       setSourcePath((current) => current || result.files[0]?.path || "");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not list PDFs");
+      if (controller.signal.aborted || filesRead.current !== controller) return;
+      if (caught instanceof SignInRequired) {
+        blockReads(caught.message);
+        return;
+      }
+      setFilesError(caught instanceof Error ? caught.message : "Could not list PDFs");
+    } finally {
+      if (filesRead.current === controller) {
+        filesRead.current = null;
+        setFilesPending(false);
+      }
     }
-  }, []);
+  }, [blockReads]);
 
   const loadSettings = useCallback(async () => {
+    if (blocked.current) return;
     settingsRead.current?.abort();
     const controller = new AbortController();
     settingsRead.current = controller;
     setSettingsError(null);
+    setSettingsPending(true);
     try {
       const value = await request<Settings>("settings", {
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
@@ -141,12 +212,21 @@ export function App() {
       // Initial defaults may arrive after the user has chosen options for a job.
       if (!ocrEdited.current) setOcr(value.defaultOcr);
       setSettingsLoaded(true);
-    } catch {
+    } catch (caught) {
       if (!controller.signal.aborted && settingsRead.current === controller) {
+        if (caught instanceof SignInRequired) {
+          blockReads(caught.message);
+          return;
+        }
         setSettingsError("Could not load conversion defaults. Check your connection and try again.");
       }
+    } finally {
+      if (settingsRead.current === controller) {
+        settingsRead.current = null;
+        setSettingsPending(false);
+      }
     }
-  }, []);
+  }, [blockReads]);
 
   const editOcr = (value: boolean) => {
     ocrEdited.current = true;
@@ -156,19 +236,39 @@ export function App() {
   useEffect(() => {
     void refresh();
     void loadSettings();
-    const timer = window.setInterval(() => {
-      if (!statusRead.current) void refresh();
-    }, 3000);
     return () => {
-      window.clearInterval(timer);
       settingsRead.current?.abort();
       statusRead.current?.abort();
+      filesRead.current?.abort();
     };
   }, [refresh, loadSettings]);
 
+  const activeJobs = (status?.counts.running ?? 0) + (status?.counts.queued ?? 0);
   useEffect(() => {
-    if (tab === "process" && files.length === 0) void discover();
-  }, [discover, files.length, tab]);
+    const observe = () => {
+      if (document.visibilityState !== "hidden" && !statusRead.current && !blocked.current) void refresh();
+    };
+    const timer = window.setInterval(observe, activeJobs > 0 ? 3000 : 30000);
+    document.addEventListener("visibilitychange", observe);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", observe);
+    };
+  }, [refresh, activeJobs]);
+
+  useEffect(() => {
+    if (tab === "process" && !filesLoaded) void discover();
+  }, [discover, filesLoaded, tab]);
+
+  function retryStatus() {
+    if (blocked.current) {
+      blocked.current = false;
+      setAccessBlocked(false);
+      void loadSettings();
+      if (tab === "process") void discover();
+    }
+    void refresh();
+  }
 
   useEffect(() => {
     const pop = () => setTab(currentTab());
@@ -182,14 +282,17 @@ export function App() {
   };
 
   const run = async (operation: () => Promise<unknown>, success: string) => {
+    if (blocked.current) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await operation();
+      if (blocked.current) return;
       setNotice(success);
       await refresh();
     } catch (caught) {
+      if (caught instanceof SignInRequired) blockReads(caught.message);
       setError(caught instanceof Error ? caught.message : "The operation failed");
     } finally {
       setBusy(false);
@@ -207,6 +310,7 @@ export function App() {
     );
 
   const queueBackfill = async () => {
+    if (blocked.current) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -215,11 +319,13 @@ export function App() {
         method: "POST",
         body: JSON.stringify({ limit, ocr })
       });
+      if (blocked.current) return;
       setNotice(
         `${result.discovered} PDFs checked: ${result.queued} waiting or running, ${result.existing} already converted.`
       );
       await refresh();
     } catch (caught) {
+      if (caught instanceof SignInRequired) blockReads(caught.message);
       setError(caught instanceof Error ? caught.message : "Could not queue the backfill");
     } finally {
       setBusy(false);
@@ -227,6 +333,8 @@ export function App() {
   };
 
   const selected = useMemo(() => files.find((file) => file.path === sourcePath), [files, sourcePath]);
+  let queueControlLabel = "Queue status not loaded";
+  if (status) queueControlLabel = status.state === "paused" ? "Resume queue" : "Pause queue";
 
   return (
     <ApplicationScreen
@@ -237,29 +345,39 @@ export function App() {
           <span className={`ss-badge ${status.engine === "available" ? "ss-badge-success" : "ss-badge-warning"}`}>
             {status.engine === "available" ? "Engine ready" : "Engine unavailable"}
           </span>
-        ) : null
+        ) : (
+          <span className="ss-badge">Not checked</span>
+        )
       }
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}
       notice={notice}
-      error={error || statusError}
-      loading={!status}
+      error={error}
+      feedback={
+        <SectionFeedback
+          pending={statusPending}
+          hasData={status !== null}
+          label="queue status"
+          error={statusError}
+          onRetry={retryStatus}
+        />
+      }
     >
-      {status && tab === "queue" ? (
+      {tab === "queue" && !accessBlocked ? (
         <div className="ss-stack">
           <div className="ss-grid ss-grid-3">
             <div className="ss-card">
               <div className="ss-metric-label">Actively processing</div>
-              <div className="ss-metric-value">{status.counts.running}</div>
+              <div className="ss-metric-value">{status?.counts.running ?? "—"}</div>
             </div>
             <div className="ss-card">
               <div className="ss-metric-label">Waiting</div>
-              <div className="ss-metric-value">{status.counts.queued}</div>
+              <div className="ss-metric-value">{status?.counts.queued ?? "—"}</div>
             </div>
             <div className="ss-card">
               <div className="ss-metric-label">Completed</div>
-              <div className="ss-metric-value">{status.counts.succeeded}</div>
+              <div className="ss-metric-value">{status?.counts.succeeded ?? "—"}</div>
             </div>
           </div>
           <section className="ss-card">
@@ -274,9 +392,9 @@ export function App() {
                 Refresh
               </button>
             </div>
-            {status.jobs.length === 0 ? (
-              <p className="ss-empty">No PDFs have been queued yet.</p>
-            ) : (
+            {!status ? <div aria-label="Conversion jobs not loaded" style={{ minHeight: "10rem" }} /> : null}
+            {status?.jobs.length === 0 ? <p className="ss-empty">No PDFs have been queued yet.</p> : null}
+            {status && status.jobs.length > 0 ? (
               <div className="ss-table-wrap">
                 <table className="ss-table">
                   <thead>
@@ -330,12 +448,12 @@ export function App() {
                   </tbody>
                 </table>
               </div>
-            )}
+            ) : null}
           </section>
         </div>
       ) : null}
 
-      {status && tab === "process" ? (
+      {tab === "process" && !accessBlocked ? (
         <div className="ss-process-grid">
           <section className="ss-card ss-stack">
             <div className="ss-toolbar">
@@ -343,14 +461,22 @@ export function App() {
                 <h2>Process one PDF</h2>
                 <p className="ss-card-description">Choose a document from the attached research storage.</p>
               </div>
-              <button className="ss-button ss-button-ghost" onClick={() => void discover()}>
+              <button className="ss-button ss-button-ghost" onClick={() => void discover()} disabled={filesPending}>
                 Refresh files
               </button>
             </div>
+            <SectionFeedback
+              pending={filesPending}
+              hasData={filesLoaded}
+              label="PDFs"
+              error={filesError}
+              onRetry={() => void discover()}
+            />
             {files.length ? (
               <label className="ss-field">
                 PDF
                 <select className="ss-input" value={sourcePath} onChange={(event) => setSourcePath(event.target.value)}>
+                  {sourcePath && !selected ? <option value={sourcePath}>{sourcePath} — no longer listed</option> : null}
                   {files.map((file) => (
                     <option key={file.path} value={file.path}>
                       {file.path} · {bytes(file.bytes)}
@@ -358,9 +484,18 @@ export function App() {
                   ))}
                 </select>
               </label>
-            ) : (
+            ) : null}
+            {filesLoaded && files.length === 0 ? (
               <div className="ss-empty">No PDFs were found in the attached storage.</div>
-            )}
+            ) : null}
+            {!filesLoaded ? (
+              <label className="ss-field">
+                PDF
+                <select className="ss-input" disabled>
+                  <option>Not loaded</option>
+                </select>
+              </label>
+            ) : null}
             <label className="ss-field">
               Zotero attachment key{" "}
               <span className="ss-field-help">
@@ -386,8 +521,11 @@ export function App() {
               onClick={() => void queueOne()}
               disabled={
                 busy ||
+                !!filesError ||
+                filesPending ||
+                !!statusError ||
                 !selected ||
-                status.engine !== "available" ||
+                status?.engine !== "available" ||
                 (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))
               }
             >
@@ -422,15 +560,23 @@ export function App() {
             <button
               className="ss-button ss-button-secondary"
               onClick={() => void queueBackfill()}
-              disabled={busy || files.length === 0 || status.engine !== "available"}
+              disabled={
+                busy ||
+                filesPending ||
+                !!filesError ||
+                !!statusError ||
+                files.length === 0 ||
+                status?.engine !== "available"
+              }
             >
-              {busy ? <span className="ss-spinner" /> : null}Queue first {Math.min(limit, files.length)}
+              {busy ? <span className="ss-spinner" /> : null}
+              {filesLoaded ? `Queue first ${Math.min(limit, files.length)}` : "Queue PDFs"}
             </button>
           </section>
         </div>
       ) : null}
 
-      {status && tab === "configuration" ? (
+      {tab === "configuration" && !accessBlocked ? (
         <div className="ss-stack">
           <section className="ss-card ss-stack">
             <div>
@@ -451,15 +597,13 @@ export function App() {
                 <small>Recommended only when most of your library contains scanned pages.</small>
               </span>
             </label>
-            {!settingsLoaded && !settingsError ? <p role="status">Loading conversion defaults…</p> : null}
-            {settingsError ? (
-              <div>
-                <p role="alert">{settingsError}</p>
-                <button className="ss-button ss-button-secondary" onClick={() => void loadSettings()}>
-                  Reload defaults
-                </button>
-              </div>
-            ) : null}
+            <SectionFeedback
+              pending={settingsPending}
+              hasData={settingsLoaded}
+              label="conversion defaults"
+              error={settingsError}
+              onRetry={() => void loadSettings()}
+            />
             <div>
               <button
                 className="ss-button"
@@ -483,17 +627,17 @@ export function App() {
               </div>
               <button
                 className="ss-button ss-button-secondary"
-                disabled={busy}
+                disabled={busy || !status || !!statusError}
                 onClick={() =>
                   void run(
-                    () => request(`queue/${status.state === "paused" ? "resume" : "pause"}`, { method: "POST" }),
-                    status.state === "paused"
+                    () => request(`queue/${status?.state === "paused" ? "resume" : "pause"}`, { method: "POST" }),
+                    status?.state === "paused"
                       ? "The queue resumed."
                       : "The queue will remain paused after the active job."
                   )
                 }
               >
-                {status.state === "paused" ? "Resume queue" : "Pause queue"}
+                {queueControlLabel}
               </button>
             </div>
           </section>
@@ -501,15 +645,15 @@ export function App() {
             <h2>Service details</h2>
             <dl className="ss-details">
               <dt>Engine</dt>
-              <dd>{status.engine}</dd>
+              <dd>{status?.engine ?? "—"}</dd>
               <dt>Parallel jobs</dt>
-              <dd>{status.workerConcurrency}</dd>
+              <dd>{status?.workerConcurrency ?? "—"}</dd>
               <dt>Markdown folder</dt>
               <dd>
-                <code>{status.outputFolder}</code>
+                <code>{status?.outputFolder ?? "—"}</code>
               </dd>
               <dt>Last checked</dt>
-              <dd>{when(status.updatedAt)}</dd>
+              <dd>{when(status?.updatedAt ?? null)}</dd>
             </dl>
           </section>
         </div>

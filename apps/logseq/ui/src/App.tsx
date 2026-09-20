@@ -1,8 +1,9 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useEffect, useRef, useState } from "react";
 import { PrivateConnection } from "./PrivateConnection";
-import { observeStatus } from "./status-observer";
+import { observeStatus, StatusAuthenticationRequired } from "./status-observer";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
 type Status = {
@@ -47,6 +48,10 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
           body: JSON.stringify(value)
         }
   );
+  const contentType = response.headers.get("content-type") ?? "";
+  if (response.status === 401 || response.status === 403 || response.redirected || contentType.includes("text/html")) {
+    throw new StatusAuthenticationRequired("Open ScholarServer and sign in again, then retry.");
+  }
   const result = await response.json().catch(() => null);
   if (!response.ok || result === null) throw new Error(result?.error ?? "Could not reach Logseq setup. Try again.");
   return result;
@@ -55,6 +60,7 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
 export function App() {
   const [tab, setTab] = useState(currentTab);
   const [status, setStatus] = useState<Status | null>(null);
+  const [statusPending, setStatusPending] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,8 +70,21 @@ export function App() {
   const [password, setPassword] = useState("");
   const [listed, setListed] = useState(false);
   const observer = useRef<ReturnType<typeof observeStatus<Status>> | null>(null);
+  const authenticationRevision = useRef(0);
   async function refresh() {
     await observer.current?.refresh();
+  }
+  function clearAuthenticationState(message: string) {
+    authenticationRevision.current++;
+    observer.current?.block();
+    setError(null);
+    setStatus(null);
+    setStatusError(message);
+    setGraphs([]);
+    setListed(false);
+    setRemoteId("");
+    setReturnLink("");
+    setPassword("");
   }
   useEffect(() => {
     const observation = observeStatus<Status>({
@@ -74,12 +93,25 @@ export function App() {
         setStatus(value);
         setStatusError(null);
       },
-      failed: () => setStatusError("Could not check Logseq. Reconnecting automatically; your entries are kept.")
+      failed: (caught) => {
+        if (caught instanceof StatusAuthenticationRequired) {
+          clearAuthenticationState(caught.message);
+          return;
+        }
+        setStatusError("Could not check Logseq. Reconnecting automatically; your entries are kept.");
+      },
+      pending: setStatusPending,
+      visible: () => document.visibilityState !== "hidden"
     });
     observer.current = observation;
     void observation.refresh();
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "hidden") void observation.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       observation.stop();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       observer.current = null;
     };
   }, []);
@@ -99,7 +131,11 @@ export function App() {
       await operation();
       await refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Setup could not complete this step.");
+      if (caught instanceof StatusAuthenticationRequired) {
+        clearAuthenticationState(caught.message);
+      } else {
+        setError(caught instanceof Error ? caught.message : "Setup could not complete this step.");
+      }
     } finally {
       setBusy(false);
     }
@@ -115,6 +151,8 @@ export function App() {
         : "account";
   const waiting = status?.account.state === "waiting";
   const authenticating = status?.account.state === "authenticating";
+  let statusLabel = "Not checked";
+  if (status) statusLabel = status.ready ? "Connected" : "Setup needed";
   return (
     <ApplicationScreen
       name="Logseq"
@@ -122,9 +160,20 @@ export function App() {
       tabs={tabs}
       currentTab={tab}
       onNavigate={navigate}
-      loading={!status && !statusError}
-      error={error ?? statusError ?? status?.error ?? status?.account.error}
-      status={<span className="ss-badge">{status?.ready ? "Connected" : "Setup needed"}</span>}
+      error={error ?? status?.error ?? status?.account.error}
+      status={<span className="ss-badge">{statusLabel}</span>}
+      feedback={
+        <SectionFeedback
+          pending={statusPending}
+          hasData={status !== null}
+          label="Logseq status"
+          error={statusError}
+          onRetry={() => {
+            setStatusError(null);
+            void observer.current?.retry();
+          }}
+        />
+      }
     >
       {tab === "overview" && status ? (
         <section className="ss-card ss-stack">
@@ -136,7 +185,7 @@ export function App() {
           </button>
         </section>
       ) : null}
-      {tab === "configuration" ? <SetupProgress stages={setupStages} current={stage} /> : null}
+      {tab === "configuration" && status ? <SetupProgress stages={setupStages} current={stage} /> : null}
       {status?.addressRequired ? (
         <PrivateConnection
           browserAvailable={Boolean(status.browserAvailable)}
@@ -267,7 +316,9 @@ export function App() {
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
+                      const revision = authenticationRevision.current;
                       const result = await request<{ graphs: Remote[] }>("graphs");
+                      if (revision !== authenticationRevision.current) return;
                       setGraphs(result.graphs);
                       setListed(true);
                     })

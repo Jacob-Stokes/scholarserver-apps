@@ -296,7 +296,7 @@ try {
       app === "logseq"
         ? "Could not check Logseq. Reconnecting automatically; your entries are kept."
         : "Synthetic status unavailable";
-    await page.getByRole("alert").filter({ hasText: statusFailure }).waitFor();
+    await page.getByText(statusFailure, { exact: false }).waitFor();
     failStatus = false;
     await page.reload();
     await page.locator(".ss-loading").waitFor({ state: "hidden" });
@@ -326,6 +326,141 @@ try {
     await page.emulateMedia({ reducedMotion: "reduce" });
   }
 
+  // File discovery and defaults do not wait for queue health. Refresh only its
+  // own data; an empty successful list is different from a pending/failed read.
+  const idleDocling = {
+    state: "ready",
+    engine: "available",
+    workerConcurrency: 1,
+    jobs: [],
+    counts: { queued: 0, running: 0, succeeded: 0, failed: 0 },
+    outputFolder: "output",
+    updatedAt: new Date().toISOString()
+  };
+  let releaseQueue, releaseFiles;
+  let holdQueue = true,
+    holdFiles = true,
+    failFiles = false,
+    expiredQueue = false;
+  let fileReads = 0,
+    queueReads = 0;
+  let documents = [
+    { path: "First.pdf", bytes: 1024 },
+    { path: "Second.pdf", bytes: 2048 }
+  ];
+  await page.route("**/apps/docling/api/status", async (route) => {
+    queueReads++;
+    if (holdQueue)
+      await new Promise((resolve) => {
+        releaseQueue = resolve;
+      });
+    await route.fulfill({ status: expiredQueue ? 401 : 200, json: idleDocling }).catch(() => {});
+  });
+  await page.route("**/apps/docling/api/files?limit=100", async (route) => {
+    fileReads++;
+    if (holdFiles)
+      await new Promise((resolve) => {
+        releaseFiles = resolve;
+      });
+    await route
+      .fulfill({
+        status: failFiles ? 503 : 200,
+        json: failFiles ? { error: "File discovery unavailable" } : { files: documents }
+      })
+      .catch(() => {});
+  });
+  await page.goto(`${origin}/apps/docling/configuration`);
+  await page.getByRole("status").filter({ hasText: "Loading queue status" }).waitFor();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "Save defaults" && !button.disabled
+    )
+  );
+  assert.equal(await page.getByRole("button", { name: "Queue status not loaded" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Process PDF", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Loading PDFs" }).waitFor();
+  assert.equal(await page.getByText("No PDFs were found", { exact: false }).count(), 0);
+  await page.setViewportSize({ width: 390, height: 900 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(output, "docling-process-loading-mobile.png"), fullPage: true });
+  const pdfChoice = page.getByRole("combobox", { name: "PDF", exact: true });
+  assert.equal(await pdfChoice.isDisabled(), true);
+  holdFiles = false;
+  releaseFiles();
+  await page.waitForFunction(() => !document.querySelector("select").disabled);
+  await pdfChoice.selectOption("Second.pdf");
+  await page.getByRole("textbox", { name: /Zotero attachment key/ }).fill("ABCDEFGH");
+  const queuePdf = page.getByRole("button", { name: "Queue this PDF", exact: true });
+  assert.equal(await queuePdf.isDisabled(), true, "Queueing still requires observed engine availability");
+  holdQueue = false;
+  releaseQueue();
+  await page.getByText("Engine ready", { exact: true }).waitFor();
+  await page.screenshot({ path: join(output, "docling-process-ready-mobile.png"), fullPage: true });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "Queue this PDF" && !button.disabled
+    )
+  );
+  holdFiles = true;
+  await page.getByRole("button", { name: "Refresh files", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Refreshing PDFs" }).waitFor();
+  assert.equal(await pdfChoice.inputValue(), "Second.pdf");
+  assert.equal(await queuePdf.isDisabled(), true);
+  failFiles = true;
+  holdFiles = false;
+  releaseFiles();
+  await page.getByText("File discovery unavailable", { exact: false }).waitFor();
+  assert.equal(await pdfChoice.inputValue(), "Second.pdf");
+  assert.equal(await page.getByRole("textbox", { name: /Zotero attachment key/ }).inputValue(), "ABCDEFGH");
+  assert.equal(await page.getByText("No PDFs were found", { exact: false }).count(), 0);
+  failFiles = false;
+  documents = [{ path: "First.pdf", bytes: 1024 }];
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("option", { name: "Second.pdf — no longer listed", exact: true }).waitFor({ state: "attached" });
+  assert.equal(
+    await pdfChoice.inputValue(),
+    "Second.pdf",
+    "A disappeared file is not silently replaced by a different PDF"
+  );
+  assert.equal(await queuePdf.isDisabled(), true);
+  documents = [];
+  await page.getByRole("button", { name: "Refresh files", exact: true }).click();
+  await page.getByText("No PDFs were found in the attached storage.", { exact: true }).waitFor();
+  const emptyReads = fileReads;
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByRole("button", { name: "Process PDF", exact: true }).click();
+  await page.waitForTimeout(3500);
+  assert.equal(fileReads, emptyReads, "Successful empty discovery is retained across tabs");
+  assert.equal(queueReads, 1, "Idle queue is not polled every three seconds");
+  documents = [{ path: "First.pdf", bytes: 1024 }];
+  holdFiles = true;
+  await page.getByRole("button", { name: "Refresh files", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Refreshing PDFs" }).waitFor();
+  expiredQueue = true;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByText("Sign in to ScholarServer again, then retry.", { exact: false }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Process one PDF" }).count(), 0);
+  holdFiles = false;
+  releaseFiles();
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.getByRole("heading", { name: "Process one PDF" }).count(),
+    0,
+    "Late file response cannot restore a denied screen"
+  );
+  const deniedReads = queueReads;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(100);
+  assert.equal(queueReads, deniedReads);
+  expiredQueue = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("heading", { name: "Process one PDF" }).waitFor();
+  await page.unroute("**/apps/docling/api/status");
+  await page.unroute("**/apps/docling/api/files?limit=100");
+  console.log(
+    "Docling: independent queue/default/file loading, retained selection, empty discovery, idle polling and authentication expiry passed"
+  );
+
   // Slow settings must not let a user save guessed defaults or replace an edited job choice.
   let releaseSettings;
   await page.route("**/apps/docling/api/settings", async (route) => {
@@ -352,15 +487,19 @@ try {
   assert.equal(await jobOcr.isChecked(), true, "Late defaults do not overwrite the edited OCR choice");
   await page.unroute("**/apps/docling/api/settings");
   let failDefaults = true;
-  await page.route("**/apps/docling/api/settings", (route) =>
-    route.fulfill({ status: failDefaults ? 503 : 200, json: failDefaults ? {} : { defaultOcr: true } })
-  );
+  let failDefaultsSave = false;
+  await page.route("**/apps/docling/api/settings", (route) => {
+    if (route.request().method() === "PUT" && failDefaultsSave) {
+      return route.fulfill({ status: 503, json: { error: "Synthetic defaults save failure" } });
+    }
+    return route.fulfill({ status: failDefaults ? 503 : 200, json: failDefaults ? {} : { defaultOcr: true } });
+  });
   await page.goto(`${origin}/apps/docling/configuration`);
-  await page.getByRole("alert").filter({ hasText: "Could not load conversion defaults" }).waitFor();
+  await page.getByText("Could not load conversion defaults", { exact: false }).waitFor();
   assert.equal(await saveDefaults.isDisabled(), true, "A failed settings read must not enable saving defaults");
   failDefaults = false;
-  await page.getByRole("button", { name: "Reload defaults", exact: true }).click();
-  await page.getByRole("button", { name: "Reload defaults", exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("button", { name: "Try again", exact: true }).waitFor({ state: "hidden" });
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
       (button) => button.textContent.trim() === "Save defaults" && !button.disabled
@@ -368,6 +507,19 @@ try {
   );
   assert.equal(await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(), true);
   assert.equal(await saveDefaults.isEnabled(), true);
+  await page.getByRole("checkbox", { name: /Use OCR by default/ }).uncheck();
+  failDefaultsSave = true;
+  await saveDefaults.click();
+  await page.getByRole("alert").filter({ hasText: "Synthetic defaults save failure" }).waitFor();
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  assert.equal(
+    await page.getByRole("checkbox", { name: /Use OCR by default/ }).isChecked(),
+    false,
+    "Failed defaults save keeps the edited value"
+  );
+  failDefaultsSave = false;
+  await saveDefaults.click();
+  await page.getByText("Docling defaults were saved.", { exact: true }).waitFor();
   await page.unroute("**/apps/docling/api/settings");
   console.log("Docling: delayed defaults cannot be saved or overwrite the job draft");
 
@@ -388,7 +540,7 @@ try {
           engine: "available",
           workerConcurrency: 1,
           jobs: [],
-          counts: { queued: 0, running: 0, succeeded: 0, failed: 0 },
+          counts: { queued: 1, running: 0, succeeded: 0, failed: 0 },
           outputFolder: "output",
           updatedAt: new Date().toISOString()
         }
@@ -415,6 +567,75 @@ try {
   await page.unroute("**/apps/docling/api/status");
   await page.unroute("**/apps/docling/api/queue/pause");
   console.log("Docling: completed actions supersede in-flight status polls");
+
+  // Unknown Logseq status must not pretend setup is required. Background reads
+  // retain the mounted form, but an expired Manager session removes private data.
+  let releaseLogseqStatus;
+  const initialLogseqStatus = logseqStatus;
+  logseqStatus = {
+    ...logseqStatus,
+    account: { state: "waiting", authorizationUrl: "https://logseq.example.invalid/sign-in" }
+  };
+  let holdLogseqStatus = true,
+    expireLogseqStatus = false;
+  let logseqStatusReads = 0;
+  let failLogseqRead = false;
+  await page.route("**/apps/logseq/api/status", async (route) => {
+    logseqStatusReads++;
+    if (holdLogseqStatus)
+      await new Promise((resolve) => {
+        releaseLogseqStatus = resolve;
+      });
+    let responseStatus = 200;
+    if (failLogseqRead) responseStatus = 503;
+    if (expireLogseqStatus) responseStatus = 401;
+    await route.fulfill({ status: responseStatus, json: logseqStatus }).catch(() => {});
+  });
+  await page.goto(`${origin}/apps/logseq/configuration`);
+  await page.getByRole("status").filter({ hasText: "Loading Logseq status" }).waitFor();
+  assert.equal(await page.getByText("Setup needed", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Start Logseq sign-in", exact: true }).count(), 0);
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0);
+  holdLogseqStatus = false;
+  releaseLogseqStatus();
+  const logseqHeading = page.getByRole("heading", { name: "Connect your Logseq account", exact: true });
+  await logseqHeading.waitFor();
+  const returnLink = page.getByLabel("Return link", { exact: true });
+  await returnLink.fill("https://synthetic.invalid/return?code=not-a-real-credential");
+  await logseqHeading.scrollIntoViewIfNeeded();
+  const logseqBefore = await logseqHeading.boundingBox();
+  holdLogseqStatus = true;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByRole("status").filter({ hasText: "Refreshing Logseq status" }).waitFor();
+  const logseqDuring = await logseqHeading.boundingBox();
+  assert.ok(Math.abs(logseqBefore.y - logseqDuring.y) < 1, "Logseq refresh does not move the setup panel");
+  failLogseqRead = true;
+  holdLogseqStatus = false;
+  releaseLogseqStatus();
+  await page
+    .getByText("Could not check Logseq. Reconnecting automatically; your entries are kept.", { exact: false })
+    .waitFor();
+  assert.equal(
+    await returnLink.inputValue(),
+    "https://synthetic.invalid/return?code=not-a-real-credential",
+    "Read failure retains the setup draft"
+  );
+  failLogseqRead = false;
+  expireLogseqStatus = true;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByText("Open ScholarServer and sign in again, then retry.", { exact: false }).waitFor();
+  assert.equal(await logseqHeading.count(), 0);
+  const deniedLogseqReads = logseqStatusReads;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(2300);
+  assert.equal(logseqStatusReads, deniedLogseqReads, "Authentication denial blocks polling and visibility retry");
+  expireLogseqStatus = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await logseqHeading.waitFor();
+  assert.equal(await returnLink.inputValue(), "", "Authentication expiry clears the private draft");
+  await page.unroute("**/apps/logseq/api/status");
+  logseqStatus = initialLogseqStatus;
+  console.log("Logseq: honest cold state, stable refresh, authentication blocking and explicit recovery passed");
 
   logseqStatus = { ...logseqStatus, addressRequired: true, syncAddress: null, browserAvailable: true };
   await page.goto(`${origin}/apps/logseq/configuration`);

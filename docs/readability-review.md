@@ -1,5 +1,19 @@
 # Readability review notes
 
+## Docling and Logseq loading — 20 September 2026
+
+Docling keeps queue, settings and file-read lifetimes explicit in its app owner.
+Each has local feedback; authentication invalidates all private observations at
+one boundary. Logseq extends its existing observer rather than adding a second
+cache or polling owner. Shared feedback remains presentation-only. No workflow
+rules moved into Manager or the shared UI package.
+
+Deferred: Docling's screen is large and still owns both request coordination and
+tab rendering. A later extraction should separate complete panels without moving
+their drafts into competing owners. Logseq's private-address discovery and deeper
+Obsidian/Zotero/n8n reads remain separate review items. Browser checks of selected
+flows are not a completed architectural or application-wide review.
+
 ## FreshRSS observation and feedback — 20 September 2026
 
 One app-owned status observer bounds and serialises status reads. It contains no

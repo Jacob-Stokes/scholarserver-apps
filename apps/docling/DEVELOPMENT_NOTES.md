@@ -1,5 +1,32 @@
 # Docling development notes
 
+## Independent loading follow-up — 20 September 2026
+
+Queue observation, conversion defaults and PDF discovery now have separate
+pending/error feedback in the shared reserved rows. Defaults and processing
+forms do not wait for queue health; queue mutations still require known engine
+availability. Unknown counts and file results are not rendered as zero/empty.
+File requests are bounded, cancellable and superseded by newer discovery. Empty
+successful results are retained when switching tabs, rather than fetched again.
+Refresh failure preserves the selected PDF and form draft. If a selected file
+disappears, it is labelled as no longer listed and cannot be queued; the UI does
+not silently choose a different document.
+
+Idle queue checks run every 30 seconds, with three-second checks when jobs are
+queued/running. Hidden documents do not issue polling reads. Status, settings
+and file responses denied by the Manager session clear private observations and
+cancel sibling reads; automatic polling cannot recover that block. Explicit retry
+starts fresh observations. No mutations are automatically replayed.
+
+The compiled synthetic-browser suite covers delayed queue/default/file reads,
+failure/retry and draft preservation, successful empty discovery, a disappeared
+selection, idle cadence, authentication loss and a late sibling response. Existing
+post-pause stale-status and delayed-default tests remain. This is local UI/source
+verification, not a container, conversion, published-package or Freelove update.
+Full `npm test` was attempted and remains blocked by unrelated root manifest
+changes referencing the absent Paperless integration workspace. The vault note
+and index update is pending; no project-vault connection was used in this pass.
+
 ## Main-interface shortcut — 18 September 2026
 
 Candidate `0.3.5-beta.5.launch.20260918.1` explicitly labels the standalone

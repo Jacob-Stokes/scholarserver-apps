@@ -1,5 +1,26 @@
 # Logseq development notes
 
+## Status presentation follow-up — 20 September 2026
+
+The UI now labels status as “Not checked” until the first response, keeps the
+last accepted status and editable setup drafts during ordinary background read
+failures, and reports cold/background/error state through the shared section
+feedback row. Status polling remains serialized, pauses while the page is
+hidden, and resumes on visibility or explicit retry. Authentication expiry
+clears the displayed status and blocks automatic restoration until an explicit
+retry. Authentication loss also clears graph discovery and private form fields;
+a late graph response cannot repopulate a cleared discovery. Eight focused
+observer tests cover superseded reads, visibility, auth expiry, failure recovery,
+explicit blocking and cancellation. Compiled synthetic-browser checks pass for
+cold configuration, stable refresh, draft preservation after a failed read,
+clearing on sign-in expiry and explicit recovery. Existing setup failure/retry,
+private-route and interrupted-download checks pass as well.
+
+This is local UI/source verification, not device sync, container, publication or
+Freelove acceptance. Full `npm test` was attempted but is blocked by unrelated
+root manifest changes referencing the absent Paperless integration workspace;
+`npm run test:ui` passes. The project-vault note and index update remain pending.
+
 ## Retained deployment — 18 September 2026
 
 `0.1.0-beta.4.editorial.20260918.1` is installed on Freelove at revision 3.
