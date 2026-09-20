@@ -17,9 +17,11 @@ flows are not a completed architectural or application-wide review.
 
 ## FreshRSS observation and feedback — 20 September 2026
 
-The shared read resource/hook now bounds and serialises status reads. The
-app supplies its parser and cadence, not a route registry or cross-app cache. Appearance and reader-address
-forms keep their own drafts; their reads can fail independently. Shared UI owns
+The shared read resource/hook now bounds and serialises all three informational
+reads. `reader-reads.ts` declares their routes and common access-denial boundary,
+not a route registry or cross-app cache. Appearance and reader-address forms keep
+their own drafts; their reads can fail independently. Explicit sign-in recovery
+remounts the app owner, keeping retired writes away from new state. Shared UI owns
 only frame/feedback presentation. Delayed-response browser checks cover the
 actual compiled components, not just source patterns. Deep loading behaviour in
 other apps and real Manager-to-FreshRSS latency remain separate work; the shared

@@ -1,12 +1,12 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
-import { ReadResource } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useState } from "react";
 import { ReaderAccess } from "./ReaderAccess";
 import { ReaderAppearance } from "./ReaderAppearance";
-import { ReaderSignInRequired, type ReaderStatus, readerStatusPollMilliseconds, readReaderJson } from "./reader-status";
+import { createReaderReads } from "./reader-reads";
+import { ReaderSignInRequired, readerStatusPollMilliseconds, readReaderJson } from "./reader-status";
 
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
 const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
@@ -16,16 +16,15 @@ const tabs = [
 ];
 
 export function App() {
+  const [session, setSession] = useState(0);
+  // Explicit access recovery starts a new owner. Late writes keep the retired scope.
+  return <ReaderSession key={session} onAccessRetry={() => setSession((value) => value + 1)} />;
+}
+
+function ReaderSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   const [tab, setTab] = useState(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
-  const [statusResource] = useState(
-    () =>
-      new ReadResource<ReaderStatus>(
-        async (signal) =>
-          readReaderJson<ReaderStatus>(await fetch(`${base}/api/status`, { signal }), "Could not check FreshRSS."),
-        30_000,
-        15_000
-      )
-  );
+  const [reads] = useState(() => createReaderReads(base, instance));
+  const statusResource = reads.status;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const statusRead = useReadResource(statusResource, readerStatusPollMilliseconds, !busy);
@@ -61,7 +60,7 @@ export function App() {
       await readReaderJson(response, "Could not confirm the link. Check Configuration before trying again.");
     } catch (caught) {
       if (caught instanceof ReaderSignInRequired) {
-        statusResource.invalidate(true, caught.message);
+        reads.block(caught.message);
       } else {
         setError(caught instanceof Error ? caught.message : "Could not save. Your entries have been kept.");
       }
@@ -93,7 +92,7 @@ export function App() {
           hasData={status !== null}
           label="FreshRSS status"
           error={statusRead.error}
-          onRetry={() => void statusRead.refresh(true)}
+          onRetry={statusRead.blocked ? onAccessRetry : () => void statusRead.refresh(true)}
         />
       }
     >
@@ -106,7 +105,11 @@ export function App() {
           current={status?.ready && linked ? "ready" : "account"}
         />
       ) : null}
-      {status?.ready && tab === "configuration" ? <ReaderAppearance base={base} /> : null}
+      {status?.ready ? (
+        <div hidden={tab !== "configuration"}>
+          <ReaderAppearance base={base} reads={reads} visible={tab === "configuration"} />
+        </div>
+      ) : null}
       {!status ? (
         <section className="ss-card ss-stack" aria-label="Reading list status" style={{ minHeight: "14rem" }} />
       ) : null}
@@ -114,7 +117,7 @@ export function App() {
         <section className="ss-card ss-stack">
           <h2>Your reading list</h2>
           <p>Add a feed or import subscriptions in FreshRSS. New articles are checked every 30 minutes.</p>
-          <ReaderAccess />
+          <ReaderAccess reads={reads} />
           <p>You use your ScholarServer sign-in. Signing out of ScholarServer also stops access to this reader.</p>
           <p>
             Your AI connection can read articles, list feeds and organise read or starred articles. Add or remove

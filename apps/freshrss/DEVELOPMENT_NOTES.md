@@ -1,5 +1,26 @@
 # FreshRSS integration
 
+## Shared panel lifecycle — 20 September 2026
+
+Status, reader-address discovery and appearance now use the same shared resource
+and hook. Their requests remain independent and bounded. The app owns one access
+scope; a denial in any panel clears all snapshots and removes private forms.
+Explicit recovery creates a fresh owner, so late old save responses cannot clear
+new drafts or display an obsolete success. Appearance drafts survive tab changes;
+background reads do not overwrite either form. Fresh tab returns reuse accepted
+data. Successful saves accept validated server results; no writes auto-replay.
+Manager still validates address policy at save time; cached options are not grants.
+
+Eleven focused tests, typecheck/UI build, `test:ui`, shared snapshot parity and
+compiled synthetic browser checks pass, as do core `pnpm check` and the four-app
+shared-screen regression. The browser covers child-denial propagation,
+late mutation completion after recovery, actual stale reads preserving drafts,
+fresh return without extra requests and mobile width. Full `npm test` remains
+blocked by the unrelated missing Paperless integration workspace. This pass has
+not built images, published packages or changed Freelove. Native/live acceptance
+and project-vault notes/index remain pending. See `docs/read-lifecycle-migration.md`
+for the resumable next slice.
+
 ## Shared status resource migration — 20 September 2026
 
 FreshRSS now uses the canonical ScholarServer `ReadResource` and

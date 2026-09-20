@@ -3,7 +3,7 @@
 ## Current checkpoint — 20 September 2026
 
 Core owns `packages/ui/read-resource.ts` and `use-read-resource.ts`; the vendor
-snapshot contains their exact bytes. Manager, FreshRSS status and Logseq status
+snapshot contains their exact bytes. Manager, all three FreshRSS panels and Logseq status
 use that same implementation. Docling's queue, defaults and PDF discovery now
 also use it, with one app-owned access scope. The previous app-specific observer loops were
 removed. `ApplicationScreen` and `SectionFeedback` continue to own presentation
@@ -19,7 +19,7 @@ timer, stale-response guard or a second set of loading/status state variables.
 | Manager informational reads | Shared implementation; reviewed registry remains Manager-owned | Maintain canonical unit and React/browser contracts |
 | FreshRSS status | Migrated; app owns preparation/idle cadence and parser | Retest with the next native app candidate |
 | Logseq status | Migrated; drafts/discovery clear on access loss; setup responses remain component-local | Retest with the next native app candidate |
-| FreshRSS address/appearance | Existing bounded readers and individual feedback | Adopt resource per panel; propagate access loss to sibling readers; keep appearance draft separate |
+| FreshRSS address/appearance | Migrated; independent retained snapshots, app-wide denial, separate drafts preserved across tabs | Qualify the next native app candidate; address permissions remain server-validated on save |
 | Docling queue/defaults/PDF discovery | Migrated; app-owned access scope, retained files, separate OCR drafts and canonical saved defaults | Qualify the next native app candidate; conversion commands remain outside read resources |
 | Logseq private address | Existing app-owned endpoint workflow | Separate informational route discovery from provisioning and partial-write recovery |
 | Obsidian setup/status | Existing app-owned polling and draft guards | Classify status first: LiveSync onboarding includes a setup URI/passphrase; never cache the entire response in a retained owner |
@@ -58,7 +58,7 @@ From this repository:
 ```sh
 node scripts/check-shared-ui.mjs --core-ui /path/to/academic-system/packages/ui
 npm run test:ui
-node --test apps/freshrss/ui/test/reader-status.test.mjs
+node --test apps/freshrss/ui/test/*.test.mjs
 npm test -w apps/docling/ui
 npm test
 ```
@@ -114,6 +114,34 @@ reload, and clearing attachment drafts on access recovery. Full apps `npm test`
 still stops at the existing absent Paperless workspace; no unrelated root
 manifest/lockfile edits were included in the checkpoint.
 
-Next: adopt shared resources in FreshRSS's address/appearance panels, including
-app-wide denial propagation. Then review Logseq private-address discovery and
-classify sensitive Obsidian/Zotero setup responses before retaining any data.
+The following checkpoint completes the FreshRSS continuation. Next: review Logseq
+private-address discovery and classify sensitive Obsidian/Zotero setup responses
+before retaining any data.
+
+## FreshRSS panel continuation checkpoint
+
+`reader-reads.ts` owns the three same-session resources, payload checks and routes.
+Panels now consume shared snapshots rather than independent fetch effects.
+Address and appearance drafts remain in their form components; the appearance
+form stays mounted but hidden across tab navigation, with observation disabled
+when hidden. Fresh return uses the accepted value; a stale refresh cannot replace
+an unsaved choice. Successful saves seed the validated server response, not the
+submitted draft. Address availability is informational, never an authorization
+grant; the unchanged Manager PUT revalidates it.
+
+Access denial from any panel clears and blocks all three. Explicit recovery
+remounts a fresh app-owned session so late old reads or writes cannot restore
+old data, clear a new draft or announce an obsolete success. No write is replayed.
+Transient failures retain accepted data and local feedback; unknown settings
+cannot be saved as defaults.
+
+Eleven focused tests, FreshRSS typecheck/UI build, apps `test:ui`, shared-byte
+parity and compiled synthetic FreshRSS browser checks pass. The focused tests
+now run inside `test:ui`. Browser checks include both child-panel denials, an
+accepted save response arriving after sign-in recovery, actual background reads
+with unsaved appearance/address choices, fresh tab return without extra requests,
+390px layout, retained refresh and existing setup recovery scenarios. Full apps
+`npm test` still stops at the unrelated missing Paperless workspace. Core
+`pnpm check` and the compiled four-app shared-screen regression also pass. No Docker
+build, image publication or installed-service change was made. Vault notes/index
+remain pending.

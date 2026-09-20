@@ -1,79 +1,48 @@
-import { type EndpointAccessOption, EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
+import { EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
-import { useEffect, useState } from "react";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
+import { useState } from "react";
+import { type ReaderAddresses, type ReaderReads, readerAddresses } from "./reader-reads";
 import { ReaderSignInRequired, readReaderJson } from "./reader-status";
 
-const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
-const endpoint = `/api/v1/instances/${instance}/endpoints/reader/access-options`;
-export function ReaderAccess() {
-  const [options, setOptions] = useState<EndpointAccessOption[]>([]);
-  const [optionId, setOptionId] = useState("tailscale");
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ReaderAccess({ reads }: { reads: ReaderReads }) {
+  const [draft, setDraft] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    if (!instance) {
-      setPending(false);
-      setError("Open this application from ScholarServer to choose its reader address.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    void fetch(endpoint, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) })
-      .then(async (response) => {
-        const value = await readReaderJson<{
-          options: EndpointAccessOption[];
-          selection?: { optionId: string; url: string | null };
-        }>(response, "Could not load the reader addresses.");
-        if (controller.signal.aborted) return;
-        setOptions(value.options);
-        setUrl(value.selection?.url ?? null);
-        setLoaded(true);
-        if (value.selection) {
-          setOptionId(value.selection.optionId);
-        }
-      })
-      .catch((caught) => {
-        if (controller.signal.aborted) return;
-        if (caught instanceof ReaderSignInRequired) {
-          setUrl(null);
-          setOptions([]);
-          setLoaded(false);
-        }
-        setError(caught.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setPending(false);
-      });
-    return () => controller.abort();
-  }, [retry]);
+  const observation = useReadResource(reads.addresses, undefined, !busy);
+  const saved = observation.data;
+  const options = saved?.options ?? [];
+  const optionId = draft ?? saved?.selection?.optionId ?? "";
+  const url = saved?.selection?.url;
+  const canSave =
+    !!saved && options.some((option) => option.id === optionId) && !observation.error && !observation.pending && !busy;
+
   async function save() {
+    if (!canSave) return;
+    reads.addresses.cancel();
     setBusy(true);
     setSaveError(null);
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(reads.addressEndpoint, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ optionId, authentication: "authentik" })
       });
-      const result = await readReaderJson<{ selection: { url: string | null } }>(
-        response,
-        "Could not confirm the reader address. Check it before saving again."
+      const result = readerAddresses(
+        await readReaderJson<ReaderAddresses>(
+          response,
+          "Could not confirm the reader address. Check it before saving again."
+        )
       );
-      setUrl(result.selection.url);
+      if (reads.addresses.getSnapshot().blocked) return;
+      reads.addresses.seed(result);
+      setDraft(null);
     } catch (caught) {
-      if (caught instanceof ReaderSignInRequired) {
-        setUrl(null);
-        setOptions([]);
-        setLoaded(false);
-        setError(caught.message);
-      }
-      setSaveError(caught instanceof Error ? caught.message : "Could not save.");
+      if (caught instanceof ReaderSignInRequired) reads.block(caught.message);
+      if (reads.addresses.getSnapshot().blocked) return;
+      setSaveError(
+        caught instanceof Error ? caught.message : "Could not confirm the reader address. Check it before saving again."
+      );
     } finally {
       setBusy(false);
     }
@@ -82,30 +51,32 @@ export function ReaderAccess() {
     <section className="ss-stack" aria-label="Reader address" style={{ minHeight: "9rem" }}>
       <h3>Open your reader</h3>
       <SectionFeedback
-        pending={pending}
-        hasData={loaded}
+        pending={observation.pending}
+        hasData={!!saved}
         label="reader addresses"
-        error={error ?? saveError}
-        onRetry={error && !busy && !pending ? () => setRetry((value) => value + 1) : undefined}
+        error={observation.error ?? saveError}
+        onRetry={
+          observation.error && !busy && !observation.pending ? () => void reads.addresses.refresh(true) : undefined
+        }
       />
       {url ? (
         <a className="ss-button" href={url} target="_blank" rel="noreferrer">
           Open FreshRSS
         </a>
       ) : null}
-      {!url && loaded ? <p>Choose where you will open FreshRSS.</p> : null}
-      {instance && loaded && options.length ? (
+      {!url && saved ? <p>Choose where you will open FreshRSS.</p> : null}
+      {saved && options.length ? (
         <details>
           <summary>Change reader address</summary>
-          <fieldset className="ss-stack" disabled={busy || pending || !!error}>
+          <fieldset className="ss-stack" disabled={busy || observation.pending || !!observation.error}>
             <EndpointAccessSelector
               options={options}
               optionId={optionId}
               authentication="authentik"
-              onOptionChange={(option) => setOptionId(option.id)}
+              onOptionChange={(option) => setDraft(option.id)}
               onAuthenticationChange={() => {}}
             />
-            <button className="ss-button" disabled={busy} onClick={() => void save()}>
+            <button className="ss-button" disabled={!canSave} onClick={() => void save()}>
               {busy ? "Saving…" : "Save reader address"}
             </button>
           </fieldset>

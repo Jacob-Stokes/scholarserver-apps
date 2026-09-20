@@ -52,6 +52,28 @@ try {
   let linkResponseStatus = 200;
   let linkCalls = 0;
   let loseLinkResponse = false;
+  let appearanceReads = 0;
+  let addressReads = 0;
+  let savedStyle = "original";
+  let savedAddress = "tailscale";
+  let addressExpired = false;
+  let appearanceExpired = false;
+  let holdAppearanceSave = false;
+  let releaseAppearanceSave;
+  function addressResponse() {
+    return {
+      options: ["tailscale", "cloudflare"].map((id) => ({
+        id,
+        transport: id,
+        label: id,
+        url: `${origin}/reader`,
+        recommended: false,
+        advanced: false,
+        authentication: { authentik: "required", available: true, defaultEnabled: true }
+      })),
+      selection: { optionId: savedAddress, url: `${origin}/reader` }
+    };
+  }
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) return route.abort();
@@ -73,36 +95,35 @@ try {
       return route.fulfill({ status: linkResponseStatus, json: currentStatus });
     }
     if (url.pathname.endsWith("/api/appearance")) {
-      if (route.request().method() === "PUT")
-        return route.fulfill({ status: failSave ? 503 : 200, json: { style: "original" } });
+      if (route.request().method() === "PUT") {
+        const acceptedStyle = route.request().postDataJSON().style;
+        if (!failSave) savedStyle = acceptedStyle;
+        if (holdAppearanceSave)
+          await new Promise((resolve) => {
+            releaseAppearanceSave = resolve;
+          });
+        return route.fulfill({ status: failSave ? 503 : 200, json: { style: acceptedStyle } });
+      }
+      appearanceReads++;
       if (holdAppearance)
         await new Promise((resolve) => {
           releaseAppearance = resolve;
         });
-      return route.fulfill({ status: failAppearance ? 503 : 200, json: { style: "original" } });
+      if (appearanceExpired) return route.fulfill({ status: 403, json: {} });
+      return route.fulfill({ status: failAppearance ? 503 : 200, json: { style: savedStyle } });
     }
     if (url.pathname.endsWith("/access-options")) {
       if (route.request().method() === "PUT") {
-        return route.fulfill({ status: failSave ? 503 : 200, json: { selection: { url: `${origin}/reader` } } });
+        if (!failSave) savedAddress = route.request().postDataJSON().optionId;
+        return route.fulfill({ status: failSave ? 503 : 200, json: addressResponse() });
       }
+      addressReads++;
       if (holdAddress)
         await new Promise((resolve) => {
           releaseAddress = resolve;
         });
-      return route.fulfill({
-        json: {
-          options: ["tailscale", "cloudflare"].map((id) => ({
-            id,
-            transport: id,
-            label: id,
-            url: `${origin}/reader`,
-            recommended: false,
-            advanced: false,
-            authentication: { authentik: "required", available: true, defaultEnabled: true }
-          })),
-          selection: { optionId: "tailscale", url: `${origin}/reader` }
-        }
-      });
+      if (addressExpired) return route.fulfill({ status: 401, json: {} });
+      return route.fulfill({ json: addressResponse() });
     }
     return route.fulfill({ status: 404, json: {} });
   });
@@ -149,6 +170,20 @@ try {
   await save.click();
   await page.getByText("Saved. Reload your reader to see the change.", { exact: true }).waitFor();
 
+  // A fresh tab return reuses saved data and keeps the unsaved form choice.
+  await appearance.selectOption("original");
+  const appearanceBeforeReturn = appearanceReads;
+  const addressBeforeReturn = addressReads;
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  assert.equal(await appearance.inputValue(), "original");
+  assert.equal(await save.isEnabled(), true);
+  assert.equal(appearanceReads, appearanceBeforeReturn, "Fresh return does not refetch appearance");
+  assert.equal(addressReads, addressBeforeReturn, "Fresh return does not refetch addresses");
+
+  await page.getByText("Change reader address", { exact: true }).click();
+  await page.getByRole("radio", { name: /tailscale/ }).check();
+
   const reading = page.getByRole("heading", { name: "Your reading list", exact: true });
   await reading.scrollIntoViewIfNeeded();
   const before = await reading.boundingBox();
@@ -157,6 +192,15 @@ try {
   await page.clock.setSystemTime(new Date(Date.now() + 31_000));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.getByRole("status").filter({ hasText: "Refreshing FreshRSS status" }).waitFor();
+  await page.waitForFunction(() => !document.querySelector("select").disabled);
+  assert.ok(appearanceReads > appearanceBeforeReturn, "Stale visible appearance actually refreshed");
+  assert.ok(addressReads > addressBeforeReturn, "Stale visible addresses actually refreshed");
+  assert.equal(await appearance.inputValue(), "original", "Background read cannot overwrite an appearance draft");
+  assert.equal(
+    await page.getByRole("radio", { name: /tailscale/ }).isChecked(),
+    true,
+    "Background read cannot overwrite an address draft"
+  );
   const during = await reading.boundingBox();
   assert.ok(Math.abs(before.y - during.y) < 1, "Background status does not move the reading list");
   failStatus = true;
@@ -172,6 +216,47 @@ try {
   expired = false;
   await page.getByRole("button", { name: "Try again", exact: true }).click();
   await reading.waitFor();
+
+  // A denial in either child removes the entire session, not just one panel.
+  for (const denied of ["address", "appearance"]) {
+    await page.waitForFunction(() => document.querySelector("select") && !document.querySelector("select").disabled);
+    await page.getByRole("link", { name: "Open FreshRSS", exact: true }).waitFor();
+    if (denied === "address") addressExpired = true;
+    else appearanceExpired = true;
+    await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 31_000));
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await page.getByText("Sign in to ScholarServer again, then retry.", { exact: false }).waitFor();
+    assert.equal(await reading.count(), 0);
+    assert.equal(await appearance.count(), 0);
+    addressExpired = false;
+    appearanceExpired = false;
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("select") && !document.querySelector("select").disabled);
+    await reading.waitFor();
+  }
+
+  // The server accepted a save, but its response arrives after access recovery.
+  // It must not clear the new session's draft or show a misleading success message.
+  holdAppearanceSave = true;
+  await appearance.selectOption("original");
+  await save.click();
+  await page.getByRole("button", { name: "Saving…", exact: true }).waitFor();
+  addressExpired = true;
+  await page.clock.setSystemTime(new Date((await page.evaluate(() => Date.now())) + 31_000));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByText("Sign in to ScholarServer again, then retry.", { exact: false }).waitFor();
+  addressExpired = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector("select") && !document.querySelector("select").disabled);
+  await appearance.selectOption("scholarserver");
+  holdAppearanceSave = false;
+  const lateResponse = page.waitForResponse(
+    (response) => response.url().endsWith("/api/appearance") && response.request().method() === "PUT"
+  );
+  releaseAppearanceSave();
+  await lateResponse;
+  assert.equal(await appearance.inputValue(), "scholarserver");
+  assert.equal(await page.getByText("Saved. Reload your reader to see the change.", { exact: true }).count(), 0);
 
   failAppearance = true;
   await page.reload();
