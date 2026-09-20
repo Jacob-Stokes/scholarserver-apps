@@ -1,9 +1,10 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ReadAccessRequired, ReadResource } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
 import { PrivateConnection } from "./PrivateConnection";
-import { observeStatus, StatusAuthenticationRequired } from "./status-observer";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
 type Status = {
@@ -50,7 +51,7 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
   );
   const contentType = response.headers.get("content-type") ?? "";
   if (response.status === 401 || response.status === 403 || response.redirected || contentType.includes("text/html")) {
-    throw new StatusAuthenticationRequired("Open ScholarServer and sign in again, then retry.");
+    throw new ReadAccessRequired("Open ScholarServer and sign in again, then retry.");
   }
   const result = await response.json().catch(() => null);
   if (!response.ok || result === null) throw new Error(result?.error ?? "Could not reach Logseq setup. Try again.");
@@ -59,62 +60,40 @@ async function request<T>(endpoint: string, value?: unknown, signal?: AbortSigna
 
 export function App() {
   const [tab, setTab] = useState(currentTab);
-  const [status, setStatus] = useState<Status | null>(null);
-  const [statusPending, setStatusPending] = useState(true);
+  const [statusResource] = useState(
+    () => new ReadResource<Status>((signal) => request("status", undefined, signal), 2000)
+  );
   const [error, setError] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [returnLink, setReturnLink] = useState("");
   const [graphs, setGraphs] = useState<Remote[]>([]);
   const [remoteId, setRemoteId] = useState("");
   const [password, setPassword] = useState("");
   const [listed, setListed] = useState(false);
-  const observer = useRef<ReturnType<typeof observeStatus<Status>> | null>(null);
   const authenticationRevision = useRef(0);
+  const statusRead = useReadResource(statusResource, 2000, !busy);
+  const status = statusRead.data ?? null;
   async function refresh() {
-    await observer.current?.refresh();
+    // An accepted write supersedes any older observation, but cannot reopen access.
+    statusResource.invalidate();
+    await statusResource.refresh();
   }
   function clearAuthenticationState(message: string) {
-    authenticationRevision.current++;
-    observer.current?.block();
-    setError(null);
-    setStatus(null);
-    setStatusError(message);
-    setGraphs([]);
-    setListed(false);
-    setRemoteId("");
-    setReturnLink("");
-    setPassword("");
+    statusResource.invalidate(true, message);
   }
   useEffect(() => {
-    const observation = observeStatus<Status>({
-      read: (signal) => request("status", undefined, AbortSignal.any([signal, AbortSignal.timeout(15000)])),
-      accept: (value) => {
-        setStatus(value);
-        setStatusError(null);
-      },
-      failed: (caught) => {
-        if (caught instanceof StatusAuthenticationRequired) {
-          clearAuthenticationState(caught.message);
-          return;
-        }
-        setStatusError("Could not check Logseq. Reconnecting automatically; your entries are kept.");
-      },
-      pending: setStatusPending,
-      visible: () => document.visibilityState !== "hidden"
+    return statusResource.subscribe(() => {
+      if (!statusResource.getSnapshot().blocked) return;
+      // Clear app-owned secrets/discovery synchronously, before a late graph read can finish.
+      authenticationRevision.current++;
+      setError(null);
+      setGraphs([]);
+      setListed(false);
+      setRemoteId("");
+      setReturnLink("");
+      setPassword("");
     });
-    observer.current = observation;
-    void observation.refresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState !== "hidden") void observation.refresh();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      observation.stop();
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      observer.current = null;
-    };
-  }, []);
+  }, [statusResource]);
   useEffect(() => {
     const pop = () => setTab(currentTab());
     window.addEventListener("popstate", pop);
@@ -125,13 +104,14 @@ export function App() {
     setTab(next);
   }
   async function run(operation: () => Promise<unknown>) {
+    statusResource.cancel();
     setBusy(true);
     setError(null);
     try {
       await operation();
       await refresh();
     } catch (caught) {
-      if (caught instanceof StatusAuthenticationRequired) {
+      if (caught instanceof ReadAccessRequired) {
         clearAuthenticationState(caught.message);
       } else {
         setError(caught instanceof Error ? caught.message : "Setup could not complete this step.");
@@ -164,13 +144,12 @@ export function App() {
       status={<span className="ss-badge">{statusLabel}</span>}
       feedback={
         <SectionFeedback
-          pending={statusPending}
+          pending={statusRead.pending}
           hasData={status !== null}
           label="Logseq status"
-          error={statusError}
+          error={statusRead.error}
           onRetry={() => {
-            setStatusError(null);
-            void observer.current?.retry();
+            void statusRead.refresh(true);
           }}
         />
       }

@@ -58,6 +58,11 @@ release checklist or proof that a particular application is ready.
 - Polling observes status; it must not replace unsaved user choices. Reuse the
   shared screen/setup/access components, while app-owned code retains its rules.
   Do not invent a workflow framework merely to avoid small explicit differences.
+- New informational UI reads use the shared `ReadResource` / `useReadResource`
+  contract, not another per-app observer loop. Supply the app reader and cadence;
+  classify its payload and lifetime first. Keep drafts and mutations outside the
+  resource and invalidate sibling resources on access loss. See the
+  [adoption and resume checklist](read-lifecycle-migration.md).
 
 ## Test the artifact we actually ship
 

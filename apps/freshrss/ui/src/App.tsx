@@ -1,10 +1,12 @@
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ReadResource } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
-import { useEffect, useRef, useState } from "react";
+import { useReadResource } from "@scholarserver/ui/use-read-resource";
+import { useEffect, useState } from "react";
 import { ReaderAccess } from "./ReaderAccess";
 import { ReaderAppearance } from "./ReaderAppearance";
-import { observeReaderStatus, ReaderSignInRequired, type ReaderStatus, readReaderJson } from "./reader-status";
+import { ReaderSignInRequired, type ReaderStatus, readerStatusPollMilliseconds, readReaderJson } from "./reader-status";
 
 const base = window.location.pathname.match(/^(.*\/apps\/[^/]+)/)?.[1] ?? "";
 const instance = window.location.pathname.match(/\/apps\/([^/]+)/)?.[1];
@@ -15,40 +17,19 @@ const tabs = [
 
 export function App() {
   const [tab, setTab] = useState(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
-  const [status, setStatus] = useState<ReaderStatus | null>(null);
-  const [statusPending, setStatusPending] = useState(true);
-  const [retry, setRetry] = useState(0);
-  const observer = useRef<ReturnType<typeof observeReaderStatus> | null>(null);
+  const [statusResource] = useState(
+    () =>
+      new ReadResource<ReaderStatus>(
+        async (signal) =>
+          readReaderJson<ReaderStatus>(await fetch(`${base}/api/status`, { signal }), "Could not check FreshRSS."),
+        30_000,
+        15_000
+      )
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  useEffect(() => {
-    if (busy) return;
-    const observation = observeReaderStatus({
-      read: async (signal) =>
-        readReaderJson(await fetch(`${base}/api/status`, { signal }), "Could not check FreshRSS."),
-      accept: (value) => {
-        setStatus(value);
-        setStatusError(null);
-      },
-      failed: (caught) => {
-        if (caught instanceof ReaderSignInRequired) setStatus(null);
-        setStatusError(caught instanceof Error ? caught.message : "Could not check FreshRSS.");
-      },
-      pending: setStatusPending,
-      visible: () => document.visibilityState !== "hidden"
-    });
-    observer.current = observation;
-    const visible = () => {
-      if (document.visibilityState !== "hidden") void observation.refresh();
-    };
-    void observation.refresh();
-    document.addEventListener("visibilitychange", visible);
-    return () => {
-      observation.stop();
-      document.removeEventListener("visibilitychange", visible);
-    };
-  }, [busy, retry]);
+  const statusRead = useReadResource(statusResource, readerStatusPollMilliseconds, !busy);
+  const status = statusRead.data ?? null;
   useEffect(() => {
     const pop = () => setTab(window.location.pathname.endsWith("/overview") ? "overview" : "configuration");
     window.addEventListener("popstate", pop);
@@ -59,14 +40,16 @@ export function App() {
     setTab(next);
   }
   async function connect() {
-    observer.current?.stop();
-    setStatusPending(false);
+    statusResource.cancel();
     setBusy(true);
     setError(null);
     try {
       const overview = await fetch("/api/v1/overview");
-      if (!overview.ok) throw new Error("Open ScholarServer and sign in before linking this reading list.");
-      const workspace = (await overview.json()).workspace.id;
+      const overviewValue = await readReaderJson<{ workspace: { id: string } }>(
+        overview,
+        "Open ScholarServer and sign in before linking this reading list."
+      );
+      const workspace = overviewValue.workspace.id;
       const response = await fetch(
         `/api/v1/instances/${encodeURIComponent(workspace)}/${instance}/actions/link-sign-in`,
         {
@@ -75,14 +58,18 @@ export function App() {
           body: "{}"
         }
       );
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.detail ?? "Could not confirm the link. Check Configuration before trying again.");
-      setStatus(result);
+      await readReaderJson(response, "Could not confirm the link. Check Configuration before trying again.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save. Your entries have been kept.");
+      if (caught instanceof ReaderSignInRequired) {
+        statusResource.invalidate(true, caught.message);
+      } else {
+        setError(caught instanceof Error ? caught.message : "Could not save. Your entries have been kept.");
+      }
     } finally {
       setBusy(false);
+      // Reconcile either outcome by reading; never reopen a block or replay the write.
+      statusResource.invalidate();
+      void statusResource.refresh();
     }
   }
   const preparing = status?.phase === "preparing";
@@ -102,14 +89,11 @@ export function App() {
       status={<span className="ss-badge">{statusLabel}</span>}
       feedback={
         <SectionFeedback
-          pending={statusPending}
+          pending={statusRead.pending}
           hasData={status !== null}
           label="FreshRSS status"
-          error={statusError}
-          onRetry={() => {
-            setStatusError(null);
-            setRetry((value) => value + 1);
-          }}
+          error={statusRead.error}
+          onRetry={() => void statusRead.refresh(true)}
         />
       }
     >
@@ -165,7 +149,7 @@ export function App() {
               ) : null}
               <button
                 className="ss-button"
-                disabled={busy || !instance || !!statusError}
+                disabled={busy || !instance || !!statusRead.error}
                 onClick={() => void connect()}
               >
                 {busy ? "Linking…" : "Use ScholarServer sign-in"}

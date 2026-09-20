@@ -1,5 +1,26 @@
 # FreshRSS integration
 
+## Shared status resource migration — 20 September 2026
+
+FreshRSS now uses the canonical ScholarServer `ReadResource` and
+`useReadResource` lifecycle for status reads. This app retains only its response
+parser and policy of two-second polling while preparation is active and
+thirty-second polling otherwise. The resource is component-local and retains
+ordinary status data through transient failures; drafts stay app-owned. It pauses hidden-page
+polling, and blocks/clears data after a confirmed access denial. Setup writes
+cancel the current read and refresh after success; an authentication failure
+invalidates and blocks without forcing an accidental retry. Focused tests cover
+the parser, access-error classification and cadence policy; shared lifecycle tests
+remain owned by `packages/ui`.
+
+Compiled synthetic browser checks pass for independent panels, retained refresh,
+stable layout, failed reads/saves, draft preservation, auth expiry and mobile width.
+UI build/typecheck and focused tests pass. This is not package publication or
+Freelove acceptance. Project-vault notes/index remain pending.
+The compiled browser also covers a denied sign-in-link mutation and a lost link
+response: access remains blocked until explicit retry, and status/reload reconcile
+an accepted link without replaying its POST.
+
 ## Independent UI loading — 20 September 2026
 
 Status, reader address and appearance retain separate request ownership. Unknown

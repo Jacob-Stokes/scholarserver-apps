@@ -292,10 +292,7 @@ try {
     }
     failStatus = true;
     await page.reload();
-    const statusFailure =
-      app === "logseq"
-        ? "Could not check Logseq. Reconnecting automatically; your entries are kept."
-        : "Synthetic status unavailable";
+    const statusFailure = "Synthetic status unavailable";
     await page.getByText(statusFailure, { exact: false }).waitFor();
     failStatus = false;
     await page.reload();
@@ -612,9 +609,7 @@ try {
   failLogseqRead = true;
   holdLogseqStatus = false;
   releaseLogseqStatus();
-  await page
-    .getByText("Could not check Logseq. Reconnecting automatically; your entries are kept.", { exact: false })
-    .waitFor();
+  await page.getByText("Could not reach Logseq setup. Try again.", { exact: false }).waitFor();
   assert.equal(
     await returnLink.inputValue(),
     "https://synthetic.invalid/return?code=not-a-real-credential",

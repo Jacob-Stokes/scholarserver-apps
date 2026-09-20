@@ -16,7 +16,7 @@ export function ReaderAppearance({ base }: { base: string }) {
     setError("");
     fetch(`${base}/api/appearance`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) })
       .then(async (response) => {
-        const value = await readReaderJson(response, "Could not load the reader appearance.");
+        const value = await readReaderJson<{ style: string }>(response, "Could not load the reader appearance.");
         if (controller.signal.aborted) return;
         setStyle(value.style);
         setLoaded(true);

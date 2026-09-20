@@ -48,6 +48,10 @@ try {
     failAppearance = false,
     failSave = false;
   const ready = { phase: "ready", ready: true, signIn: "scholarserver", username: "synthetic" };
+  let currentStatus = ready;
+  let linkResponseStatus = 200;
+  let linkCalls = 0;
+  let loseLinkResponse = false;
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) return route.abort();
@@ -58,7 +62,15 @@ try {
           releaseStatus = resolve;
         });
       if (expired) return route.fulfill({ status: 401, json: {} });
-      return route.fulfill({ status: failStatus ? 503 : 200, json: failStatus ? {} : ready });
+      return route.fulfill({ status: failStatus ? 503 : 200, json: failStatus ? {} : currentStatus });
+    }
+    if (url.pathname === "/api/v1/overview") return route.fulfill({ json: { workspace: { id: "personal" } } });
+    if (url.pathname === "/api/v1/instances/personal/freshrss/actions/link-sign-in") {
+      assert.equal(route.request().method(), "POST");
+      linkCalls++;
+      if (linkResponseStatus === 200) currentStatus = ready;
+      if (loseLinkResponse) return route.abort();
+      return route.fulfill({ status: linkResponseStatus, json: currentStatus });
     }
     if (url.pathname.endsWith("/api/appearance")) {
       if (route.request().method() === "PUT")
@@ -141,6 +153,8 @@ try {
   await reading.scrollIntoViewIfNeeded();
   const before = await reading.boundingBox();
   holdStatus = true;
+  await page.clock.install();
+  await page.clock.setSystemTime(new Date(Date.now() + 31_000));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.getByRole("status").filter({ hasText: "Refreshing FreshRSS status" }).waitFor();
   const during = await reading.boundingBox();
@@ -181,9 +195,30 @@ try {
   holdStatus = false;
   releaseStatus();
   await reading.waitFor();
+  currentStatus = { ...ready, signIn: "password" };
+  linkResponseStatus = 401;
+  await page.reload();
+  const link = page.getByRole("button", { name: "Use ScholarServer sign-in", exact: true });
+  await link.click();
+  await page.getByText("Sign in to ScholarServer again, then retry.", { exact: false }).waitFor();
+  assert.equal(await link.count(), 0, "Mutation access denial clears the status and setup controls");
+  await page.clock.runFor(60_000);
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  assert.equal(await link.count(), 0, "Completing the denied mutation cannot force-read through the block");
+  assert.equal(linkCalls, 1);
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await link.waitFor();
+  linkResponseStatus = 200;
+  loseLinkResponse = true;
+  await link.click();
+  await reading.waitFor();
+  assert.equal(linkCalls, 2, "A lost write response is reconciled by status, not by replaying the link");
+  await page.reload();
+  await reading.waitFor();
+  assert.equal(linkCalls, 2, "Reload observes the accepted state without repeating the operation");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: independent loading, no false setup/defaults, retained refresh, stable layout, failure/retry, draft preservation, auth expiry and mobile width"
+    "PASS: independent loading, no false setup/defaults, retained refresh, stable layout, failure/retry, draft preservation, auth expiry, mobile width, denied link and lost-response reconciliation without replay"
   );
 } finally {
   await browser.close();

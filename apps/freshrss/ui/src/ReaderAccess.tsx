@@ -26,7 +26,10 @@ export function ReaderAccess() {
     setError(null);
     void fetch(endpoint, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) })
       .then(async (response) => {
-        const value = await readReaderJson(response, "Could not load the reader addresses.");
+        const value = await readReaderJson<{
+          options: EndpointAccessOption[];
+          selection?: { optionId: string; url: string | null };
+        }>(response, "Could not load the reader addresses.");
         if (controller.signal.aborted) return;
         setOptions(value.options);
         setUrl(value.selection?.url ?? null);
@@ -58,7 +61,7 @@ export function ReaderAccess() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ optionId, authentication: "authentik" })
       });
-      const result = await readReaderJson(
+      const result = await readReaderJson<{ selection: { url: string | null } }>(
         response,
         "Could not confirm the reader address. Check it before saving again."
       );

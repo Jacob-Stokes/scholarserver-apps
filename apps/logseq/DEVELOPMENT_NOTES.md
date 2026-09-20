@@ -1,5 +1,19 @@
 # Logseq development notes
 
+## Shared read owner — 20 September 2026
+
+Status now derives from the canonical `ReadResource` / `useReadResource` pair
+instead of a second React snapshot and `status-observer.ts`. Request validation,
+two-second cadence, graph discovery and sensitive-field clearing remain app-owned.
+The resource is component-local: account handoff information is not placed in
+Manager's retained registry or browser storage. Accepted writes supersede older
+observations without reopening an authentication block. The generic observer
+tests move to the canonical resource/React contracts; compiled Logseq scenarios
+continue to cover app-specific drafts, interrupted setup and access expiry.
+
+See [the migration ledger](../../docs/read-lifecycle-migration.md). This is source
+work, not a new deployed package. Project-vault documentation remains pending.
+
 ## Status presentation follow-up — 20 September 2026
 
 The UI now labels status as “Not checked” until the first response, keeps the

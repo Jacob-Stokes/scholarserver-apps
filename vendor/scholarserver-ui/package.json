@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./read-resource": "./read-resource.ts",
+    "./use-read-resource": "./use-read-resource.ts",
     "./notifications": "./notifications.tsx",
     "./logo": "./logo.tsx",
     "./fonts": "./fonts.ts",
