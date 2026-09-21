@@ -1,5 +1,22 @@
 # FreshRSS integration
 
+## Loading deployment and vault-documentation checkpoint — 21 September 2026
+
+The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and
+accepted. The imported package `0.1.0-beta.9.launch.20260921.1` was applied to
+`personal/freshrss` revision 5 and its live update was verified. The browser
+screen is Ready. Exact images were healthy; data bindings, grants and unrelated
+state were preserved. This records only the selected instance update; it does
+not claim a new project-vault note.
+
+Remote rollout evidence is retained under
+`/var/lib/scholarserver-upgrades/loading-package-import-20260921/` and local
+build/package evidence and operator helpers are under
+`.dev/loading-resolution-20260921/app-package-rollout`.
+
+The latest project-vault read returned `Authentication required`. No vault note
+or index was written; the project-vault documentation update remains pending.
+
 ## Qualified loading image refresh — 21 September 2026
 
 The loading candidate now selects immutable images from native source

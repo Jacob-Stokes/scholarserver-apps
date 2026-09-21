@@ -1,5 +1,23 @@
 # Docling development notes
 
+## Loading deployment and vault-documentation checkpoint — 21 September 2026
+
+The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and
+accepted. Docling was not live-updated: its shared writable-folder recovery gate
+remains blocked, and no bypass or permission change was used. The loading image
+publication and `.20260921.1` metadata are therefore not evidence of a Docling
+installation update.
+
+The latest project-vault read returned `Authentication required`. No vault note
+or index was written; the project-vault documentation update remains pending.
+
+Docling remains held and was not part of the six live package updates. The
+shared writable-folder recovery gate remains unresolved; no bypass, grant or
+permission change was used. Remote rollout evidence is retained under
+`/var/lib/scholarserver-upgrades/loading-package-import-20260921/` and local
+build/package evidence and operator helpers are under
+`.dev/loading-resolution-20260921/app-package-rollout`.
+
 ## Qualified loading image refresh — 21 September 2026
 
 The loading candidate now selects immutable images from native source

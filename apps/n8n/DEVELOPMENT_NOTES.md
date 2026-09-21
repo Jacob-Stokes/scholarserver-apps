@@ -1,5 +1,23 @@
 # n8n integration — development record
 
+## Loading deployment and vault-documentation checkpoint — 21 September 2026
+
+The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and
+accepted. The imported package `0.1.0-guided.20260921.1` for `personal/n8n`
+revision 8 is deployed and verified. Automated exact-grants, runtime and
+private-data checks pass; exact images were healthy and data bindings, grants
+and unrelated state were preserved. The browser shows the original two
+workflows, the PDF workflow enabled every minute, and the diagnostic workflow
+paused, with its six-hour schedule unchanged.
+
+Remote rollout evidence is retained under
+`/var/lib/scholarserver-upgrades/loading-package-import-20260921/` and the
+local build/package evidence and operator helpers are under
+`.dev/loading-resolution-20260921/app-package-rollout`.
+
+The latest project-vault read returned `Authentication required`. No vault note
+or index was written; the project-vault documentation update remains pending.
+
 ## Qualified loading image refresh — 21 September 2026
 
 The loading candidate now selects immutable images from native source

@@ -1,5 +1,35 @@
 # Obsidian development notes
 
+## Loading deployment and vault-documentation checkpoint — 21 September 2026
+
+The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and
+accepted. The imported package `0.5.0-guided.20260921.1` was applied to
+`personal/obsidian` revision 19 and `personal/obsidian-dev` revision 4.
+Automated exact-grants, runtime and private-data checks pass; exact images were
+healthy and data bindings, grants and unrelated state were preserved. Browser
+acceptance for `personal/obsidian` is limited: it reports
+Recovery Needed. Saved enrollment remains the official default with no profile;
+the installed variant is self-hosted LiveSync both before and after, and the
+pre-update enrollment mtime was `1787940277`. The restore mismatch guard is
+unchanged between the older qualified source
+`3b90bb773159202103b989cd43d9642eb226a1b6` and current source
+`378305b3d5eaf23bde4eddcf6b1fe5f6957333dc`; this is an older configuration
+mismatch, not a repaired or migrated enrollment.
+
+`personal/obsidian-dev` was ready before its update with a LiveSync profile and
+now reports Connected and server running. Its retained
+`gateway-integration-failed` warning remains; it was not hidden or repaired by
+this package update. The existing shared writable-vault recovery boundary
+remains in force.
+
+Remote rollout evidence is retained under
+`/var/lib/scholarserver-upgrades/loading-package-import-20260921/` and the
+local build/package evidence and operator helpers are under
+`.dev/loading-resolution-20260921/app-package-rollout`.
+
+The latest project-vault read returned `Authentication required`. No vault note
+or index was written; the project-vault documentation update remains pending.
+
 ## Qualified loading image refresh — 21 September 2026
 
 The loading candidate now selects immutable images from native source
