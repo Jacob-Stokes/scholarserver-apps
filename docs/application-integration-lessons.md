@@ -87,6 +87,10 @@ release checklist or proof that a particular application is ready.
   uninstalled. Pin required runtime dependencies in the consuming UI manifests
   and check fresh isolated installs. Shared motion respects the browser-wide off
   preference and device reduction; animate explicit navigation, never status polls.
+  `scripts/check-ui-isolation.mjs` now discovers all app UI directories and runs
+  their locked install/build outside the workspace, with an independent vendor
+  copy per app. This catches missing shared-component peers before image builds;
+  it does not replace native container startup or browser acceptance.
 - Pinning makes selected inputs deliberate; final digests make installation
   repeatable. Neither alone proves cross-component compatibility or bit-for-bit
   rebuilds. Record compatible versions and remaining moving build inputs.

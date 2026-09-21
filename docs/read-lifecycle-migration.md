@@ -2,6 +2,17 @@
 
 ## Image-batch preparation — 21 September 2026
 
+The first native run, `35585012618` at `03a3bc8`, failed on both architectures
+while building Logseq: the shared feedback component's `lucide-react` import was
+available from the workspace but absent from the standalone UI install. Nothing
+was published. Four standalone UI manifests/locks now explicitly pin that peer;
+n8n and Zotero already did. The source pipeline now discovers every app UI and
+builds it with its own vendor copy outside the workspace, without parent
+dependencies. A companion regression checks the icon pin in each discovered UI.
+The native batch must be retried from the corrected committed source.
+The corrected full source pipeline passed, including all six standalone locked
+UI builds. Native qualification and publication remain pending.
+
 All six interface migrations are committed at `ad563ac`; do not repeat an
 app-by-app refactor. A separate clean checkout passed `scripts/check-source.sh`
 (locked installation, lint, full tests, packaging checks and production builds).

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@scholarserver/ui": "file:../../../vendor/scholarserver-ui",
+    "lucide-react": "0.475.0",
     "motion": "13.2.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",

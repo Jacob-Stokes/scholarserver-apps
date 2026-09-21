@@ -11,3 +11,4 @@ npm run lint
 npm test
 npm run test:packaging
 npm run build
+node scripts/check-ui-isolation.mjs
