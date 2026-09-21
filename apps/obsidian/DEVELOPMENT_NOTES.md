@@ -1,5 +1,15 @@
 # Obsidian development notes
 
+## Image qualification preparation — 21 September 2026
+
+The status-presentation helper is now included in the image source fingerprint.
+A regression requires both fingerprint coverage and its Dockerfile copy.
+The native packaging gate now checks the separate no-store device credential
+endpoint across setup phases and rejects credential fields in ordinary responses.
+Source tests pass; execution of these added container checks is pending the batch
+workflow. No installed vault, package pin or permission was changed. Project-vault
+documentation remains pending.
+
 ## Local read-lifecycle migration — 20 September 2026
 
 Informational status now uses the canonical shared read lifecycle and reserved

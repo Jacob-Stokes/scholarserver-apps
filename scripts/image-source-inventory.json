@@ -320,6 +320,7 @@
       "sourceInputs": [
         "apps/obsidian/sync/Dockerfile",
         "apps/obsidian/sync/controller.mjs",
+        "apps/obsidian/sync/status-presentation.mjs",
         "apps/obsidian/sync/couchdb-request.mjs",
         "apps/obsidian/sync/couchdb-address.mjs",
         "apps/obsidian/sync/livesync-lifecycle.mjs",

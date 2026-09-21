@@ -1,5 +1,27 @@
 # Read lifecycle: adoption and resume checklist
 
+## Image-batch preparation — 21 September 2026
+
+All six interface migrations are committed at `ad563ac`; do not repeat an
+app-by-app refactor. A separate clean checkout passed `scripts/check-source.sh`
+(locked installation, lint, full tests, packaging checks and production builds).
+The absent Paperless workspace belongs to uncommitted work in the main checkout;
+it is not part of this batch and was not removed or changed.
+
+The Obsidian image inventory now includes `status-presentation.mjs`, with a
+fingerprint regression test. The native packaging gate additionally checks the
+no-store device endpoint before setup, during setup and after completion, and
+checks that ordinary status/configuration responses omit device credentials.
+These new container assertions remain unverified until the native workflow runs.
+
+The owner approved GitHub native image build, test and publication for the batch.
+Seven recipes differ from the existing source lock: the six interface-bearing
+images and the FreshRSS reader. The existing workflow builds all nineteen recipes
+on separate native AMD64 and ARM64 runners. Do not alter source-lock fingerprints
+to bypass the rebuild requirement. After successful publication, bind new immutable
+package versions to the actual receipts; qualify and review retained-instance
+updates separately. Freelove remains unchanged. Project-vault updates are pending.
+
 ## Current checkpoint — 20 September 2026
 
 Core owns `packages/ui/read-resource.ts` and `use-read-resource.ts`; the vendor

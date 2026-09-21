@@ -320,6 +320,16 @@ test("native image builds name every inventory recipe explicitly", async () => {
     assert.match(buildScript, new RegExp(`^build ${recipe.name} `, "m"), `${recipe.name}: native build command`);
 });
 
+test("Obsidian credential filtering participates in the shipped image fingerprint", async () => {
+  const inventory = await loadInventory(path.resolve("scripts/image-source-inventory.json"));
+  const recipe = inventory.recipes.find((entry) => entry.name === "obsidian-sync");
+  const fingerprint = await fingerprintRecipe(process.cwd(), recipe);
+  const helper = "apps/obsidian/sync/status-presentation.mjs";
+  assert.ok(fingerprint.files.includes(helper), "status filtering must invalidate an old image receipt");
+  const dockerfile = await readFile(recipe.dockerfile, "utf8");
+  assert.ok(dockerfile.includes(`${helper} /app/status-presentation.mjs`), "the qualified helper must ship");
+});
+
 test("fingerprints ignore generated, cache and test-output files", async () => {
   await withFixture(async ({ root }) => {
     const sourceDirectory = path.join(root, "source");

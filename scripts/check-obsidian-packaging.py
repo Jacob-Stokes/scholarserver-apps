@@ -175,15 +175,39 @@ def main():
                        image=images["worker"])
         wait_for("LiveSync controller starts with Headless absent", lambda: status(controller)["profile"] == "livesync")
         assert status(controller)["officialClient"] is None
+        probe(controller, """
+          import assert from 'node:assert/strict';
+          const response=await fetch('http://127.0.0.1:8080/api/livesync/onboarding');
+          assert.equal(response.status,200);
+          assert.equal(response.headers.get('cache-control'),'no-store');
+          assert.equal((await response.json()).onboarding,null);
+        """)
         assert probe(controller, "console.log((await fetch('http://127.0.0.1:8080/api/client/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmed:true})})).status)") == "400"
         probe(controller, """
           import assert from 'node:assert/strict';
           const response=await fetch('http://127.0.0.1:8080/api/livesync/configure',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({confirmedNoOtherSync:true,accessMethod:'tailscale',connectionUrl:'https://synthetic.example.ts.net',vaultPassphrase:'Synthetic-vault-test-only-2026',scopePath:'/'})});
           assert.equal(response.status,200);
+          const configured=JSON.stringify(await response.json());
+          assert.equal(configured.includes('setupPassphrase'),false);
+          assert.equal(configured.includes('setupURI'),false);
         """)
         live_binding = (root / "live-runtime/vault-binding.json").read_bytes()
         live_enrollment = (root / "live-runtime/enrollment.json").read_bytes()
+        probe(controller, """
+          import assert from 'node:assert/strict';
+          const response=await fetch('http://127.0.0.1:8080/api/livesync/onboarding');
+          assert.equal(response.status,200);
+          assert.equal(response.headers.get('cache-control'),'no-store');
+          const {onboarding}=await response.json();
+          assert.equal(typeof onboarding?.setupURI,'string');
+          assert.equal(typeof onboarding?.setupPassphrase,'string');
+          assert.ok(onboarding.setupPassphrase.length>0);
+          const status=await (await fetch('http://127.0.0.1:8080/api/status')).text();
+          assert.equal(status.includes('setupPassphrase'),false);
+          assert.equal(status.includes('setupURI'),false);
+          assert.equal(status.includes(onboarding.setupPassphrase),false);
+        """)
         probe(controller, """
           import assert from 'node:assert/strict';
           const response=await fetch('http://127.0.0.1:8080/api/livesync/configure',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -221,6 +245,13 @@ def main():
         wait_for("Independent LiveSync peer -> server vault replicated", lambda: (root / "live-vault/Device-proof.md").exists(), 120)
         assert "independent LiveSync peer" in (root / "live-vault/Device-proof.md").read_text()
         wait_for("Server LiveSync worker ready", lambda: status(controller)["state"] == "ready", 120)
+        probe(controller, """
+          import assert from 'node:assert/strict';
+          const response=await fetch('http://127.0.0.1:8080/api/livesync/onboarding');
+          assert.equal(response.status,200);
+          assert.equal(response.headers.get('cache-control'),'no-store');
+          assert.equal((await response.json()).onboarding,null);
+        """)
         probe(controller, """
           import {createResearchNote} from '/app/research-note.mjs';
           await createResearchNote('/vault',{folder:'Research',filename:'zotero-ABCD1234.md',content:'Synthetic server research note'});
