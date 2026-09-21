@@ -1,5 +1,14 @@
 # Source candidate — not for publication
 
+## Loading development candidate — 21 September 2026
+
+Candidate `0.1.0-beta.4.editorial.20260921.1` selects the native images qualified
+and published by GitHub run 35591930384. This permits the separately reviewed
+retained-development update described in
+[the publication record](../../docs/loading-publication-20260921.md); it does
+not establish an official signed catalog release or fresh-install acceptance.
+The remaining release gates below continue to apply.
+
 ## Published image refresh — 18 September 2026
 
 Source candidate `0.1.0-beta.4.editorial.20260918.1` selects changed recipe images

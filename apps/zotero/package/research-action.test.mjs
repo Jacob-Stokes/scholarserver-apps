@@ -6,7 +6,7 @@ import { parse } from "yaml";
 test("the research candidate declares one bounded runtime research action without a new caller grant", async () => {
   const manifest = parse(await readFile(new URL("./scholarserver-app.yaml", import.meta.url), "utf8"));
   const compose = parse(await readFile(new URL("./compose.yaml", import.meta.url), "utf8"));
-  assert.equal(manifest.packageVersion, "0.5.10-guided.20260918.1");
+  assert.equal(manifest.packageVersion, "0.5.10-guided.20260921.1");
   assert.deepEqual(
     manifest.onboarding.actions.filter((action) => action.id === "research-items"),
     [

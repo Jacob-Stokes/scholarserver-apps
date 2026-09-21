@@ -1,5 +1,19 @@
 # Docling development notes
 
+## Qualified loading image refresh — 21 September 2026
+
+The loading candidate now selects immutable images from native source
+`378305b3d5eaf23bde4eddcf6b1fe5f6957333dc`. GitHub run
+`35591930384` passed both architectures' native and browser gates and published
+the combined image indexes. Registry configs, source labels and rootfs identities
+match the downloaded qualification receipts. The package version advances to
+its `.20260921.1` candidate; permissions, storage and variants are unchanged.
+See `docs/loading-publication-20260921.md` for the coordinated batch.
+
+This records publication and metadata preparation, not an installed update.
+Retained Freelove application and project-vault acceptance are being recorded
+separately; no new research execution or desktop sync is claimed.
+
 ## Shared access-scope adoption — 20 September 2026
 
 The app still chooses its queue, settings and file readers, but common sibling
