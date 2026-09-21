@@ -43,6 +43,19 @@ scan has passed and the source remains unchanged. A failed run removes the prior
 default receipt before building, so it cannot leave an earlier receipt looking
 like the result of that run.
 
+## Transient push recovery — 21 September 2026
+
+Publication retries a Docker push at most three times for classified transient
+transport/registry errors, including `unknown blob`. After each failed attempt
+it rechecks the immutable tag and verifies the receipt's config digest,
+architecture and layer count. A matching tag ends the operation without another
+push, covering a lost client response; authentication denial, mismatched remote
+content, source drift or an exhausted retry budget remains a hard failure. The
+focused pipeline tests cover each branch. This repairs the ARM64 publication
+failure in GitHub run `35585588901`, where the first four images were published
+and `logseq-helper` returned `unknown blob`; this source change performs no
+registry mutation or image rebuild.
+
 The native test stage writes
 `.dev/native-images/<revision>-<architecture>.qualified.json`. It records the
 digest of the complete build receipt and explicitly names only the existing Files,

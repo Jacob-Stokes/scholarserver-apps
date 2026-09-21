@@ -162,6 +162,28 @@ if [ "$1:$2" = "manifest:inspect" ]; then
   exit 1
 fi
 if [ "$1" = push ]; then
+  push_count=$(cat "$MOCK_PUSH_COUNT" 2>/dev/null || printf '0')
+  push_count=$((push_count + 1))
+  printf '%s\n' "$push_count" > "$MOCK_PUSH_COUNT"
+  case "\${MOCK_PUSH_MODE:-success}:$push_count" in
+    transient-once:1)
+      printf 'unknown blob\n' >&2
+      exit 1
+      ;;
+    transient-always:*)
+      printf 'unknown blob\n' >&2
+      exit 1
+      ;;
+    denied:*)
+      printf 'denied: requested access to the resource is denied\n' >&2
+      exit 1
+      ;;
+    lost-response:1)
+      : > "$MOCK_PUSH_STATE"
+      printf 'connection reset by peer\n' >&2
+      exit 1
+      ;;
+  esac
   : > "$MOCK_PUSH_STATE"
   exit 0
 fi
@@ -207,6 +229,8 @@ function environment(value, overrides = {}) {
     MOCK_OTHER_IMAGE_ID: otherImageId,
     MOCK_CONFIG_DIGEST: configDigest,
     MOCK_ROOTFS_DIFF_ID: rootfsDiffId,
+    MOCK_PUSH_COUNT: path.join(value.root, "push-count"),
+    MOCK_PUSH_MODE: "success",
     MOCK_REMOTE: "missing",
     ...overrides
   };
@@ -313,6 +337,55 @@ test("publish retags and verifies the exact receipt image ID", async () => {
     assert.match(log, new RegExp(`^push ${value.target}$`, "m"));
     assert.match(result.stdout, /Published verified image/);
     assert.notEqual(imageId, configDigest, "containerd local selection ID differs from portable config digest");
+  });
+});
+
+test("publish retries a transient push failure with the same receipt image", async () => {
+  await withFixture(async (value) => {
+    const result = spawnSync("sh", [publishScript], {
+      encoding: "utf8",
+      env: environment(value, { MOCK_PUSH_MODE: "transient-once" })
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((await dockerLog(value)).match(/^push /gm)?.length, 2);
+    assert.match(result.stderr, /retrying attempt 2\/3/);
+  });
+});
+
+test("publish exhausts bounded retries for a persistent transient push failure", async () => {
+  await withFixture(async (value) => {
+    const result = spawnSync("sh", [publishScript], {
+      encoding: "utf8",
+      env: environment(value, { MOCK_PUSH_MODE: "transient-always" })
+    });
+    assert.equal(result.status, 1);
+    assert.equal((await dockerLog(value)).match(/^push /gm)?.length, 3);
+    assert.match(result.stderr, /failed after 3 attempts/);
+  });
+});
+
+test("publish does not retry permanent registry denial", async () => {
+  await withFixture(async (value) => {
+    const result = spawnSync("sh", [publishScript], {
+      encoding: "utf8",
+      env: environment(value, { MOCK_PUSH_MODE: "denied" })
+    });
+    assert.equal(result.status, 1);
+    assert.equal((await dockerLog(value)).match(/^push /gm)?.length, 1);
+    assert.match(result.stderr, /permanent Docker push failure/);
+    assert.match(result.stderr, /denied/);
+  });
+});
+
+test("publish verifies a tag created before a lost push response without pushing twice", async () => {
+  await withFixture(async (value) => {
+    const result = spawnSync("sh", [publishScript], {
+      encoding: "utf8",
+      env: environment(value, { MOCK_PUSH_MODE: "lost-response" })
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((await dockerLog(value)).match(/^push /gm)?.length, 1);
+    assert.match(result.stdout, /response loss/);
   });
 });
 

@@ -49,6 +49,12 @@ manifest_is_missing() {
   grep -Eiq 'manifest unknown|no such manifest|name unknown|manifest[^:]*:.*not found' "$1"
 }
 
+transient_push_failed() {
+  grep -Eiq 'unknown blob|blob upload invalid|connection reset|connection refused|i/o timeout|tls handshake timeout|unexpected eof|temporarily unavailable|bad gateway|service unavailable|gateway timeout|too many requests' "$1"
+}
+
+max_push_attempts=3
+
 while IFS="$(printf '\t')" read -r recipe target local_image_id config_digest image_architecture rootfs_diff_ids layer_count source_digest; do
   [ -n "$recipe" ] || continue
 
@@ -112,10 +118,69 @@ EOF
     exit 1
   fi
 
-  docker push "$target"
+  push_output="$work_directory/$recipe.push.log"
+  push_attempt=1
+  remote_published_after_failure=0
+  while :; do
+    if docker push "$target" > "$push_output" 2>&1; then
+      cat "$push_output"
+      break
+    fi
+
+    if ! transient_push_failed "$push_output"; then
+      cat "$push_output" >&2
+      echo "Refusing to retry permanent Docker push failure for $target" >&2
+      exit 1
+    fi
+
+    # A lost response may still have created the immutable tag. Verify it before
+    # retrying so a transient client error cannot duplicate the push.
+    if docker manifest inspect --verbose "$target" > "$remote_manifest" 2> "$remote_error"; then
+      if ! node "$script_dir/native-image-receipt.mjs" verify-remote \
+        --input "$remote_manifest" --config-digest "$config_digest" \
+        --architecture "$image_architecture" --layer-count "$layer_count"; then
+        echo "Refusing to accept mismatched immutable tag after push failure: $target" >&2
+        exit 1
+      fi
+      remote_published_after_failure=1
+      break
+    fi
+    if ! manifest_is_missing "$remote_error"; then
+      echo "Unable to establish whether immutable tag exists after push failure: $target" >&2
+      cat "$remote_error" >&2
+      exit 1
+    fi
+
+    if [ "$push_attempt" -ge "$max_push_attempts" ]; then
+      cat "$push_output" >&2
+      echo "Transient Docker push failed after $max_push_attempts attempts for $target" >&2
+      exit 1
+    fi
+
+    node "$script_dir/native-image-receipt.mjs" verify-receipt \
+      --root "$repository_root" \
+      --inventory "$inventory" \
+      --receipt "$receipt" \
+      --revision "$REVISION" \
+      --architecture "$ARCH" \
+      --registry "$REGISTRY" \
+      --recipe "$recipe" > /dev/null
+    current_id=$(docker image inspect "$target" --format '{{.Id}}')
+    if [ "$current_id" != "$local_image_id" ]; then
+      echo "Local tag changed during transient push retry for $recipe" >&2
+      exit 1
+    fi
+    push_attempt=$((push_attempt + 1))
+    echo "Transient Docker push failure for $target; retrying attempt $push_attempt/$max_push_attempts" >&2
+  done
+
   docker manifest inspect --verbose "$target" > "$remote_manifest"
   node "$script_dir/native-image-receipt.mjs" verify-remote \
     --input "$remote_manifest" --config-digest "$config_digest" \
     --architecture "$image_architecture" --layer-count "$layer_count"
-  echo "Published verified image: $target (local $local_image_id; config $config_digest; $source_digest)"
+  if [ "$remote_published_after_failure" -eq 1 ]; then
+    echo "Published verified image after transient push response loss: $target (local $local_image_id; config $config_digest; $source_digest)"
+  else
+    echo "Published verified image: $target (local $local_image_id; config $config_digest; $source_digest)"
+  fi
 done < "$verified_records"
