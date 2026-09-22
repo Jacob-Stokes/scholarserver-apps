@@ -124,8 +124,16 @@ try {
   assert.equal(unchanged.headers.get("cache-control"), "private, max-age=300, must-revalidate");
   const readerHtml = await readerPage.text();
   assert.match(readerHtml, /FreshRSS/, "reader login page loads through the proxy");
-  assert.match(readerHtml, /themes\/ScholarServer\/theme\.css/, "upstream extension applies appearance by default");
-  assert.match(readerHtml, /themes\/ScholarServer\/theme\.js/, "reader loads its optional branding adapter");
+  assert.doesNotMatch(readerHtml, /themes\/ScholarServer|ss-reader-brand/, "new installations use native appearance");
+  const branded = await fetch(`${origin}/api/appearance`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ style: "scholarserver" })
+  });
+  assert.equal(branded.status, 200);
+  const brandedHtml = await (await readerFetch("http://127.0.0.1:8082/i/")).text();
+  assert.match(brandedHtml, /themes\/ScholarServer\/theme\.css/, "optional branded style remains available");
+  assert.match(brandedHtml, /themes\/ScholarServer\/theme\.js/, "optional branding adapter remains available");
   const appearance = await fetch(`${origin}/api/appearance`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
@@ -138,11 +146,6 @@ try {
     /themes\/ScholarServer|ss-reader-brand/,
     "original mode restores native markup with no injected styles"
   );
-  await fetch(`${origin}/api/appearance`, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ style: "scholarserver" })
-  });
   if (process.env.SCHOLARSERVER_INSTANCE_ID) {
     assert.match(
       readerHtml,
