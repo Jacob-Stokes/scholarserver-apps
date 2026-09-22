@@ -414,6 +414,17 @@ new full-platform installation or a new public OAuth acceptance test.
 - https://freshrss.github.io/FreshRSS/en/developers/06_GoogleReader_API.html
 - https://freshrss.github.io/FreshRSS/en/admins/15_extensions.html
 
+## Native appearance candidate — 22 September 2026
+
+New installs default to FreshRSS's own appearance. The ScholarServer theme remains
+an explicit, reversible setting for existing installations. The native AMD64 and
+ARM64 image workflow passed at source commit `d8a455b`; the two immutable
+multi-architecture image digests and source fingerprints are recorded in the
+package manifest and `catalog/image-source-lock.json`. The repository test suite
+and source-lock check passed after the metadata update. This records a published
+image candidate, not package import, an update of Freelove, or fresh-install
+acceptance. The retained Freelove reader already uses its saved native appearance.
+
 ## Catalog tags — 11 September 2026
 
 The package manifest now declares the app-owned `News & feeds` tag under
