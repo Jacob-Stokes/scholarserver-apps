@@ -1,5 +1,16 @@
 # FreshRSS integration
 
+## Native appearance default — 22 September 2026
+
+New instances now use FreshRSS's original appearance. Existing saved appearance
+choices remain authoritative; an explicit ScholarServer-style choice still works.
+The package keeps its optional extension for those existing choices, but the
+reader extension injects no ScholarServer assets when the setting is absent or
+original. Focused setup and UI tests pass. This is source only: the installed
+Freelove reader was already set to original separately, and these edits have
+not been published as new immutable images or applied to another instance.
+The project-vault note/index update is pending until vault access is available.
+
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 
 The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and

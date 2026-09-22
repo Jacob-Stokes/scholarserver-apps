@@ -47,16 +47,16 @@ test("a stale worker cannot report ready", async (t) => {
   assert.equal((await setup.status()).ready, false);
 });
 
-test("appearance defaults to ScholarServer and persists independently of account credentials", async (t) => {
+test("appearance defaults to native FreshRSS and preserves an explicit ScholarServer choice", async (t) => {
   const { directory, setup } = await fixture(t);
   await setup.connect({ username: "researcher", password: "Synthetic-long-password" });
   const account = await readFile(`${directory}/account.json`, "utf8");
-  assert.deepEqual(await setup.appearance(), { style: "scholarserver" });
-  await setup.saveAppearance({ style: "original" });
-  assert.deepEqual(await new Setup(directory).appearance(), { style: "original" });
-  await assert.rejects(setup.saveAppearance({ style: "custom", css: "untrusted" }));
   assert.deepEqual(await setup.appearance(), { style: "original" });
   await setup.saveAppearance({ style: "scholarserver" });
+  assert.deepEqual(await new Setup(directory).appearance(), { style: "scholarserver" });
+  await assert.rejects(setup.saveAppearance({ style: "custom", css: "untrusted" }));
+  assert.deepEqual(await setup.appearance(), { style: "scholarserver" });
+  await setup.saveAppearance({ style: "original" });
   assert.equal(await readFile(`${directory}/account.json`, "utf8"), account);
   assert.equal((await stat(`${directory}/appearance.json`)).mode & 0o777, 0o600);
 });

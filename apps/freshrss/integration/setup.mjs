@@ -62,7 +62,7 @@ export class Setup {
     return { ...worker, username: account?.username ?? null, signIn: binding ? "scholarserver" : "password" };
   }
   async appearance() {
-    return readJson(`${this.runtime}/appearance.json`, { style: "scholarserver" });
+    return readJson(`${this.runtime}/appearance.json`, { style: "original" });
   }
   async saveAppearance(input) {
     const settings = z

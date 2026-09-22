@@ -12,11 +12,10 @@ open FreshRSS. Add subscriptions there or import an OPML file from another reade
 The server checks feeds every 30 minutes. FreshRSS's own interface also refreshes
 feeds on demand.
 
-The reader matches ScholarServer's colours, fonts and branding by default when
-opened at the dashboard address in the same browser. Choose **Configuration →
-Reader appearance → FreshRSS original** to use FreshRSS's native appearance.
-This does not change feeds or reading preferences. A separate reader hostname
-uses separate browser preferences rather than automatically inheriting them.
+The reader uses FreshRSS's native appearance by default. An existing saved
+appearance choice is kept during updates. Configuration → Reader appearance
+lets you choose ScholarServer styling if you prefer it. The choice does not
+change feeds or reading preferences.
 
 The AI connection can list feeds and categories, count unread articles, read
 articles, and change read/starred state. Subscription changes and full-text search

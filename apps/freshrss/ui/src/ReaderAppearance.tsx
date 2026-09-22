@@ -69,8 +69,8 @@ export function ReaderAppearance({ base, reads, visible }: { base: string; reads
           }}
         >
           {!loaded ? <option value="">Not loaded</option> : null}
-          <option value="scholarserver">Match ScholarServer (default)</option>
-          <option value="original">FreshRSS original</option>
+          <option value="original">FreshRSS original (default)</option>
+          <option value="scholarserver">Match ScholarServer</option>
         </select>
       </label>
       <p>
