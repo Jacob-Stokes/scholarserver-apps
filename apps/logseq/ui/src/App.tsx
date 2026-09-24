@@ -1,5 +1,4 @@
-import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
-import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ApplicationScreen, ApplicationSettingsRow } from "@scholarserver/ui/application-screen";
 import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
@@ -378,7 +377,7 @@ function LogseqSession({ onAccessRetry }: { onAccessRetry: () => void }) {
         </SetupPanel>
       ) : null}
       {tab === "configuration" && status && stage === "ready" ? (
-        <ApplicationScreenUI.ApplicationSettingsRow
+        <ApplicationSettingsRow
           title="Current settings"
           description={
             <div className="ss-stack">

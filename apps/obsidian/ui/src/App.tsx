@@ -1,5 +1,4 @@
-import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
-import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ApplicationScreen, ApplicationSettingsRow } from "@scholarserver/ui/application-screen";
 import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, type SetupPipelineStage, SetupProgress } from "@scholarserver/ui/setup-pipeline";
@@ -449,7 +448,7 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
             </>
           ) : null}
           {status.state === "ready" ? (
-            <ApplicationScreenUI.ApplicationSettingsRow
+            <ApplicationSettingsRow
               title="Current settings"
               description={
                 <div className="ss-stack">

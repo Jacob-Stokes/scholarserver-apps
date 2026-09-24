@@ -1,5 +1,4 @@
-import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
-import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ApplicationScreen, ApplicationSettingsRow } from "@scholarserver/ui/application-screen";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
@@ -116,7 +115,7 @@ function ReaderSession({ onAccessRetry }: { onAccessRetry: () => void }) {
       ) : null}
       {status?.ready && linked ? (
         <section className="ss-card ss-stack">
-          <ApplicationScreenUI.ApplicationSettingsRow
+          <ApplicationSettingsRow
             title="Current settings"
             description={
               <p>

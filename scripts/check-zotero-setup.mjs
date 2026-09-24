@@ -147,7 +147,7 @@ try {
   assert.ok(authorization, "the approval retry must reach the synthetic API");
   status = { ...status, state: "ready", localApi: "authorized" };
   await authorization.fulfill({ json: status });
-  await page.getByRole("heading", { name: "Current settings", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Zotero is connected" }).waitFor();
   assert.equal(await page.getByTitle("Zotero permission approval").count(), 0);
   await page.getByRole("button", { name: "Run initial sync" }).waitFor();
   await page.screenshot({ path: path.join(output, "03-connection-checks.png"), fullPage: true });

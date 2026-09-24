@@ -1,5 +1,4 @@
-import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
-import { ApplicationScreen } from "@scholarserver/ui/application-screen";
+import { ApplicationScreen, ApplicationSettingsRow } from "@scholarserver/ui/application-screen";
 import { EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
@@ -716,7 +715,7 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
           ) : null}
 
           {setupStage === "ready" && ready ? (
-            <ApplicationScreenUI.ApplicationSettingsRow
+            <ApplicationSettingsRow
               title="Current settings"
               description={
                 <dl className="ss-details">

@@ -185,7 +185,11 @@ test("app-owned main screens reuse shared presentation instead of copying the pl
       if (error.code === "ENOENT") continue; // Not every package has a ScholarServer-owned screen.
       throw error;
     }
-    assert.match(source, /import \{ ApplicationScreen \} from "@scholarserver\/ui\/application-screen"/, entry.name);
+    assert.match(
+      source,
+      /import \{[^}]*\bApplicationScreen\b[^}]*\} from "@scholarserver\/ui\/application-screen"/,
+      entry.name
+    );
     assert.match(source, /<ApplicationScreen[\s>]/, entry.name);
     assert.doesNotMatch(source, /className="ss-app-header"/, `${entry.name}: header must stay shared`);
     checked++;
