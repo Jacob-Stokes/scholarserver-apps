@@ -1,5 +1,15 @@
 # Logseq development notes
 
+## Completed setup presentation — 24 September 2026
+
+Ready Configuration now summarizes the notebook, sync method and saved sync
+address when provided, with a connection check instead of setup progress and a
+completion wizard panel. Incomplete/private-address setup and recovery states
+remain available. The current app API does not provide a supported post-setup
+notebook or sync-address edit/reset action; none was added. UI typecheck, build,
+focused source tests and synthetic Chrome ready/setup/recovery scenarios pass.
+The project-vault app note/index update is pending and was not attempted here.
+
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 
 The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and

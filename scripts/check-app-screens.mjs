@@ -10,7 +10,8 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
 const modules = process.env.SCHOLARSERVER_BROWSER_MODULES;
 const { chromium } = require(modules ? `${modules}/playwright` : "playwright");
-const apps = ["zotero", "obsidian", "docling", "logseq"];
+const apps = ["zotero", "obsidian", "docling", "logseq", "freshrss"];
+const appNames = { zotero: "Zotero", obsidian: "Obsidian", docling: "Docling", logseq: "Logseq", freshrss: "FreshRSS" };
 const output = join(root, ".dev", "app-screens");
 await mkdir(output, { recursive: true });
 
@@ -69,6 +70,10 @@ try {
   let failStatus = false;
   let failSave = false;
   let reads = 0;
+  let readerStatus = { phase: "ready", ready: true, username: "Synthetic reader", signIn: "scholarserver" };
+  let readerStatusReads = 0;
+  let readerStyle = "original";
+  let readerAddressOption = "private";
   let status = zoteroStatus();
   let obsidianStatus = null;
   let logseqStatus = {
@@ -103,6 +108,33 @@ try {
     if (url.origin !== origin) return route.abort();
     if (!url.pathname.includes("/api/")) return route.continue();
     calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
+    if (url.pathname === "/apps/freshrss/api/status") {
+      readerStatusReads++;
+      if (failStatus) return route.fulfill({ status: 503, json: { error: "Synthetic status unavailable" } });
+      return route.fulfill({ json: readerStatus });
+    }
+    if (url.pathname === "/apps/freshrss/api/appearance") {
+      if (request.method() === "PUT") readerStyle = request.postDataJSON().style;
+      return route.fulfill({ json: { style: readerStyle } });
+    }
+    if (url.pathname.endsWith("/instances/freshrss/endpoints/reader/access-options")) {
+      if (request.method() === "PUT") readerAddressOption = request.postDataJSON().optionId;
+      const readerUrl = "https://reader.example.invalid/";
+      return route.fulfill({
+        json: {
+          options: [
+            { ...option, id: "private", label: "Private reader", url: readerUrl },
+            { ...option, id: "public", label: "Public reader", url: readerUrl }
+          ],
+          selection: { optionId: readerAddressOption, url: readerUrl }
+        }
+      });
+    }
+    if (url.pathname === "/api/v1/overview") return route.fulfill({ json: { workspace: { id: "personal" } } });
+    if (url.pathname.endsWith("/actions/link-sign-in")) {
+      readerStatus = { ...readerStatus, ready: true, signIn: "scholarserver" };
+      return route.fulfill({ json: readerStatus });
+    }
     if (url.pathname.endsWith("/logseq/api/address")) {
       logseqStatus.syncAddress = request.postDataJSON().url;
       return route.fulfill({ json: logseqStatus });
@@ -210,7 +242,7 @@ try {
   });
 
   for (const app of apps) {
-    const name = app[0].toUpperCase() + app.slice(1);
+    const name = appNames[app];
     for (const [font, family] of [
       ["source", "Source Sans 3"],
       ["computer-modern", "Computer Modern Sans"],
@@ -255,8 +287,17 @@ try {
       await page.goto(`${origin}/apps/${app}/overview`);
       await page.getByRole("heading", { name, exact: true }).waitFor();
       await page.locator(".ss-loading").waitFor({ state: "hidden" });
-      const dashboardLink = page.getByRole("link", { name: "Back to ScholarServer", exact: true });
-      assert.equal(await dashboardLink.getAttribute("href"), "/");
+      const manageLink = page.locator(".ss-dashboard-link");
+      await manageLink.waitFor();
+      const manageHref = await manageLink.getAttribute("href");
+      const manageLabel = await manageLink.getAttribute("aria-label");
+      if (manageHref?.startsWith("/applications/manage/")) {
+        assert.equal(manageLabel, `Manage ${name}`);
+      } else if (manageHref === "/applications") {
+        assert.equal(manageLabel, "Back to applications");
+      } else {
+        assert.fail(`${app}: unexpected management link destination ${manageHref}`);
+      }
       assert.equal(await page.locator(".ss-dashboard-label-short").isVisible(), width <= 720);
       assert.equal(await page.locator(".ss-dashboard-label-full").isVisible(), width > 720);
       const headerFits = await page.locator(".ss-app-header").evaluate((header) => {
@@ -292,7 +333,7 @@ try {
     }
     failStatus = true;
     await page.reload();
-    const statusFailure = "Synthetic status unavailable";
+    const statusFailure = app === "freshrss" ? "Could not check FreshRSS." : "Synthetic status unavailable";
     await page.getByText(statusFailure, { exact: false }).waitFor();
     failStatus = false;
     await page.reload();
@@ -322,6 +363,41 @@ try {
     await page.evaluate(() => localStorage.removeItem("scholarserver.animations-off.v1"));
     await page.emulateMedia({ reducedMotion: "reduce" });
   }
+
+  // FreshRSS ready settings retain their existing change controls; incomplete
+  // linking remains in the guided setup flow.
+  readerStatus = { phase: "ready", ready: true, username: "Synthetic reader", signIn: "scholarserver" };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/apps/freshrss/configuration`);
+  await page.getByRole("heading", { name: "Current settings", exact: true }).waitFor();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0);
+  assert.equal(await page.getByText("New articles are checked every 30 minutes.", { exact: true }).count(), 0);
+  await page.getByRole("link", { name: "Open FreshRSS", exact: true }).waitFor();
+  await page.getByText("Change reader address", { exact: true }).click();
+  await page.getByRole("radio", { name: /Public reader/ }).check();
+  await page.getByRole("button", { name: "Save reader address", exact: true }).click();
+  assert.equal(readerAddressOption, "public");
+  const readerAppearance = page.getByRole("combobox", { name: "Appearance", exact: true });
+  await page.waitForFunction(() => {
+    const select = document.querySelector("select");
+    return select && !select.disabled;
+  });
+  await readerAppearance.selectOption("scholarserver");
+  await page.getByRole("button", { name: "Save appearance", exact: true }).click();
+  await page.getByText("Saved. Reload your reader to see the change.", { exact: true }).waitFor();
+  const priorReaderChecks = readerStatusReads;
+  const readerCheck = page.waitForResponse((response) => response.url().endsWith("/api/status"));
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await readerCheck;
+  assert.ok(readerStatusReads > priorReaderChecks);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(output, "freshrss-ready-mobile.png"), fullPage: true });
+  readerStatus = { phase: "setup", ready: false, username: "Synthetic reader", signIn: "password" };
+  await page.goto(`${origin}/apps/freshrss/configuration`);
+  await page.getByRole("heading", { name: "Use your ScholarServer sign-in", exact: true }).waitFor();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Use ScholarServer sign-in", exact: true }).count(), 1);
+  console.log("FreshRSS: completed settings, supported changes and incomplete sign-in setup passed");
 
   // File discovery and defaults do not wait for queue health. Refresh only its
   // own data; an empty successful list is different from a pending/failed read.
@@ -776,10 +852,25 @@ try {
   assert.equal(await logseqPassword.inputValue(), "");
   await logseqPassword.fill("synthetic-encryption-password");
   await page.getByRole("button", { name: "Retry download", exact: true }).click();
-  logseqStatus = { ...logseqStatus, phase: "ready", ready: true, sync: "up-to-date" };
-  await page.getByRole("heading", { name: "Your notebook is connected" }).waitFor();
+  logseqStatus = {
+    ...logseqStatus,
+    phase: "ready",
+    ready: true,
+    sync: "up-to-date",
+    syncAddress: "https://sync.example.invalid/"
+  };
+  await page.getByRole("heading", { name: "Current settings", exact: true }).waitFor();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0);
+  await page.getByText("Synthetic notebook", { exact: true }).waitFor();
+  await page.getByText("up to date", { exact: true }).waitFor();
+  await page.getByText("https://sync.example.invalid/", { exact: true }).waitFor();
+  const logseqCheck = page.waitForResponse((response) => response.url().endsWith("/logseq/api/status"));
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await logseqCheck;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: join(output, "logseq-ready-mobile.png"), fullPage: true });
   await page.reload();
-  await page.getByRole("heading", { name: "Your notebook is connected" }).waitFor();
+  await page.getByRole("heading", { name: "Current settings", exact: true }).waitFor();
   console.log("Logseq: draft/error preservation, reload during download, safe retry and connected-state resume passed");
 
   obsidianStatus = {
@@ -932,6 +1023,29 @@ try {
   await page.getByRole("heading", { name: "Restore the vault connection", exact: true }).waitFor();
   await page.screenshot({ path: join(output, "obsidian-vault-recovery-mobile.png"), fullPage: true });
   console.log("Obsidian: interrupted vault setup stays in recovery after reload without offering replacement setup");
+  obsidianStatus = {
+    state: "ready",
+    profile: "livesync",
+    scopePath: "/Research/Notes",
+    remoteVault: "Synthetic research vault",
+    workerRunning: false,
+    lastError: null,
+    lastSyncAt: null,
+    liveSyncWorker: { state: "degraded", running: true, lastError: "Synthetic sync warning remains visible." }
+  };
+  await page.goto(`${origin}/apps/obsidian/configuration`);
+  await page.getByRole("heading", { name: "Current settings", exact: true }).waitFor();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0);
+  assert.equal(await page.getByRole("alert").filter({ hasText: "Setup is complete." }).count(), 0);
+  await page.getByText("Synthetic research vault", { exact: true }).waitFor();
+  await page.getByText("/Research/Notes", { exact: true }).waitFor();
+  await page.getByText("Keep other vault sync methods turned off.", { exact: false }).waitFor();
+  await page.getByText("Synthetic sync warning remains visible.", { exact: true }).waitFor();
+  const obsidianCheck = page.waitForResponse((response) => response.url().endsWith("/obsidian/api/status"));
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await obsidianCheck;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: join(output, "obsidian-ready-mobile.png"), fullPage: true });
   obsidianStatus = null;
 
   let zoteroReads = 0;
@@ -973,9 +1087,32 @@ try {
   assert.equal(await page.getByRole("combobox").inputValue(), "zotero-storage");
   failSave = false;
   await page.getByRole("button", { name: "Save and continue", exact: true }).click();
-  await page.getByRole("heading", { name: "Zotero is connected", exact: true }).waitFor();
+  const currentSettingsAreRendered = () =>
+    page.waitForFunction(() => document.querySelector("main")?.innerText.includes("Current settings"));
+  await currentSettingsAreRendered();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0);
+  await page.getByText("Test researcher", { exact: true }).waitFor();
+  await page.getByText("Zotero Storage", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Change attachment settings", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Sync now", exact: true }).count(), 0);
+  const onlineZoteroCheck = page.waitForResponse((response) => response.url().endsWith("/zotero/api/status"));
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await onlineZoteroCheck;
+  await page.getByRole("button", { name: "Change attachment settings", exact: true }).click();
+  await page.getByRole("heading", { name: "Choose attachment access", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await currentSettingsAreRendered();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0, "Cancel returns to ready settings");
+  await page.getByRole("button", { name: "Change attachment settings", exact: true }).click();
+  await page.getByRole("combobox").selectOption("metadata-only");
+  await page.getByRole("button", { name: "Save and continue", exact: true }).click();
+  await currentSettingsAreRendered();
+  await page.getByText("Citation data only", { exact: true }).waitFor();
+  assert.equal(await page.locator(".ss-setup-progress").count(), 0, "Save returns to ready settings");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: join(output, "zotero-ready-online-mobile.png"), fullPage: true });
   await page.reload();
-  await page.getByRole("heading", { name: "Zotero is connected", exact: true }).waitFor();
+  await currentSettingsAreRendered();
   assert.ok(
     !calls.slice(onlineCalls).some((call) => call.path.endsWith("/access-options")),
     "Online library never loads desktop access"
@@ -1107,9 +1244,15 @@ try {
     }
     throw new Error(`Unexpected n8n read: ${url.pathname}`);
   });
+  await page.goto(`${origin}/apps/n8n/configuration`);
+  const initialN8nConfiguration = page.getByRole("button", { name: "Configuration", exact: true });
+  await page.getByRole("heading", { name: "Platform connection", exact: true }).waitFor();
+  assert.equal(await initialN8nConfiguration.getAttribute("aria-current"), "page");
+  assert.ok(page.url().endsWith("/apps/n8n/configuration"), "n8n opens directly on its declared configuration path");
+  const discoveryCallsBeforeAutomations = discoveryCalls;
   await page.goto(`${origin}/apps/n8n/automations`);
   await page.getByText("Loading automations…", { exact: true }).waitFor();
-  assert.equal(discoveryCalls, 1, "Discovery does not wait for automation inventory");
+  assert.equal(discoveryCalls, discoveryCallsBeforeAutomations + 1, "Discovery does not wait for automation inventory");
   await page.getByRole("button", { name: "Configuration", exact: true }).click();
   await page.getByRole("heading", { name: "Platform connection", exact: true }).waitFor();
   releaseInventory();

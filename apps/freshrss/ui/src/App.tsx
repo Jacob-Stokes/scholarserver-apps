@@ -1,3 +1,4 @@
+import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
@@ -96,7 +97,7 @@ function ReaderSession({ onAccessRetry }: { onAccessRetry: () => void }) {
         />
       }
     >
-      {status && tab === "configuration" ? (
+      {status && tab === "configuration" && !(status.ready && linked) ? (
         <SetupProgress
           stages={[
             { id: "account", label: "Your sign-in" },
@@ -115,15 +116,21 @@ function ReaderSession({ onAccessRetry }: { onAccessRetry: () => void }) {
       ) : null}
       {status?.ready && linked ? (
         <section className="ss-card ss-stack">
-          <h2>Your reading list</h2>
-          <p>Add a feed or import subscriptions in FreshRSS. New articles are checked every 30 minutes.</p>
+          <ApplicationScreenUI.ApplicationSettingsRow
+            title="Current settings"
+            description={
+              <p>
+                Your existing FreshRSS account is linked to ScholarServer sign-in. Signing out of ScholarServer also
+                stops access to this reader.
+              </p>
+            }
+            action={
+              <button className="ss-button ss-button-secondary" onClick={() => void statusResource.refresh(true)}>
+                Check connection
+              </button>
+            }
+          />
           <ReaderAccess reads={reads} />
-          <p>You use your ScholarServer sign-in. Signing out of ScholarServer also stops access to this reader.</p>
-          <p>
-            Your AI connection can read articles, list feeds and organise read or starred articles. Add or remove
-            subscriptions in the reader.
-          </p>
-          <p>Feeds, saved articles and settings are included in ScholarServer backups.</p>
         </section>
       ) : null}
       {status && !(status.ready && linked) ? (

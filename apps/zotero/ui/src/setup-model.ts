@@ -52,6 +52,17 @@ export function stageAfterAccessLoad(current: SetupStage, hasSelection: boolean)
   return current;
 }
 
+export function storageStageAfterSave(
+  editingExistingSettings: boolean,
+  onlineLibrary: boolean,
+  hasDesktopAccess: boolean
+): SetupStage {
+  if (editingExistingSettings) return "ready";
+  if (onlineLibrary) return "ready";
+  if (hasDesktopAccess) return "authorization";
+  return "access";
+}
+
 export function defaultDesktopAuthentication(option: EndpointAccessOption): "none" | "authentik" {
   const authentication = option.authentication;
   if (authentication.authentik === "unsupported") return "none";

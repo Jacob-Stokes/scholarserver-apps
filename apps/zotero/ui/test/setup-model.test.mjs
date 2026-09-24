@@ -40,6 +40,17 @@ test("loading desktop access only advances or repairs the access boundary", () =
   }
 });
 
+test("saving a ready-state attachment edit returns without restarting authorization", () => {
+  assert.equal(model.storageStageAfterSave(true, false, true), "ready");
+  assert.equal(model.storageStageAfterSave(true, true, false), "ready");
+});
+
+test("initial attachment setup keeps its existing next-stage behavior", () => {
+  assert.equal(model.storageStageAfterSave(false, true, false), "ready");
+  assert.equal(model.storageStageAfterSave(false, false, true), "authorization");
+  assert.equal(model.storageStageAfterSave(false, false, false), "access");
+});
+
 test("saved desktop choice wins, then the editable choice, recommendation, and first option", () => {
   const options = [option("first"), option("recommended", true), option("saved"), option("draft")];
   assert.equal(model.selectedDesktopOptionId(options, "saved", "draft"), "saved");

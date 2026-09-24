@@ -1,3 +1,4 @@
+import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
@@ -53,6 +54,15 @@ function profileLabel(profile: SyncProfile): string {
   if (profile === "official") return "Obsidian Sync";
   if (profile === "livesync") return "Self-hosted LiveSync";
   return "Not selected";
+}
+
+function serverSyncLabel(status: Status, liveSyncRunning: boolean): string {
+  if (status.profile === "livesync") {
+    if (liveSyncRunning) return "Running";
+    return "Not running";
+  }
+  if (status.workerRunning) return "Running";
+  return "Stopped";
 }
 
 export function App() {
@@ -439,28 +449,45 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
             </>
           ) : null}
           {status.state === "ready" ? (
-            <>
-              <SetupProgress stages={setupStages} current="ready" />
-              <SetupPanel
-                stage={6}
-                total={6}
-                title="Obsidian is connected"
-                description={`${profileLabel(status.profile)} is active and the server copy is ready.`}
-              >
-                <div className="ss-alert ss-alert-success">
-                  Setup is complete. Notes can now synchronize between your devices, the server, and approved AI tools.
+            <ApplicationScreenUI.ApplicationSettingsRow
+              title="Current settings"
+              description={
+                <div className="ss-stack">
+                  <p className="ss-card-description">The saved vault connection and access scope.</p>
+                  <dl className="ss-details">
+                    <dt>Sync method</dt>
+                    <dd>{profileLabel(status.profile)}</dd>
+                    {status.remoteVault ? (
+                      <>
+                        <dt>Vault</dt>
+                        <dd>{status.remoteVault}</dd>
+                      </>
+                    ) : null}
+                    <dt>AI-accessible folder</dt>
+                    <dd>
+                      <code className="ss-code">{status.scopePath || "/"}</code>
+                    </dd>
+                    <dt>Server sync</dt>
+                    <dd>{serverSyncLabel(status, liveSyncRunning)}</dd>
+                  </dl>
+                  {status.profile === "livesync" ? (
+                    <div className="ss-callout ss-callout-warning">
+                      <strong>Keep other vault sync methods turned off.</strong> Running two sync systems against the
+                      same vault can create conflicts.
+                    </div>
+                  ) : null}
+                  {status.lastError ? <div className="ss-alert ss-alert-error">{status.lastError}</div> : null}
+                  {status.liveSyncWorker?.lastError ? (
+                    <div className="ss-alert ss-alert-error">{status.liveSyncWorker.lastError}</div>
+                  ) : null}
                 </div>
-                {status.profile === "livesync" ? (
-                  <div className="ss-callout ss-callout-warning">
-                    <strong>Keep other vault sync methods turned off.</strong> Running two sync systems against the same
-                    vault can create conflicts.
-                  </div>
-                ) : null}
+              }
+              action={
                 <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
                   Check connection
                 </button>
-              </SetupPanel>
-            </>
+              }
+            />
           ) : null}
         </div>
       ) : null}

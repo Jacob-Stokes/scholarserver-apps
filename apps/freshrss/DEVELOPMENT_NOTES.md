@@ -1,5 +1,15 @@
 # FreshRSS integration
 
+## Completed setup presentation — 24 September 2026
+
+Configuration no longer shows setup progress after both the reader and
+ScholarServer sign-in are ready. The ready view uses a compact current-settings
+section with a connection check; existing appearance and reader-address controls
+remain available for changes. Repeated reader-use and success prose was removed.
+Incomplete setup and sign-in/recovery feedback are unchanged. UI typecheck, build,
+focused source tests and synthetic Chrome ready/setup scenarios pass.
+The project-vault app note/index update is pending and was not attempted here.
+
 ## Native appearance default — 22 September 2026
 
 New instances now use FreshRSS's original appearance. Existing saved appearance

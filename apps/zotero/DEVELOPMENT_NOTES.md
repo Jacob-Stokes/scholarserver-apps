@@ -1,5 +1,16 @@
 # Zotero development notes
 
+## Completed setup presentation — 24 September 2026
+
+Ready Configuration now summarizes the current account, attachment access,
+connection/API and applicable permissions or file settings, with connection
+check, supported attachment-settings edit and sync actions. Saving an edit
+returns to the ready view rather than advancing through authorization again;
+failed saves retain the existing form state. Incomplete setup keeps its existing
+guided flow and completion feedback. UI typecheck, build, focused source tests and
+synthetic Chrome ready/setup/recovery scenarios pass. The project-vault app
+note/index update is pending and was not attempted here.
+
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 
 The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and

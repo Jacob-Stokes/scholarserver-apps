@@ -1,3 +1,4 @@
+import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
@@ -174,8 +175,10 @@ function LogseqSession({ onAccessRetry }: { onAccessRetry: () => void }) {
           </button>
         </section>
       ) : null}
-      {tab === "configuration" && status ? <SetupProgress stages={setupStages} current={stage} /> : null}
-      {status?.addressRequired ? (
+      {tab === "configuration" && status && stage !== "ready" ? (
+        <SetupProgress stages={setupStages} current={stage} />
+      ) : null}
+      {status?.addressRequired && (!status.ready || !status.syncAddress) ? (
         <PrivateConnection
           reads={reads}
           browserAvailable={Boolean(status.browserAvailable)}
@@ -375,17 +378,40 @@ function LogseqSession({ onAccessRetry }: { onAccessRetry: () => void }) {
         </SetupPanel>
       ) : null}
       {tab === "configuration" && status && stage === "ready" ? (
-        <SetupPanel
-          stage={setupStages.length}
-          total={setupStages.length}
-          title="Your notebook is connected"
-          description="AI tools can now read and edit this notebook. Connect your other devices to the same notebook to share those edits."
-        >
-          <p>
-            <strong>{status.graph}</strong>
-          </p>
-          <p>Sync: {status.sync.replaceAll("-", " ")}</p>
-        </SetupPanel>
+        <ApplicationScreenUI.ApplicationSettingsRow
+          title="Current settings"
+          description={
+            <div className="ss-stack">
+              <p className="ss-card-description">
+                This notebook is connected. Setup will not be run again automatically.
+              </p>
+              {status.syncAddress ? (
+                <p className="ss-card-description">
+                  Keep Tailscale connected on each device that uses this private sync address.
+                </p>
+              ) : null}
+              <dl className="ss-details">
+                <dt>Notebook</dt>
+                <dd>{status.graph ?? "Not reported"}</dd>
+                <dt>Sync</dt>
+                <dd>{status.sync.replaceAll("-", " ")}</dd>
+                {status.syncAddress ? (
+                  <>
+                    <dt>Sync address</dt>
+                    <dd>
+                      <code className="ss-code">{status.syncAddress}</code>
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            </div>
+          }
+          action={
+            <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
+              Check connection
+            </button>
+          }
+        />
       ) : null}
     </ApplicationScreen>
   );

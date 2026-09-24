@@ -1,5 +1,15 @@
 # Obsidian development notes
 
+## Completed setup presentation — 24 September 2026
+
+Configuration now shows the saved sync method, vault when reported, AI-accessible
+folder and server-sync state instead of setup progress and a repeated success
+banner. The existing LiveSync warning and reported errors remain visible, and a
+connection check is available. The current app API does not provide a supported
+post-setup vault/scope edit or reset action; none was added. UI typecheck, build,
+focused source tests and synthetic Chrome ready/setup/recovery scenarios pass.
+The project-vault app note/index update is pending and was not attempted here.
+
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 
 The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and

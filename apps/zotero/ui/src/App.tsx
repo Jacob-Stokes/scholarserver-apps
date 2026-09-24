@@ -1,3 +1,4 @@
+import * as ApplicationScreenUI from "@scholarserver/ui/application-screen";
 import { ApplicationScreen } from "@scholarserver/ui/application-screen";
 import { EndpointAccessSelector } from "@scholarserver/ui/endpoint-access";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
@@ -22,7 +23,8 @@ import {
   type StorageSettings,
   selectedDesktopOptionId,
   stageAfterAccessLoad,
-  storageOptions
+  storageOptions,
+  storageStageAfterSave
 } from "./setup-model";
 import { accountPresentation, createZoteroReads } from "./zotero-reads";
 
@@ -112,6 +114,7 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [setupStage, setSetupStage] = useState<SetupStage>("account");
+  const [returnToReadyAfterStorageEdit, setReturnToReadyAfterStorageEdit] = useState(false);
   const setupInitialized = useRef(false);
   const settingsInitialized = useRef(false);
   const desktopInitialized = useRef(false);
@@ -293,9 +296,14 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
       "Attachment access settings were saved.",
       () => {
         setStorageSettings((current) => ({ ...current, webdavPassword: "" }));
-        if (status?.connectionMode === "online-library") setSetupStage("ready");
-        else if (desktopAccessSelection) setSetupStage("authorization");
-        else setSetupStage("access");
+        setSetupStage(
+          storageStageAfterSave(
+            returnToReadyAfterStorageEdit,
+            status?.connectionMode === "online-library",
+            Boolean(desktopAccessSelection)
+          )
+        );
+        setReturnToReadyAfterStorageEdit(false);
       }
     );
   const saveDesktopAccess = () => {
@@ -589,7 +597,7 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
 
       {status && tab === "configuration" ? (
         <div className="ss-stack">
-          <SetupProgress stages={activeSetupStages} current={setupStage} />
+          {setupStage !== "ready" ? <SetupProgress stages={activeSetupStages} current={setupStage} /> : null}
           {setupStage === "account" ? (
             <>
               <SectionFeedback
@@ -624,7 +632,14 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
               busy={busy}
               settings={storageSettings}
               onChange={setStorageSettings}
-              onBack={() => setSetupStage("account")}
+              onBack={() => {
+                if (returnToReadyAfterStorageEdit) {
+                  setReturnToReadyAfterStorageEdit(false);
+                  setSetupStage("ready");
+                } else {
+                  setSetupStage("account");
+                }
+              }}
               onSave={() => void saveStorage()}
             />
           ) : null}
@@ -700,7 +715,82 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
             />
           ) : null}
 
-          {setupStage === "ready" ? (
+          {setupStage === "ready" && ready ? (
+            <ApplicationScreenUI.ApplicationSettingsRow
+              title="Current settings"
+              description={
+                <dl className="ss-details">
+                  <dt>Account</dt>
+                  <dd>{status.username ?? status.userId ?? "Connected"}</dd>
+                  <dt>Attachment access</dt>
+                  <dd>{storageName(status.storageMode)}</dd>
+                  {online ? (
+                    <>
+                      <dt>Connection</dt>
+                      <dd>Zotero Web API</dd>
+                      <dt>Make changes</dt>
+                      <dd>{status.permissions?.write ? "Allowed" : "Read only"}</dd>
+                      <dt>Group libraries</dt>
+                      <dd>{status.permissions?.groups ?? "None"}</dd>
+                    </>
+                  ) : (
+                    <>
+                      <dt>Desktop address</dt>
+                      <dd>{desktopAccessSelection?.url ?? "Not configured"}</dd>
+                      <dt>Local API</dt>
+                      <dd>{status.localApi}</dd>
+                      <dt>File downloads</dt>
+                      <dd>{status.downloadMode ?? "Not configured"}</dd>
+                    </>
+                  )}
+                  {status.storageMode === "linked-folder" ? (
+                    <>
+                      <dt>Shared folder</dt>
+                      <dd>{status.linkedFolder ?? "/linked"}</dd>
+                      <dt>ZotMoov automation</dt>
+                      <dd>{status.linkedFolderAutomation ? "Enabled" : "Needs attention"}</dd>
+                    </>
+                  ) : null}
+                </dl>
+              }
+              action={
+                <div className="ss-form-actions">
+                  <button className="ss-button ss-button-secondary" onClick={() => void refresh()}>
+                    Check connection
+                  </button>
+                  <button
+                    className="ss-button"
+                    onClick={() => {
+                      setReturnToReadyAfterStorageEdit(true);
+                      setSetupStage("storage");
+                    }}
+                  >
+                    Change attachment settings
+                  </button>
+                  {!online ? (
+                    <button
+                      className="ss-button ss-button-secondary"
+                      disabled={busy || status.syncInProgress}
+                      onClick={() =>
+                        void run(
+                          () => request<Status>("sync", { method: "POST" }),
+                          "Zotero finished the sync request. Check another device to confirm delivery."
+                        )
+                      }
+                    >
+                      {busy || status.syncInProgress ? "Syncing…" : "Sync now"}
+                    </button>
+                  ) : null}
+                </div>
+              }
+              feedback={
+                <p className="ss-muted">
+                  {online ? "Zotero connects directly to your online library." : "Zotero runs on this server."}
+                </p>
+              }
+            />
+          ) : null}
+          {setupStage === "ready" && !ready ? (
             <SetupPanel
               stage={online ? 3 : 5}
               total={online ? 3 : 5}
@@ -732,27 +822,6 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
                   {busy || status.syncInProgress ? "Syncing…" : "Run initial sync"}
                 </button>
               ) : null}
-              <dl className="ss-details">
-                <dt>Account</dt>
-                <dd>{status.username ?? status.userId ?? "Connected"}</dd>
-                <dt>Attachment access</dt>
-                <dd>{storageName(status.storageMode)}</dd>
-                {online ? (
-                  <>
-                    <dt>Connection</dt>
-                    <dd>Zotero Web API</dd>
-                    <dt>Make changes</dt>
-                    <dd>{status.permissions?.write ? "Allowed" : "Read only"}</dd>
-                  </>
-                ) : (
-                  <>
-                    <dt>Desktop address</dt>
-                    <dd>{desktopAccessSelection?.url ?? "Not configured"}</dd>
-                    <dt>Local API</dt>
-                    <dd>{status.localApi}</dd>
-                  </>
-                )}
-              </dl>
             </SetupPanel>
           ) : null}
         </div>
