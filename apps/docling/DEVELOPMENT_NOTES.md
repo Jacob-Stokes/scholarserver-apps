@@ -1,5 +1,13 @@
 # Docling development notes
 
+## Manage navigation candidate — 24 September 2026
+
+The package declares `/configuration` independently of its `/queue` main UI.
+Shared UI returns to the exact installation's Manage page. This is source work;
+new image/package qualification and compatible Manager/executor schemas are
+required before installation. The existing shared writable-folder recovery
+gate remains in force. The project-vault note remains pending.
+
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 
 The core at commit `62e6d5c650a3b663eede67772e3123f19d74df71` is deployed and

@@ -200,6 +200,7 @@ ui:
   mode: standalone
   endpoint: app-ui
   defaultPath: /configuration
+  configurationPath: /configuration
 lifecycle:
   supportsDisable: true
   removeDataDefault: false

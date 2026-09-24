@@ -156,6 +156,7 @@ ui:
   mode: standalone
   endpoint: app-ui
   defaultPath: /overview
+  configurationPath: /configuration
 presentation:
   editorialIcon:
     path: assets/icons/obsidian-editorial.png

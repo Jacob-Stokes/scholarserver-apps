@@ -70,7 +70,7 @@ endpoints:
       public: false
       authentik: unsupported
       defaultAuthentik: false
-ui: { mode: standalone, endpoint: app-ui, defaultPath: / }
+ui: { mode: standalone, endpoint: app-ui, defaultPath: /, configurationPath: /configuration }
 presentation:
   editorialIcon:
     path: assets/icons/n8n-editorial.png

@@ -4,6 +4,40 @@ import { MotionSurface } from "./motion.tsx";
 import { Notifications, SuccessNotice } from "./notifications.tsx";
 import { SectionFeedback } from "./section-feedback.tsx";
 
+/** A compact settings summary; the caller owns its data and editing workflow. */
+export function ApplicationSettingsRow({
+  title,
+  description,
+  action,
+  feedback
+}: {
+  title: string;
+  description: React.ReactNode;
+  action?: React.ReactNode;
+  feedback?: React.ReactNode;
+}) {
+  const headingId = React.useId();
+  return (
+    <section className="ss-settings-row" aria-labelledby={headingId}>
+      <h2 id={headingId}>{title}</h2>
+      <div
+        className={
+          feedback ? "ss-settings-row-description ss-settings-row-with-feedback" : "ss-settings-row-description"
+        }
+      >
+        {description}
+        {feedback}
+      </div>
+      {action ? <div className="ss-settings-row-action">{action}</div> : null}
+    </section>
+  );
+}
+
+export function applicationManagementPath(pathname: string): string {
+  const instance = pathname.match(/^\/apps\/([a-z][a-z0-9-]{0,62})(?:\/|$)/)?.[1];
+  return instance ? `/applications/manage/${encodeURIComponent(instance)}` : "/applications";
+}
+
 export interface ApplicationTab<T extends string> {
   id: T;
   label: string;
@@ -37,6 +71,8 @@ export function ApplicationScreen<T extends string>({
   feedback,
   children
 }: ApplicationScreenProps<T>) {
+  const managementPath = applicationManagementPath(typeof window === "undefined" ? "" : window.location.pathname);
+  const backLabel = managementPath === "/applications" ? "Back to applications" : `Manage ${name}`;
   return (
     <div className="ss-app">
       <Notifications />
@@ -50,12 +86,12 @@ export function ApplicationScreen<T extends string>({
               <p className="ss-brand-context">{name}</p>
             </div>
           </div>
-          <a className="ss-button ss-button-secondary ss-dashboard-link" href="/" aria-label="Back to ScholarServer">
+          <a className="ss-button ss-button-secondary ss-dashboard-link" href={managementPath} aria-label={backLabel}>
             <span className="ss-dashboard-label-full" aria-hidden="true">
-              Back to ScholarServer
+              ← {backLabel}
             </span>
             <span className="ss-dashboard-label-short" aria-hidden="true">
-              Dashboard
+              ← Manage
             </span>
           </a>
         </div>
