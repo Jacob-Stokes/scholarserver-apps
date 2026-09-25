@@ -78,7 +78,7 @@ test("the core projection contract removes only the official-client mount for Li
 });
 
 test("research actions use the runtime mailbox and protect note contents", () => {
-  assert.equal(manifest.packageVersion, "0.5.0-manage.20260925.1");
+  assert.equal(manifest.packageVersion, "0.5.0-configuration.20260925.1");
   const browse = manifest.onboarding.actions.filter((action) => action.id === "browse-folders");
   const create = manifest.onboarding.actions.filter((action) => action.id === "create-research-note");
   assert.deepEqual(browse, [

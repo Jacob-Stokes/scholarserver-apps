@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.freshrss
 name: FreshRSS (Beta)
-packageVersion: 0.1.0-manage.20260925.1
+packageVersion: 0.1.0-configuration.20260925.1
 compatibility: { platform: ">=0.1.0", schema: 1 }
 upstream: { name: FreshRSS, version: 1.29.1, license: AGPL-3.0 }
 support: { tier: official, architectures: [amd64, arm64] }
@@ -21,9 +21,9 @@ permissions:
 hardening: { readOnlyRoot: true, noNewPrivileges: true, dropCapabilities: [ALL] }
 images:
   - service: freshrss
-    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:09bb52a593e017b8f22fc5879348a540636b05780b7c45afd77f33c18b5cbf40
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-reader@sha256:670bc55cea48f1d85686c2aac212cf101cae03346d1d01114f7cb3e72219bb86
   - service: integration
-    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:33868c12b7ea62a942eb1783cb9ddfee1f4451c7fa64f7e438d12e2290a40668
+    reference: ghcr.io/jacob-stokes/scholarserver-freshrss-app@sha256:8513690f6eb3c443fbb5da2bf999d8c34136be433ff4b8b75ba1f2506a0c3f6f
 data:
   - id: reader
     mountPath: /var/www/FreshRSS/data

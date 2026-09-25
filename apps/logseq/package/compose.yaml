@@ -1,6 +1,6 @@
 services:
   helper:
-    image: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:12831d1a44360448447f216222ceeab4c7a4e1277148f3edc49c3af4bef71bfb
+    image: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:82dc37bdd21889f71ae101a8ffe3e25464a5d50744c03ffa3382b5d0572edee8
     user: 1000:1000
     restart: unless-stopped
     read_only: true
