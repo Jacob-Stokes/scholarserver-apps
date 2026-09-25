@@ -20,7 +20,7 @@ services:
       start_period: 180s
       retries: 20
   controller:
-    image: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:e75d1f69eab9fa3544e0ca776707b69338d5a1c81e25e75e0d332965ec49ae34
+    image: ghcr.io/jacob-stokes/scholarserver-docling-app@sha256:29a5c2722ed31d7f8b1529079fc05cc1fc4eda41c776500a0e760d96800067f9
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

@@ -21,7 +21,7 @@ presentation:
       url: https://selfh.st/icons/
       license: CC-BY-4.0
       licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
-packageVersion: 0.1.0-beta.4.editorial.20260921.1
+packageVersion: 0.1.0-manage.20260925.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -114,7 +114,7 @@ hardening:
     - ALL
 images:
   - service: helper
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:1e7b7fee174ee03d36150e975a3877ce8236d6da9b2a24db4523b854082b1c4d
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:12831d1a44360448447f216222ceeab4c7a4e1277148f3edc49c3af4bef71bfb
   - service: mcp
     reference: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:c185ab4cbaf6f39db2114d9da4a0593e8080c98f05e6b364f8dc4c851514258b
   - service: sync
