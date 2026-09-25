@@ -7,11 +7,13 @@ import { SectionFeedback } from "./section-feedback.tsx";
 /** A compact settings summary; the caller owns its data and editing workflow. */
 export function ApplicationSettingsRow({
   title,
+  icon,
   description,
   action,
   feedback
 }: {
   title: string;
+  icon?: React.ReactNode;
   description: React.ReactNode;
   action?: React.ReactNode;
   feedback?: React.ReactNode;
@@ -19,7 +21,14 @@ export function ApplicationSettingsRow({
   const headingId = React.useId();
   return (
     <section className="ss-settings-row" aria-labelledby={headingId}>
-      <h2 id={headingId}>{title}</h2>
+      <h2 id={headingId}>
+        {icon ? (
+          <span aria-hidden="true" className="ss-settings-row-icon">
+            {icon}
+          </span>
+        ) : null}
+        {title}
+      </h2>
       <div
         className={
           feedback ? "ss-settings-row-description ss-settings-row-with-feedback" : "ss-settings-row-description"
