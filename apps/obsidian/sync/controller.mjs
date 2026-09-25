@@ -3,7 +3,18 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import {
+  assertConfigurationActionRequest,
+  ConfigurationActionError,
+  ConfigurationActions,
+  configurationActionResult
+} from "@scholarserver/controller-runtime/configuration-actions";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
+import {
+  attachCurrentSectionWhenAvailable,
+  obsidianConfiguration,
+  validateObsidianConfigurationAction
+} from "./configuration.mjs";
 import { couchDbAddress } from "./couchdb-address.mjs";
 import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
 import {
@@ -25,6 +36,7 @@ const liveSyncRuntimePath = "/livesync-runtime";
 const requestsPath = path.join(runtimePath, "requests");
 const responsesPath = path.join(runtimePath, "responses");
 const statusPath = path.join(runtimePath, "status.json");
+const configurationActions = new ConfigurationActions(path.join(runtimePath, "configuration-receipts"), "setup");
 const tokenPath = path.join(runtimePath, "service-token");
 const enrollmentPath = path.join(runtimePath, "enrollment.json");
 const scopePath = path.join(runtimePath, "scope-path");
@@ -432,6 +444,70 @@ async function statusSummary() {
   };
 }
 
+async function currentConfiguration() {
+  const status = await statusSummary();
+  let vaults = [];
+  if (status.profile === "official" && status.state === "vault-selection-required") {
+    try {
+      vaults = await listRemoteVaults();
+    } catch {
+      // The section remains readable; the action cannot select a vault that is not listed.
+    }
+  }
+  return obsidianConfiguration(status, { vaults });
+}
+
+function evaluation(input) {
+  if (
+    !input ||
+    Array.isArray(input) ||
+    typeof input !== "object" ||
+    Object.keys(input).some((key) => !["values", "navigateActionId"].includes(key)) ||
+    !input.values ||
+    Array.isArray(input.values) ||
+    typeof input.values !== "object"
+  ) {
+    throw new ConfigurationActionError(400, "Invalid configuration evaluation.");
+  }
+  if (input.navigateActionId !== undefined) {
+    // This workflow advances only after saved app actions, not unsaved navigation.
+    throw new ConfigurationActionError(409, "This setup step has no draft navigation action.");
+  }
+  return input.values;
+}
+
+async function configurationAction(actionId, wireInput) {
+  const input = assertConfigurationActionRequest(wireInput, actionId, "setup");
+  let receipt;
+  try {
+    receipt = await configurationActions.run(
+      input,
+      currentConfiguration,
+      async (values) => {
+        const operation = actionId === "check-connection" ? "status" : actionId;
+        await dispatch({ action: operation, input: values });
+      },
+      (values) => {
+        try {
+          validateObsidianConfigurationAction(actionId, values);
+        } catch (error) {
+          throw new ConfigurationActionError(400, error.message);
+        }
+        if (actionId === "configure-livesync") {
+          return { ...values, vaultPassphraseAgain: undefined };
+        }
+        return values;
+      }
+    );
+  } catch (error) {
+    if (error instanceof ConfigurationActionError && !(await configurationActions.read(input.requestId))) {
+      return { requestId: input.requestId, actionId, status: "rejected-before-change" };
+    }
+    throw error;
+  }
+  return attachCurrentSectionWhenAvailable(receipt, currentConfiguration);
+}
+
 async function action(request) {
   switch (request.action) {
     case "browse-folders":
@@ -643,6 +719,40 @@ async function handleHttp(request, response) {
       });
       return json(response, 200, { onboarding });
     }
+    if (url.pathname.startsWith("/api/configuration/")) {
+      const parts = url.pathname.split("/").slice(3);
+      if (parts[0] !== "setup" || parts.length > 3) return json(response, 404, { error: "Not found" });
+      if (request.method === "GET" && parts.length === 1) return json(response, 200, await currentConfiguration());
+      if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2) {
+        evaluation(await body(request));
+        return json(response, 200, await currentConfiguration());
+      }
+      if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
+        const receipt = await configurationActions.read(parts[2]);
+        if (!receipt) return json(response, 404, { error: "Operation not found" });
+        return json(response, 200, configurationActionResult(receipt));
+      }
+      if (request.method === "POST" && parts[1] === "actions" && parts.length === 3) {
+        const outcome = await configurationAction(parts[2], await body(request));
+        return json(response, outcome.status === "rejected-before-change" ? 400 : 200, outcome);
+      }
+      if (request.method === "POST" && parts[1] === "outputs" && parts.length === 3) {
+        const input = await body(request);
+        if (Object.keys(input).length !== 0)
+          throw new ConfigurationActionError(400, "Output requests cannot include values.");
+        if (!["setup-uri", "setup-passphrase"].includes(parts[2]))
+          return json(response, 404, { error: "Output not found" });
+        const onboarding = await readDeviceOnboarding({
+          currentState: () => state,
+          assertBinding: () => vaultBinding.assertCurrent(),
+          readOnboarding: () => readJson(liveSyncOnboardingPath, null)
+        });
+        if (!onboarding) return json(response, 409, { error: "Device setup is not available in this stage" });
+        const value = parts[2] === "setup-uri" ? onboarding.setupURI : onboarding.setupPassphrase;
+        return json(response, 200, { id: parts[2], kind: "text", value });
+      }
+      return json(response, 404, { error: "Not found" });
+    }
     const actions = {
       "/api/profile/select": "select-profile",
       "/api/client/install": "install-client",
@@ -657,8 +767,10 @@ async function handleHttp(request, response) {
     return json(response, 404, { error: "Not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Obsidian request failed";
-    await updateStatus({ lastError: message });
-    return json(response, 400, { error: message.slice(0, 1000) });
+    if (!url.pathname.startsWith("/api/configuration/")) await updateStatus({ lastError: message });
+    return json(response, error instanceof ConfigurationActionError ? error.status : 400, {
+      error: message.slice(0, 1000)
+    });
   }
 }
 
@@ -676,6 +788,9 @@ if (installedProfile === "livesync") {
   });
 }
 await restore();
+setInterval(() => {
+  void refreshLiveSyncCompletion().catch(() => {});
+}, 3000).unref();
 createServer((request, response) => {
   void handleHttp(request, response);
 }).listen(8080, "0.0.0.0");

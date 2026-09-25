@@ -1,5 +1,31 @@
 # Obsidian development notes
 
+## Native Manager configuration source — 25 September 2026
+
+The new optional `ui.configuration` section is implemented by the existing sync
+controller; the standalone UI and routes remain available. It covers the installed
+official Sync and self-hosted LiveSync setup states, including first-device setup
+and recovery. The LiveSync section offers only the package-declared private
+Tailscale endpoint; Manager's endpoint picker supplies its selected URL to an
+untouched draft. The setup URI and passphrase remain separate explicit no-store
+text outputs, not ordinary section values, receipts or clickable custom links.
+The older standalone form can still name public HTTPS, but this package declares
+`livesync-couchdb` private-only (`public: false`), so the native setup does not
+offer an unsupported public route or broaden access. Existing public-backed
+installations retain their saved state and ready summary without reconfiguration.
+Connected status summarizes the reported vault and scope but does not claim a
+supported in-place vault edit. A background observer reconciles the server-joining
+step without relying on a browser tab. The app receipt is persisted before action
+execution, and a failed post-action section read cannot change a confirmed result
+into a rejected write.
+
+Focused configuration/helper tests pass, including secret-free reload and no
+replay, and the full apps source suite passes with local loopback permission.
+Synthetic descriptors pass the core parser/manifest checker; this is not a rebuilt
+image, installed-package update, first-device browser acceptance or a new desktop
+sync roundtrip. Existing image pins were not changed here. The project-vault app
+note/index update remains pending because no vault connector was used in this pass.
+
 ## Completed setup presentation — 24 September 2026
 
 Configuration now shows the saved sync method, vault when reported, AI-accessible

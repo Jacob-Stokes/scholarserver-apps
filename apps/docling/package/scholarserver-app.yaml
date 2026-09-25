@@ -74,6 +74,12 @@ ui:
   endpoint: app-ui
   defaultPath: /queue
   configurationPath: /configuration
+  configuration:
+    version: 1
+    sections:
+      - { id: defaults, title: Conversion defaults }
+      - { id: queue, title: Queue control }
+      - { id: service, title: Service details }
 presentation:
   editorialIcon:
     path: assets/icons/docling-editorial.png

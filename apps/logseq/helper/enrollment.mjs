@@ -66,6 +66,14 @@ export class Enrollment {
     };
   }
 
+  validateReturnLink(returnLink) {
+    const session = this.#session;
+    if (!session || session.phase !== "waiting" || this.now() >= session.expiresAt) {
+      throw new GraphError("sign-in-expired", "Start sign-in again for a new link.", 409);
+    }
+    callbackTarget(returnLink, session.state);
+  }
+
   async start() {
     if (this.#starting) throw new GraphError("busy", "Sign-in is starting. Please wait.", 409);
     if (["waiting", "authenticating"].includes(this.#session?.phase)) return this.status();

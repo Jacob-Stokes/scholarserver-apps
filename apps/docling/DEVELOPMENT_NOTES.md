@@ -245,3 +245,15 @@ conversion or automation execution is claimed. Exact deployment and browser
 acceptance are recorded in core `docs/deployments.md`. The package is installed at
 revision 17; the live n8n picker selected Papers and enabled Add automation without
 submitting. The project-vault note and index were updated through Jacob Gateway.
+
+## Native Manager configuration source candidate — 25 September 2026
+
+The new `ui.configuration` candidate exposes conversion defaults, queue control
+and service details through fixed app routes. Default OCR and pause/resume writes
+commit with request receipts in one SQLite transaction; a lost HTTP response can
+be reconciled by reading the receipt. The existing standalone interface and
+older package metadata remain in place. Handler tests cover authorization
+markers, invalid input before a receipt, stale revisions, duplicate requests and
+receipt reads. This is source-level evidence only: no new image, package,
+deployment or browser acceptance is claimed. The project-vault note update for
+this candidate remains pending.

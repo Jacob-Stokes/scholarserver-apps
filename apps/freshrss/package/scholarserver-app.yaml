@@ -70,7 +70,16 @@ endpoints:
       hostname: freshrss-mcp
       credentialData: runtime
       credentialFile: service-token
-ui: { mode: standalone, endpoint: app-ui, defaultPath: /configuration, configurationPath: /configuration }
+ui:
+  mode: standalone
+  endpoint: app-ui
+  defaultPath: /configuration
+  configurationPath: /configuration
+  configuration:
+    version: 1
+    sections:
+      - { id: account, title: Your sign-in }
+      - { id: appearance, title: Reader appearance }
 presentation:
   editorialIcon:
     path: assets/icons/freshrss-editorial.png

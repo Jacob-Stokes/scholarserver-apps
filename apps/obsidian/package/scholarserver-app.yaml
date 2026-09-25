@@ -157,6 +157,10 @@ ui:
   endpoint: app-ui
   defaultPath: /overview
   configurationPath: /configuration
+  configuration:
+    version: 1
+    sections:
+      - { id: setup, title: Vault connection }
 presentation:
   editorialIcon:
     path: assets/icons/obsidian-editorial.png

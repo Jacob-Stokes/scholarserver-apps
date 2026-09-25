@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./files": "./files.mjs"
+    "./files": "./files.mjs",
+    "./configuration-actions": "./configuration-actions.mjs"
   }
 }

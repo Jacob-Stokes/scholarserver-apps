@@ -443,3 +443,17 @@ The package manifest now declares the app-owned `News & feeds` tag under
 unchanged. No package was published or deployed. The Obsidian project-vault
 note was updated through Jacob Gateway on 11 September 2026; this repository's
 catalog-tags document remains authoritative for the exact vocabulary.
+
+## Native Manager configuration source candidate — 25 September 2026
+
+The candidate declares sign-in and appearance sections. Sign-in still uses the
+declared `link-sign-in` Manager/executor action; only appearance uses the new app
+action route. Appearance changes have non-secret request receipts and read-only
+reconciliation. An uncertain save blocks another app action rather than
+replaying it. Source tests cover authorization markers, invalid pre-write
+requests, duplicate identities, secret-free sections, and a successful save
+whose later section read fails. The existing standalone UI is unchanged.
+`link-sign-in` has no Manager request-correlated app receipt, so an ambiguous
+executor result still needs explicit recovery; current readiness alone cannot
+prove that request's outcome. No image, package, deployment or browser
+acceptance is claimed. The project-vault note update remains pending.

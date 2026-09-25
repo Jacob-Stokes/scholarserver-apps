@@ -2,10 +2,15 @@ import { readFile, stat } from "node:fs/promises";
 import { createServer, request as proxyRequest } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  ConfigurationActionError,
+  ConfigurationActions
+} from "@scholarserver/controller-runtime/configuration-actions";
 import { startMcp } from "mcp-common";
 import { verifyBrowserIdentity } from "./browser-identity.mjs";
 import { applyReaderCachePolicy, readerCachePolicy, readerUpstreamHeaders } from "./cache-policy.mjs";
 import { FreshRssClient } from "./client.mjs";
+import { handleConfiguration } from "./configuration-routes.mjs";
 import { readJson, Setup } from "./setup.mjs";
 import { feedTools } from "./tools.mjs";
 
@@ -13,6 +18,7 @@ const runtime = process.env.RUNTIME_PATH ?? "/runtime";
 const upstream = process.env.FRESHRSS_URL ?? "http://freshrss:8080";
 const ui = path.resolve(fileURLToPath(new URL("./ui/", import.meta.url)));
 const setup = new Setup(runtime);
+const configurationActions = new ConfigurationActions(`${runtime}/configuration-actions`, "appearance");
 const token = await setup.initialize();
 const client = new FreshRssClient(upstream, `${runtime}/account.json`);
 await startMcp({
@@ -92,6 +98,9 @@ createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { healthy: true });
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await setup.status());
+    if (url.pathname.startsWith("/api/configuration/")) {
+      return handleConfiguration(request, response, setup, configurationActions);
+    }
     if (url.pathname === "/api/appearance") {
       if (request.method === "GET") return json(response, 200, await setup.appearance());
       if (request.method !== "PUT" || request.headers["content-type"] !== "application/json")
@@ -104,8 +113,17 @@ createServer(async (request, response) => {
         if (data.length > 1024) return json(response, 413, { error: "The request is too large." });
       }
       try {
-        return json(response, 200, await setup.saveAppearance(JSON.parse(data)));
-      } catch {
+        const saved = await configurationActions.serialise(async () => {
+          if (await configurationActions.hasUnconfirmedReceipt())
+            throw new ConfigurationActionError(
+              409,
+              "An earlier appearance change is unconfirmed. Check Configuration before saving again."
+            );
+          return setup.saveAppearance(JSON.parse(data));
+        });
+        return json(response, 200, saved);
+      } catch (error) {
+        if (error instanceof ConfigurationActionError) return json(response, error.status, { error: error.message });
         return json(response, 400, {
           error: "Could not save the appearance. Choose an option and try again."
         });

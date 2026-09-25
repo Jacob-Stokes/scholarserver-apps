@@ -3,8 +3,15 @@ import { mkdir, open, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  assertConfigurationActionRequest,
+  ConfigurationActionError,
+  ConfigurationActions,
+  configurationActionResult
+} from "@scholarserver/controller-runtime/configuration-actions";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 import { createAccountLink } from "./account-link.mjs";
+import { attachCurrentSectionWhenAvailable, zoteroConfiguration } from "./configuration.mjs";
 import { createLibraryActions } from "./library-actions.mjs";
 import { researchItems } from "./research-items.mjs";
 import {
@@ -21,6 +28,7 @@ const responsesPath = path.join(runtimePath, "responses");
 const statusPath = path.join(runtimePath, "status.json");
 const serviceTokenPath = path.join(runtimePath, "service-token");
 const configurationPath = path.join(runtimePath, "configuration.json");
+const configurationActions = new ConfigurationActions(path.join(runtimePath, "configuration-receipts"), "setup");
 const localApiKeyPath = path.join(runtimePath, "local-api-key");
 const localApiBridgeTokenPath = path.join(runtimePath, "local-api-bridge-token");
 const webApiKeyPath = path.join(runtimePath, "web-api-key");
@@ -237,6 +245,77 @@ async function currentStatus(lastError = null) {
   }
   await atomicJson(statusPath, value, 0o644);
   return value;
+}
+
+async function currentConfiguration(draft = {}) {
+  return zoteroConfiguration(await currentStatus(), draft);
+}
+
+function validateEvaluation(input) {
+  if (
+    !input ||
+    Array.isArray(input) ||
+    typeof input !== "object" ||
+    Object.keys(input).some((key) => !["values", "navigateActionId"].includes(key)) ||
+    !input.values ||
+    Array.isArray(input.values) ||
+    typeof input.values !== "object"
+  ) {
+    throw new ConfigurationActionError(400, "Invalid configuration evaluation.");
+  }
+  if (input.navigateActionId !== undefined)
+    throw new ConfigurationActionError(409, "This setup step has no draft navigation action.");
+  return input.values;
+}
+
+async function runConfigurationAction(actionId, wireInput) {
+  const input = assertConfigurationActionRequest(wireInput, actionId, "setup");
+  let receipt;
+  try {
+    receipt = await configurationActions.run(
+      input,
+      () => currentConfiguration(input.values),
+      async (values) => {
+        switch (actionId) {
+          case "connect-online-library":
+            await connectOnlineLibrary(values);
+            break;
+          case "start-account-link":
+            await startAccountLink();
+            break;
+          case "save-storage":
+            if (values.storageMode === "webdav") await configureWebDAV(values);
+            else await configureStorage(values);
+            break;
+          case "authorize-local":
+            await authorize();
+            break;
+          case "check-connection":
+            await currentStatus();
+            break;
+          default:
+            throw new Error("This configuration action is unavailable");
+        }
+      },
+      (values) => {
+        if (actionId === "connect-online-library" && !/^[A-Za-z0-9]{16,128}$/.test(values.apiKey ?? ""))
+          throw new ConfigurationActionError(400, "Enter a Zotero API key from your account settings.");
+        if (
+          actionId === "save-storage" &&
+          values.storageMode === "webdav" &&
+          (!values.url || !values.username || !values.password)
+        )
+          throw new ConfigurationActionError(400, "WebDAV URL, username, and password are required.");
+        return values;
+      }
+    );
+  } catch (error) {
+    if (error instanceof ConfigurationActionError && !(await configurationActions.read(input.requestId))) {
+      return { requestId: input.requestId, actionId, status: "rejected-before-change" };
+    }
+    throw error;
+  }
+  return attachCurrentSectionWhenAvailable(receipt, currentConfiguration);
 }
 
 async function probeOnlineAccount() {
@@ -594,6 +673,33 @@ export async function handleHttp(request, response, { staticRoot = uiPath } = {}
   try {
     if (request.method === "GET" && url.pathname === "/health") return json(response, 200, await healthStatus());
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
+    if (url.pathname.startsWith("/api/configuration/")) {
+      const parts = url.pathname.split("/").slice(3);
+      if (parts[0] !== "setup" || parts.length > 3) return json(response, 404, { error: "Not found" });
+      if (request.method === "GET" && parts.length === 1) return json(response, 200, await currentConfiguration());
+      if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2)
+        return json(response, 200, await currentConfiguration(validateEvaluation(await body(request))));
+      if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
+        const receipt = await configurationActions.read(parts[2]);
+        return receipt
+          ? json(response, 200, configurationActionResult(receipt))
+          : json(response, 404, { error: "Operation not found" });
+      }
+      if (request.method === "POST" && parts[1] === "actions" && parts.length === 3) {
+        const outcome = await runConfigurationAction(parts[2], await body(request));
+        return json(response, outcome.status === "rejected-before-change" ? 400 : 200, outcome);
+      }
+      if (request.method === "POST" && parts[1] === "outputs" && parts.length === 3) {
+        const input = await body(request);
+        if (Object.keys(input).length || parts[2] !== "account-login-url" || onlineLibrary)
+          throw new ConfigurationActionError(400, "This output is unavailable.");
+        const session = await accountLink.snapshot(true);
+        if (session.state !== "pending" || !session.loginUrl)
+          throw new ConfigurationActionError(409, "No Zotero account sign-in is pending.");
+        return json(response, 200, { id: "account-login-url", kind: "link", value: session.loginUrl });
+      }
+      return json(response, 404, { error: "Not found" });
+    }
     if (request.method === "GET" && url.pathname === "/api/account/session") {
       if (onlineLibrary) return json(response, 200, { state: "idle" });
       return json(response, 200, await accountLink.snapshot(true));
@@ -628,8 +734,10 @@ export async function handleHttp(request, response, { staticRoot = uiPath } = {}
     return json(response, 404, { error: "Not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zotero request failed";
-    await currentStatus(message);
-    return json(response, 400, { error: message.slice(0, 1000) });
+    if (!url.pathname.startsWith("/api/configuration/")) await currentStatus(message);
+    return json(response, error instanceof ConfigurationActionError ? error.status : 400, {
+      error: message.slice(0, 1000)
+    });
   }
 }
 

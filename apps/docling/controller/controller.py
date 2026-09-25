@@ -109,6 +109,12 @@ def migrate() -> None:
               UNIQUE(source_sha256, profile)
             );
             CREATE INDEX IF NOT EXISTS jobs_state_created ON jobs(state, created_at);
+            CREATE TABLE IF NOT EXISTS configuration_actions (
+              request_id TEXT PRIMARY KEY,
+              section_id TEXT NOT NULL,
+              action_id TEXT NOT NULL,
+              status TEXT NOT NULL CHECK(status = 'succeeded')
+            );
             """
         )
         database.execute(
@@ -463,6 +469,152 @@ def write_status() -> dict[str, Any]:
     return value
 
 
+class ConfigurationError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+def configuration_revision(section_id: str, default_ocr: bool, paused: bool) -> str:
+    saved = default_ocr if section_id == "defaults" else paused if section_id == "queue" else "service"
+    return hashlib.sha256(f"{section_id}:{saved}".encode()).hexdigest()[:24]
+
+
+def configuration_section(section_id: str) -> dict[str, Any]:
+    if section_id not in {"defaults", "queue", "service"}:
+        raise ConfigurationError(404, "Configuration section not found.")
+    default_ocr = setting("default_ocr", "false") == "true"
+    paused = setting("paused", "false") == "true"
+    base = {
+        "version": 1,
+        "id": section_id,
+        "revision": configuration_revision(section_id, default_ocr, paused),
+        "pollAfterMs": 10000,
+        "notices": [],
+        "fields": [],
+        "values": {},
+        "summary": [],
+        "actions": [],
+    }
+    if section_id == "defaults":
+        return {
+            **base,
+            "title": "Conversion defaults",
+            "description": "Changes affect new jobs. Existing queue entries keep their OCR choice.",
+            "stage": {"id": "defaults", "label": "Conversion defaults", "index": 1, "total": 3},
+            "pollAfterMs": 30000,
+            "fields": [{
+                "id": "defaultOcr", "label": "Use OCR by default", "type": "boolean",
+                "hint": "Use this when most PDFs contain scanned pages.", "required": True,
+            }],
+            "values": {"defaultOcr": default_ocr},
+            "summary": [{"label": "Default OCR", "value": "On" if default_ocr else "Off"}],
+            "actions": [{
+                "id": "save-defaults", "label": "Save defaults", "kind": "submit",
+                "fieldIds": ["defaultOcr"], "target": {"kind": "app"},
+            }],
+        }
+    state = status_value()
+    if section_id == "queue":
+        next_action = "resume" if paused else "pause"
+        return {
+            **base,
+            "title": "Queue control",
+            "description": "Pause after the current conversion, or resume waiting work.",
+            "stage": {"id": "queue", "label": "Queue control", "index": 2, "total": 3},
+            "summary": [
+                {"label": "Queue", "value": "Paused" if paused else "Ready"},
+                {"label": "Waiting", "value": str(state["counts"]["queued"])},
+                {"label": "Running", "value": str(state["counts"]["running"])},
+                {"label": "Failed", "value": str(state["counts"]["failed"])},
+            ],
+            "actions": [{
+                "id": next_action,
+                "label": "Resume queue" if paused else "Pause queue",
+                "kind": "submit", "fieldIds": [], "target": {"kind": "app"},
+            }],
+        }
+    return {
+        **base,
+        "title": "Service details",
+        "stage": {"id": "service", "label": "Service details", "index": 3, "total": 3},
+        "summary": [
+            {"label": "Engine", "value": state["engine"]},
+            {"label": "Parallel jobs", "value": str(state["workerConcurrency"])},
+            {"label": "Markdown folder", "value": state["outputFolder"]},
+        ],
+    }
+
+
+def valid_configuration_request_id(request_id: Any) -> bool:
+    return isinstance(request_id, str) and 16 <= len(request_id) <= 80 and all(
+        character.isascii() and (character.isalnum() or character == "-") for character in request_id
+    )
+
+
+def configuration_action(section_id: str, action_id: str, body: dict[str, Any]) -> dict[str, str]:
+    if section_id not in {"defaults", "queue"} or action_id not in {"save-defaults", "pause", "resume"}:
+        raise ConfigurationError(404, "Configuration action not found.")
+    if set(body) != {"requestId", "expectedRevision", "values"}:
+        raise ConfigurationError(400, "Invalid configuration action request.")
+    request_id = body["requestId"]
+    if not valid_configuration_request_id(request_id):
+        raise ConfigurationError(400, "Invalid request identity.")
+    if not isinstance(body["expectedRevision"], str) or not 1 <= len(body["expectedRevision"]) <= 128:
+        raise ConfigurationError(400, "Invalid configuration revision.")
+    values = body["values"]
+    if not isinstance(values, dict) or len(json.dumps(body)) > 16384:
+        raise ConfigurationError(400, "Invalid configuration values.")
+    if action_id == "save-defaults":
+        if section_id != "defaults" or set(values) != {"defaultOcr"} or not isinstance(values["defaultOcr"], bool):
+            raise ConfigurationError(400, "Choose whether to use OCR by default.")
+    elif section_id != "queue" or values:
+        raise ConfigurationError(400, "Queue control does not accept settings.")
+    with connection() as database:
+        database.execute("BEGIN IMMEDIATE")
+        previous = database.execute(
+            "SELECT section_id, action_id, status FROM configuration_actions WHERE request_id=?", (request_id,)
+        ).fetchone()
+        if previous:
+            if previous["section_id"] != section_id or previous["action_id"] != action_id:
+                raise ConfigurationError(409, "Request identity belongs to another configuration action.")
+            return {"requestId": request_id, "actionId": action_id, "status": previous["status"]}
+        current_ocr = database.execute("SELECT value FROM settings WHERE key='default_ocr'").fetchone()["value"] == "true"
+        current_paused = database.execute("SELECT value FROM settings WHERE key='paused'").fetchone()["value"] == "true"
+        if body["expectedRevision"] != configuration_revision(section_id, current_ocr, current_paused):
+            raise ConfigurationError(409, "Configuration changed. Refresh before saving.")
+        if (action_id == "pause" and current_paused) or (action_id == "resume" and not current_paused):
+            raise ConfigurationError(409, "This queue action is no longer available. Refresh first.")
+        key = "default_ocr" if action_id == "save-defaults" else "paused"
+        new_value = values["defaultOcr"] if action_id == "save-defaults" else action_id == "pause"
+        database.execute("UPDATE settings SET value=? WHERE key=?", ("true" if new_value else "false", key))
+        database.execute(
+            "INSERT INTO configuration_actions(request_id,section_id,action_id,status) VALUES(?,?,?,'succeeded')",
+            (request_id, section_id, action_id),
+        )
+    return {"requestId": request_id, "actionId": action_id, "status": "succeeded"}
+
+
+def configuration_receipt(section_id: str, request_id: str) -> dict[str, str]:
+    if section_id not in {"defaults", "queue", "service"} or not 8 <= len(request_id) <= 128:
+        raise ConfigurationError(404, "Operation not found.")
+    with connection() as database:
+        row = database.execute(
+            "SELECT action_id, status FROM configuration_actions WHERE section_id=? AND request_id=?",
+            (section_id, request_id),
+        ).fetchone()
+    if not row:
+        raise ConfigurationError(404, "Operation not found.")
+    return {"requestId": request_id, "actionId": row["action_id"], "status": row["status"]}
+
+
+def configuration_receipt_exists(request_id: str) -> bool:
+    with connection() as database:
+        return database.execute(
+            "SELECT 1 FROM configuration_actions WHERE request_id=?", (request_id,)
+        ).fetchone() is not None
+
+
 def action(request: dict[str, Any]) -> Any:
     action_id = request.get("action")
     input_value = request.get("input") if isinstance(request.get("input"), dict) else {}
@@ -540,7 +692,14 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urllib.parse.urlsplit(self.path)
+        parts = path.path.strip("/").split("/")
         try:
+            if len(parts) == 3 and parts[:2] == ["api", "configuration"]:
+                self.send_json(200, configuration_section(parts[2]))
+                return
+            if len(parts) == 5 and parts[:2] == ["api", "configuration"] and parts[3] == "operations":
+                self.send_json(200, configuration_receipt(parts[2], parts[4]))
+                return
             if path.path == "/health":
                 self.send_json(200, {"status": "ok"})
                 return
@@ -555,9 +714,16 @@ class AppHandler(BaseHTTPRequestHandler):
                 limit = int(query.get("limit", ["100"])[0])
                 self.send_json(200, {"files": discover_pdfs("", limit)})
                 return
+            if path.path.startswith("/api/configuration/"):
+                raise ConfigurationError(404, "Not found.")
             self.send_static(path.path)
+        except ConfigurationError as error:
+            self.send_json(error.status, {"error": str(error)})
         except Exception as error:
-            self.send_json(400, {"error": (str(error) or "Docling request failed")[:1000]})
+            if path.path.startswith("/api/configuration/"):
+                self.send_json(503, {"error": "Could not load Docling configuration. Check status before continuing."})
+            else:
+                self.send_json(400, {"error": (str(error) or "Docling request failed")[:1000]})
 
     def do_PUT(self) -> None:
         try:
@@ -574,7 +740,24 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urllib.parse.urlsplit(self.path).path
+        parts = path.strip("/").split("/")
+        body = None
         try:
+            if path.startswith("/api/configuration/"):
+                if self.headers.get("Content-Type") != "application/json" or self.headers.get("X-Requested-With") != "ScholarServer":
+                    raise ConfigurationError(403, "Use ScholarServer Configuration.")
+                body = self.json_body()
+                if len(parts) == 4 and parts[:2] == ["api", "configuration"] and parts[3] == "evaluate":
+                    if set(body) - {"values", "navigateActionId"} or not isinstance(body.get("values"), dict):
+                        raise ConfigurationError(400, "Invalid configuration evaluation.")
+                    if "navigateActionId" in body:
+                        raise ConfigurationError(409, "This section has no unsaved next step.")
+                    self.send_json(200, configuration_section(parts[2]))
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "configuration"] and parts[3] == "actions":
+                    self.send_json(200, configuration_action(parts[2], parts[4], body))
+                    return
+                raise ConfigurationError(404, "Not found.")
             body = self.json_body()
             if path == "/api/jobs":
                 allowed = {"sourcePath", "sourceAttachmentKey", "ocr"}
@@ -619,8 +802,28 @@ class AppHandler(BaseHTTPRequestHandler):
                 write_status()
                 return
             self.send_json(404, {"error": "Not found"})
+        except ConfigurationError as error:
+            if (
+                error.status in {400, 409}
+                and len(parts) == 5
+                and parts[:2] == ["api", "configuration"]
+                and parts[3] == "actions"
+                and isinstance(body, dict)
+                and valid_configuration_request_id(body.get("requestId"))
+                and not configuration_receipt_exists(body["requestId"])
+            ):
+                self.send_json(error.status, {
+                    "requestId": body["requestId"],
+                    "actionId": parts[4],
+                    "status": "rejected-before-change",
+                })
+                return
+            self.send_json(error.status, {"error": str(error)})
         except Exception as error:
-            self.send_json(400, {"error": (str(error) or "Docling request failed")[:1000]})
+            if path.startswith("/api/configuration/"):
+                self.send_json(502, {"error": "Could not confirm the change. Check Configuration before continuing.", "unconfirmed": True})
+            else:
+                self.send_json(400, {"error": (str(error) or "Docling request failed")[:1000]})
 
     def send_static(self, requested: str) -> None:
         relative = requested.lstrip("/")

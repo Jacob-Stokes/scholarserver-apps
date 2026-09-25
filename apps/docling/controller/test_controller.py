@@ -1,9 +1,11 @@
 import importlib.util
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from email.message import Message
 from unittest import mock
 from pathlib import Path
 
@@ -78,6 +80,74 @@ class ControllerTest(unittest.TestCase):
         with mock.patch.object(self.controller.os, "chmod", side_effect=PermissionError(1, "not supported")):
             self.controller.atomic_write(destination, "content")
         self.assertEqual(destination.read_text(), "content")
+
+    def request(self, method, route, body=None, authorized=True):
+        # Run the real handler methods with in-memory HTTP streams. Test
+        # environments may disallow even loopback socket binding.
+        handler = object.__new__(self.controller.AppHandler)
+        handler.path = route
+        handler.command = method
+        handler.requestline = f"{method} {route} HTTP/1.1"
+        handler.request_version = "HTTP/1.1"
+        handler.headers = Message()
+        handler.headers["Content-Type"] = "application/json"
+        if authorized:
+            handler.headers["X-Requested-With"] = "ScholarServer"
+        content = b"" if body is None else json.dumps(body).encode()
+        handler.headers["Content-Length"] = str(len(content))
+        handler.rfile = io.BytesIO(content)
+        handler.wfile = io.BytesIO()
+        if method == "GET":
+            handler.do_GET()
+        elif method == "POST":
+            handler.do_POST()
+        else:
+            raise ValueError("unsupported method")
+        response = handler.wfile.getvalue()
+        head, payload = response.split(b"\r\n\r\n", 1)
+        return int(head.split(b" ", 2)[1]), json.loads(payload)
+
+    def test_configuration_handler_save_duplicate_receipt_and_stale_edit(self):
+        status, section = self.request("GET", "/api/configuration/defaults")
+        self.assertEqual(status, 200)
+        self.assertEqual(section["values"], {"defaultOcr": False})
+        self.assertEqual(section["version"], 1)
+        body = {"requestId": "request-12345678", "expectedRevision": section["revision"], "values": {"defaultOcr": True}}
+        status, evaluated = self.request("POST", "/api/configuration/defaults/evaluate", {"values": {"defaultOcr": True}})
+        self.assertEqual(status, 200)
+        self.assertEqual(evaluated["values"], {"defaultOcr": False})
+        status, result = self.request("POST", "/api/configuration/defaults/actions/save-defaults", body)
+        self.assertEqual(status, 200)
+        self.assertEqual(result, {"requestId": "request-12345678", "actionId": "save-defaults", "status": "succeeded"})
+        self.assertEqual(self.controller.setting("default_ocr"), "true")
+        self.assertEqual(self.request("POST", "/api/configuration/defaults/actions/save-defaults", body), (200, result))
+        self.assertEqual(self.request("GET", "/api/configuration/defaults/operations/request-12345678"), (200, result))
+        stale = {**body, "requestId": "request-87654321", "values": {"defaultOcr": False}}
+        self.assertEqual(self.request("POST", "/api/configuration/defaults/actions/save-defaults", stale)[0], 409)
+        self.assertEqual(self.controller.setting("default_ocr"), "true")
+
+    def test_configuration_handler_rejects_bad_input_before_receipt_and_enforces_scope(self):
+        section = self.controller.configuration_section("defaults")
+        body = {"requestId": "request-12345678", "expectedRevision": section["revision"], "values": {"defaultOcr": "secret-value"}}
+        status, result = self.request("POST", "/api/configuration/defaults/actions/save-defaults", body)
+        self.assertEqual(status, 400)
+        self.assertEqual(result, {"requestId": "request-12345678", "actionId": "save-defaults", "status": "rejected-before-change"})
+        self.assertNotIn("secret-value", json.dumps(result))
+        self.assertEqual(self.request("GET", "/api/configuration/defaults/operations/request-12345678")[0], 404)
+        good = {**body, "requestId": "request-87654321", "values": {"defaultOcr": True}}
+        self.assertEqual(self.request("POST", "/api/configuration/defaults/actions/save-defaults", good, authorized=False)[0], 403)
+        self.assertEqual(self.request("POST", "/api/configuration/defaults/actions/save-defaults", good)[0], 200)
+        self.assertEqual(self.request("POST", "/api/configuration/queue/actions/pause", {**good, "values": {}})[0], 409)
+
+    def test_configuration_queue_action_serializes_and_reports_state(self):
+        with mock.patch.object(self.controller, "engine_health", return_value="available"):
+            section = self.controller.configuration_section("queue")
+            body = {"requestId": "request-12345678", "expectedRevision": section["revision"], "values": {}}
+            self.assertEqual(self.request("POST", "/api/configuration/queue/actions/pause", body)[0], 200)
+            paused = self.controller.configuration_section("queue")
+            self.assertEqual(paused["summary"][0]["value"], "Paused")
+            self.assertEqual(paused["actions"][0]["id"], "resume")
+            self.assertEqual(self.request("POST", "/api/configuration/queue/actions/pause", {**body, "requestId": "request-87654321"})[0], 409)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ export class Setup {
     }
     return token;
   }
-  async status() {
+  async status({ prunePassword = true } = {}) {
     const worker = await readJson(`${this.runtime}/worker-status.json`, { phase: "starting", ready: false });
     const heartbeat = await stat(`${this.runtime}/heartbeat`).catch(() => null);
     if (!heartbeat || Date.now() - heartbeat.mtimeMs > 300_000) {
@@ -48,7 +48,7 @@ export class Setup {
       worker.error = "The reader is not responding yet. Check its service and try again.";
     }
     const account = await readJson(`${this.runtime}/account.json`, null);
-    if (worker.ready && account?.password) {
+    if (prunePassword && worker.ready && account?.password) {
       // The web password is no longer needed after upstream stores its hash.
       delete account.password;
       await atomicJson(`${this.runtime}/account.json`, account);

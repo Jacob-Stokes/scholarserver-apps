@@ -2,7 +2,14 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, rename } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import {
+  assertConfigurationActionRequest,
+  ConfigurationActionError,
+  ConfigurationActions,
+  configurationActionResult
+} from "@scholarserver/controller-runtime/configuration-actions";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
+import { attachCurrentSectionWhenAvailable, logseqConfiguration } from "./configuration.mjs";
 import { Enrollment } from "./enrollment.mjs";
 import { HttpOperations } from "./http-operations.mjs";
 import { GraphError, validateGraphName } from "./operations.mjs";
@@ -136,6 +143,7 @@ export async function startManaged({ graphServer, serviceToken }) {
     runtime,
     runLogin: (config, signal) => accountRunner.run(["--config", config, "login"], { signal })
   });
+  const configurationActions = new ConfigurationActions(path.join(runtime, "configuration-receipts"), "setup");
   const token = await serviceToken(runtime);
   let graphRunner;
   let worker;
@@ -147,6 +155,7 @@ export async function startManaged({ graphServer, serviceToken }) {
   let joining = false;
   let observing = false;
   let closing = false;
+  let discoveredGraphs = [];
 
   const api = graphServer({
     token,
@@ -170,6 +179,100 @@ export async function startManaged({ graphServer, serviceToken }) {
       error: lastError,
       updatedAt: new Date().toISOString()
     };
+  }
+
+  async function currentConfiguration() {
+    const snapshot = await status();
+    if (!snapshot.accountConnected || snapshot.graph) discoveredGraphs = [];
+    return logseqConfiguration(snapshot, discoveredGraphs);
+  }
+
+  async function evaluateConfiguration(input) {
+    if (
+      !input ||
+      Array.isArray(input) ||
+      typeof input !== "object" ||
+      Object.keys(input).some((key) => !["values", "navigateActionId"].includes(key)) ||
+      !input.values ||
+      Array.isArray(input.values) ||
+      typeof input.values !== "object"
+    ) {
+      throw new ConfigurationActionError(400, "Invalid configuration evaluation.");
+    }
+    const current = await currentConfiguration();
+    if (input.navigateActionId === undefined) return current;
+    const navigation = current.actions.find((action) => action.id === input.navigateActionId);
+    if (!navigation || navigation.disabled || navigation.kind !== "navigate")
+      throw new ConfigurationActionError(409, "This navigation is not available in the current step.");
+    if (navigation.id !== "find-notebooks")
+      throw new ConfigurationActionError(409, "This navigation is not supported.");
+    const graphs = await remoteGraphs();
+    if (!Array.isArray(graphs) || graphs.length > 64)
+      throw new GraphError(
+        "too-many-notebooks",
+        "Too many notebooks were returned. Narrow the account selection in Logseq.",
+        413
+      );
+    discoveredGraphs = graphs;
+    return currentConfiguration();
+  }
+
+  async function runConfigurationAction(actionId, wireInput) {
+    const input = assertConfigurationActionRequest(wireInput, actionId, "setup");
+    let receipt;
+    try {
+      receipt = await configurationActions.run(
+        input,
+        currentConfiguration,
+        async (values) => {
+          switch (actionId) {
+            case "configure-address":
+              await configureAddress(values.url);
+              break;
+            case "start-sign-in":
+              await enrollment.start();
+              break;
+            case "complete-sign-in":
+              await enrollment.complete(values.returnLink);
+              break;
+            case "cancel-sign-in":
+              await enrollment.cancel();
+              break;
+            case "join-notebook":
+              await join(values);
+              break;
+            case "retry-download":
+              await retryDownload(values);
+              break;
+            case "check-connection":
+              await status();
+              break;
+            default:
+              throw new GraphError("unknown-action", "This setup action is unavailable.", 409);
+          }
+        },
+        (values) => {
+          try {
+            if (actionId === "configure-address") privateSyncAddress(values.url);
+            if (actionId === "complete-sign-in") enrollment.validateReturnLink(values.returnLink);
+          } catch {
+            throw new ConfigurationActionError(400, "Check the current setup step and its values.");
+          }
+          if (
+            ["join-notebook", "retry-download"].includes(actionId) &&
+            (typeof values.password !== "string" || !values.password || values.password.length > 4096)
+          )
+            throw new ConfigurationActionError(400, "Enter the notebook encryption password.");
+          return values;
+        }
+      );
+    } catch (error) {
+      if (error instanceof ConfigurationActionError && !(await configurationActions.read(input.requestId))) {
+        return { requestId: input.requestId, actionId, status: "rejected-before-change" };
+      }
+      throw error;
+    }
+    return attachCurrentSectionWhenAvailable(receipt, currentConfiguration);
   }
 
   async function remoteGraphs() {
@@ -336,6 +439,32 @@ export async function startManaged({ graphServer, serviceToken }) {
       const url = new URL(request.url, "http://localhost");
       if (request.method === "GET" && url.pathname === "/health") return send(200, { ready: true });
       if (request.method === "GET" && url.pathname === "/api/status") return send(200, await status());
+      if (url.pathname.startsWith("/api/configuration/")) {
+        const parts = url.pathname.split("/").slice(3);
+        if (parts[0] !== "setup" || parts.length > 3) return send(404, { error: "Not found." });
+        if (request.method === "GET" && parts.length === 1) return send(200, await currentConfiguration());
+        if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2) {
+          return send(200, await evaluateConfiguration(await requestBody(request)));
+        }
+        if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
+          const receipt = await configurationActions.read(parts[2]);
+          return receipt ? send(200, configurationActionResult(receipt)) : send(404, { error: "Operation not found." });
+        }
+        if (request.method === "POST" && parts[1] === "actions" && parts.length === 3) {
+          const outcome = await runConfigurationAction(parts[2], await requestBody(request));
+          return send(outcome.status === "rejected-before-change" ? 400 : 200, outcome);
+        }
+        if (request.method === "POST" && parts[1] === "outputs" && parts.length === 3) {
+          const input = await requestBody(request);
+          if (Object.keys(input).length || parts[2] !== "sign-in-url")
+            throw new ConfigurationActionError(400, "This output is unavailable.");
+          const session = enrollment.status();
+          if (session.state !== "waiting" || !session.authorizationUrl)
+            throw new ConfigurationActionError(409, "No active Logseq sign-in is waiting.");
+          return send(200, { id: "sign-in-url", kind: "link", value: session.authorizationUrl });
+        }
+        return send(404, { error: "Not found." });
+      }
       if (request.method === "GET" && url.pathname === "/api/graphs")
         return send(200, { graphs: await remoteGraphs() });
       if (request.method === "POST") {
@@ -362,9 +491,9 @@ export async function startManaged({ graphServer, serviceToken }) {
       if (request.method === "GET" && !url.pathname.startsWith("/api/")) return await sendStatic(url, response);
       return send(404, { error: "Not found." });
     } catch (error) {
-      send(error instanceof GraphError ? error.status : 503, {
+      send(error instanceof GraphError || error instanceof ConfigurationActionError ? error.status : 503, {
         error:
-          error instanceof GraphError
+          error instanceof GraphError || error instanceof ConfigurationActionError
             ? error.message
             : "Logseq setup could not complete this request. Please try again."
       });

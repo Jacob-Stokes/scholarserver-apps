@@ -1,5 +1,25 @@
 # Zotero development notes
 
+## Native Manager configuration source — 25 September 2026
+
+The existing controller now serves one native configuration section for both the
+complete workspace and online-library variants. Online API-key setup and the
+desktop's persisted account-link session remain separate. The login URL is an
+explicit no-store output, and Zotero's own approval stays in Zotero. Non-secret
+storage-mode evaluation reveals WebDAV fields without changing saved state or
+requiring a hidden wizard token; the app revalidates the selected mode on action.
+Ready summarizes the reported library mode and attachment setting without
+claiming initial sync, group-library WebDAV storage or AI-grant acceptance.
+Unavailable saved desktops lead to recovery rather than another account start.
+The standalone UI and routes remain available. A failed status read after an
+action receipt was saved cannot turn confirmed work into a retryable rejection.
+
+Focused configuration/helper tests and the full apps source suite pass with local
+loopback permission. Synthetic descriptors pass the core parser/manifest checker.
+No image, installed-package update, real-account approval, attachment delivery or
+browser acceptance was performed; image pins are untouched here. The project-vault
+app note/index update remains pending because no vault connector was used.
+
 ## Completed setup presentation — 24 September 2026
 
 Ready Configuration now summarizes the current account, attachment access,

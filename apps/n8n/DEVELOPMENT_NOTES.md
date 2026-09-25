@@ -1273,3 +1273,17 @@ passed isolated native execution, including empty input and revoked grants.
 See [the scoped report](../../docs/native-research-candidates-20260915.md).
 Live deployment/permissions and browser acceptance remain separate. The project
 vault note update is pending because Jacob Gateway note reads timed out.
+
+## Native Manager configuration source candidate — 25 September 2026
+
+The candidate declares connection and automation-settings sections. New-owner,
+existing-owner, optional MFA and recovery-required states come from the
+existing password setup status. Credentials remain secret fields; password
+confirmation is local to the Manager form and is not sent to the declared
+`setup` action. Automation counts and the Automations handoff are read-only.
+The setup action still runs through the Manager/executor boundary, not an app
+HTTP credential route. Its existing setup journal does not correlate an outcome
+to Manager's request ID, so a lost executor response cannot be called rejected
+or safe to retry from `ready` status alone. Synthetic section tests and the
+core parser check pass; native image, package, deployment and browser
+acceptance remain separate. The project-vault note update remains pending.

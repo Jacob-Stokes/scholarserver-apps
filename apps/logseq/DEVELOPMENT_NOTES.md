@@ -1,5 +1,24 @@
 # Logseq development notes
 
+## Native Manager configuration source — 25 September 2026
+
+The helper now serves a data-only native configuration section for private sync
+address, account handoff, encrypted-notebook selection, download/retry and ready
+states. The package-declared sync endpoint is selected in Manager Access; its
+validated ready URL seeds only an untouched draft. The Logseq authorization URL
+is an explicit no-store output and the pasted return link remains a secret input,
+never a section value or receipt. The existing account and notebook operations
+remain authoritative. Starting a download confirms acceptance of that job, not
+completed replication; an interrupted download still requires the existing
+recovery path. Ready does not advertise notebook replacement or address editing.
+The standalone UI and routes remain available.
+
+Focused configuration/helper tests and the full apps source suite pass with local
+loopback permission. Synthetic descriptors pass the core parser/manifest checker.
+No native image, installed package, device sign-in or encrypted-sync roundtrip was
+qualified by this source change; image pins are untouched here. The project-vault
+app note/index update remains pending because no vault connector was used.
+
 ## Completed setup presentation — 24 September 2026
 
 Ready Configuration now summarizes the notebook, sync method and saved sync

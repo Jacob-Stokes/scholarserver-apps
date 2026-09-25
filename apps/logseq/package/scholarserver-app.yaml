@@ -13,6 +13,8 @@ presentation:
   details:
     description: An outliner for connected notes and knowledge.
     tags: [Notes, Knowledge graphs, Sync]
+    links:
+      - { label: Logseq account sign-in, kind: website, url: https://logseq-prod.auth.us-east-1.amazoncognito.com/oauth2/authorize }
   icon:
     path: assets/icons/logseq.webp
     mediaType: image/webp
@@ -201,6 +203,10 @@ ui:
   endpoint: app-ui
   defaultPath: /configuration
   configurationPath: /configuration
+  configuration:
+    version: 1
+    sections:
+      - { id: setup, title: Notebook connection }
 lifecycle:
   supportsDisable: true
   removeDataDefault: false

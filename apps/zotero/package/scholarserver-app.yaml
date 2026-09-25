@@ -156,6 +156,10 @@ ui:
   endpoint: app-ui
   defaultPath: /overview
   configurationPath: /configuration
+  configuration:
+    version: 1
+    sections:
+      - { id: setup, title: Library connection }
 presentation:
   editorialIcon:
     path: assets/icons/zotero-editorial.png
@@ -168,6 +172,8 @@ presentation:
   details:
     description: Organise your references and research papers.
     tags: [References, Notes, Documents, Files]
+    links:
+      - { label: Zotero account sign-in, kind: website, url: https://www.zotero.org/login }
   icon:
     path: assets/icons/zotero.webp
     mediaType: image/webp

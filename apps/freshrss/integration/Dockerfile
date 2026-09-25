@@ -20,6 +20,8 @@ COPY --from=build /source/apps/freshrss/integration/node_modules ./node_modules
 COPY --from=build /source/apps/freshrss/ui/dist ./ui
 COPY apps/freshrss/integration/server.mjs apps/freshrss/integration/cache-policy.mjs apps/freshrss/integration/setup.mjs apps/freshrss/integration/client.mjs apps/freshrss/integration/tools.mjs apps/freshrss/integration/package.json ./
 COPY apps/freshrss/integration/browser-identity.mjs ./
+COPY apps/freshrss/integration/configuration.mjs ./
+COPY apps/freshrss/integration/configuration-routes.mjs ./
 COPY LICENSE apps/freshrss/DISTRIBUTION.md /usr/share/doc/scholarserver-freshrss/
 USER 1000:1000
 EXPOSE 8080 8082 7015

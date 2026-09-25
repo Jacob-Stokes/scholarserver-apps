@@ -12,6 +12,7 @@ import {
   workflowScheduleMinutes
 } from "./configuration.mjs";
 import { completeWorkflowInventory, editingState } from "./inventory.mjs";
+import { managerConfigurationSection } from "./manager-configuration.mjs";
 import { ManagerConnection, ResearchConnectionRequired } from "./manager-connection.mjs";
 import {
   advertisesNativeSetup,
@@ -115,6 +116,38 @@ createServer(async (request, response) => {
       }
       if (request.method === "GET" && url.pathname === "/api/status")
         return json(response, 200, { ...(await passwordSetup.status()), automationInterfaceVersion: 1 });
+      if (url.pathname.startsWith("/api/configuration/")) {
+        const parts = url.pathname.split("/").filter(Boolean);
+        const sectionId = parts[2];
+        if (parts.length === 3 && request.method === "GET") {
+          const section = await managerConfigurationSection(sectionId, passwordSetup, installations);
+          return json(response, section ? 200 : 404, section ?? { error: "Configuration section not found." });
+        }
+        if (parts.length === 4 && parts[3] === "evaluate" && request.method === "POST") {
+          let input;
+          try {
+            input = await body(request);
+          } catch {
+            return json(response, 400, { error: "Invalid configuration evaluation." });
+          }
+          if (
+            !input ||
+            Array.isArray(input) ||
+            typeof input !== "object" ||
+            Object.keys(input).some((key) => !["values", "navigateActionId"].includes(key)) ||
+            !input.values ||
+            Array.isArray(input.values) ||
+            typeof input.values !== "object" ||
+            JSON.stringify(input).length > 16_384
+          )
+            return json(response, 400, { error: "Invalid configuration evaluation." });
+          if (input.navigateActionId !== undefined)
+            return json(response, 409, { error: "This section has no unsaved next step." });
+          const section = await managerConfigurationSection(sectionId, passwordSetup, installations);
+          return json(response, section ? 200 : 404, section ?? { error: "Configuration section not found." });
+        }
+        return json(response, 404, { error: "Configuration route not found." });
+      }
       if (request.method === "GET" && url.pathname === "/api/automations") {
         const state = await installations.read();
         const inventory = await completeWorkflowInventory(await requiredClient());
