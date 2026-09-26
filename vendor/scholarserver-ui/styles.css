@@ -271,7 +271,8 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   cursor: pointer;
   white-space: nowrap;
 }
-.ss-tab[aria-selected="true"] {
+.ss-tab[aria-selected="true"],
+.ss-tab[aria-current="page"] {
   border-bottom-color: var(--primary);
   color: var(--foreground);
   font-weight: 600;
@@ -669,7 +670,15 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
   }
 }
 /* A reserved feedback row prevents routine background refreshes moving content. */
-.ss-section-feedback { min-height: 1.5rem; font-size: .8125rem; line-height: 1.5rem; }
+.ss-section-feedback { display: block; min-height: 1.5rem; font-size: .8125rem; line-height: 1.5rem; }
+/* Routine feedback shares an existing line, including on narrow screens. Errors
+   can wrap and expand: recovery instructions must never be clipped. */
+.ss-status-line { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.ss-status-line > :first-child { flex-shrink: 0; max-width: calc(100% - 2rem); overflow-wrap: anywhere; }
+.ss-section-feedback-inline { display: inline-block; min-width: 1rem; font-family: var(--ss-font-sans); font-weight: 400; color: var(--muted-foreground); vertical-align: middle; }
+.ss-section-feedback-inline:not([data-error="true"]) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-status-line > .ss-section-feedback:not([data-error="true"]) { min-width: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-section-feedback-inline[data-error="true"] { white-space: normal; }
 .ss-section-feedback span { display: inline; }
 .ss-section-feedback [role="status"] { visibility: hidden; animation: ss-section-reveal 0s 150ms forwards; }
 :root[data-motion="off"] .ss-section-feedback [role="status"] { visibility: visible; }

@@ -8,6 +8,8 @@ export function SectionFeedback({
   label,
   error,
   onRetry,
+  inline = false,
+  pendingLabel,
   className = ""
 }: {
   pending: boolean;
@@ -15,12 +17,19 @@ export function SectionFeedback({
   label: string;
   error?: string | null;
   onRetry?: () => void;
+  inline?: boolean;
+  pendingLabel?: string;
   className?: string;
 }): React.ReactElement {
   return (
-    <div className={`ss-section-feedback ${className}`} aria-live="polite" aria-atomic="true">
+    <span
+      className={`ss-section-feedback ${inline ? "ss-section-feedback-inline" : ""} ${className}`}
+      aria-live="polite"
+      aria-atomic="true"
+      data-error={Boolean(error)}
+    >
       {error ? (
-        <span>
+        <span role="alert">
           {hasData ? "Shown information may be out of date. " : ""}
           {error}
           {onRetry ? (
@@ -32,9 +41,9 @@ export function SectionFeedback({
       ) : pending ? (
         <span role="status">
           <LoaderCircle aria-hidden="true" className="ss-section-spinner" />
-          {hasData ? `Refreshing ${label}…` : `Loading ${label}…`}
+          {pendingLabel ?? (hasData ? `Refreshing ${label}…` : `Loading ${label}…`)}
         </span>
       ) : null}
-    </div>
+    </span>
   );
 }

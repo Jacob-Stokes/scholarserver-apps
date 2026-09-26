@@ -10,12 +10,14 @@ export function ApplicationSettingsRow({
   icon,
   description,
   action,
+  status,
   feedback
 }: {
   title: string;
   icon?: React.ReactNode;
   description: React.ReactNode;
   action?: React.ReactNode;
+  status?: React.ReactNode;
   feedback?: React.ReactNode;
 }) {
   const headingId = React.useId();
@@ -28,6 +30,7 @@ export function ApplicationSettingsRow({
           </span>
         ) : null}
         {title}
+        {status}
       </h2>
       <div
         className={
@@ -109,7 +112,10 @@ export function ApplicationScreen<T extends string>({
         <div className="ss-page-heading">
           <div>
             <h1>{name}</h1>
-            <p>{description}</p>
+            <div className="ss-status-line">
+              <p>{description}</p>
+              {feedback ?? <SectionFeedback inline pending={loading && !error} hasData={false} label={name} />}
+            </div>
           </div>
           {status}
         </div>
@@ -132,7 +138,6 @@ export function ApplicationScreen<T extends string>({
             {error}
           </div>
         ) : null}
-        {feedback ?? <SectionFeedback pending={loading && !error} hasData={false} label={name} />}
         <MotionSurface change={currentTab}>{children}</MotionSurface>
       </main>
     </div>
