@@ -1,5 +1,31 @@
 # Desktop client setup acceptance — 12 September 2026
 
+## Second isolated Obsidian LiveSync vault — 27 September 2026
+
+The Docker Obsidian desktop's new `ss-private-test-20260927` vault joined
+Freelove's separate `personal/obsidian-private-test` instance using the generated
+encrypted LiveSync setup link. The plugin was Self-hosted LiveSync 1.0.32.
+Manager reported Connected and server sync Running. The previously connected
+desktop vault and original server instance were not reconfigured.
+
+The imported settings showed **On events** with every event trigger disabled,
+so the first server note required manual **Sync now**. Changing this test vault
+to **LiveSync** mode enabled automatic server-to-desktop note delivery and
+desktop-to-server edit return. A generated 69-byte PNG transferred in both
+directions with SHA-256
+`4258699ba0181027db1c32e7d9360339ccf87658015a24cd1424a0a5bd1b329c`
+on each side. After restarting only the isolated Docker desktop container, a
+new server note again arrived automatically, and an editor change returned to
+the server without manual sync. The second instance's LiveSync worker was
+restarted separately and returned healthy; new synthetic notes then replicated
+in both directions.
+
+The apps source now explicitly selects `syncMode: "LIVESYNC"` in new device
+links and checks the decoded upstream link. The deployed immutable package has
+not been replaced; runtime acceptance above used the manual mode correction.
+Full-host restart, fresh corrected-link, and scoped AI-tool readback remain
+untested. The AI namespace is not enabled yet.
+
 ## Isolated development vault — 15 September 2026
 
 Created `scholarserver-dev` through the real Obsidian desktop interface in the

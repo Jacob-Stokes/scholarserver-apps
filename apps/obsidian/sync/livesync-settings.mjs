@@ -1,5 +1,6 @@
 export const SCHOLARSERVER_LIVESYNC_DEFAULTS = Object.freeze({
   batchSave: true,
+  syncMode: "LIVESYNC",
   liveSync: true,
   periodicReplication: true,
   syncOnSave: true,

@@ -1,5 +1,23 @@
 # Obsidian development notes
 
+## LiveSync 1.0 continuous mode — 27 September 2026
+
+The isolated Docker Obsidian desktop joined the second Freelove instance from
+the encrypted device link. LiveSync 1.0.32 imported the legacy event flags but
+showed **On events** with every event trigger off. A server note reached the
+desktop only after a manual sync. Selecting **LiveSync** mode in that test vault
+then delivered a new server note automatically, and a desktop edit returned to
+the server automatically. A synthetic PNG also replicated in both directions
+with matching SHA-256 bytes. The original desktop vault and server instance were
+not changed.
+
+New setup links now declare `syncMode: "LIVESYNC"` explicitly. The upstream
+codec round-trip test checks that the field survives in the device link, and the
+full apps source suite passes with local loopback permission. The currently
+installed immutable package predates this fix; the successful desktop test used
+a manual mode correction. Build, publish, package update and fresh-link browser
+acceptance remain separate work. The project-vault note write is still pending.
+
 ## Native Manager configuration source — 25 September 2026
 
 The new optional `ui.configuration` section is implemented by the existing sync

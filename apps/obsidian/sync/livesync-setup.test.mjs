@@ -41,6 +41,7 @@ test("pending link repair preserves vault credentials and encryption, and leaves
   const before = structuredClone({ onboarding, enrollment, worker });
   const repaired = await repairDeviceOnboarding({ onboarding, enrollment, worker, connectionUrl });
   const decoded = await decodeSettingsFromSetupURI(repaired.setupURI, repaired.setupPassphrase);
+  assert.equal(decoded.syncMode, "LIVESYNC", "the device link must select continuous replication in LiveSync 1.0");
   assert.equal(decoded.couchDB_URI, connectionUrl);
   assert.equal(decoded.couchDB_DBNAME, "vault-example");
   assert.equal(decoded.couchDB_USER, "vault-example");
