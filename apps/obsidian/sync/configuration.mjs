@@ -34,12 +34,16 @@ export function obsidianConfiguration(status, { vaults = [] } = {}) {
     return section;
   }
   if (status.state === "ready") {
+    let serverSyncRunning = status.workerRunning === true;
+    if (status.profile === "livesync") {
+      serverSyncRunning = status.liveSyncWorker?.running === true;
+    }
     section.stage = { id: "ready", label: "Connected", index: 6, total: 6 };
     section.summary = [
       { label: "Sync method", value: status.profile === "livesync" ? "Self-hosted LiveSync" : "Obsidian Sync" },
       { label: "Vault", value: status.remoteVault || "Not reported" },
       { label: "AI-accessible folder", value: status.scopePath || "/" },
-      { label: "Server sync", value: status.workerRunning ? "Running" : "Not confirmed running" }
+      { label: "Server sync", value: serverSyncRunning ? "Running" : "Not confirmed running" }
     ];
     if (status.profile === "livesync")
       section.notices.push({ kind: "warning", text: "Keep other vault sync methods turned off to avoid conflicts." });

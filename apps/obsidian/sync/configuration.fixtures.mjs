@@ -26,6 +26,11 @@ export const obsidianConfigurationFixtures = [
   obsidianConfiguration(status("livesync", "livesync-preparing")),
   obsidianConfiguration(status("livesync", "livesync-device-setup")),
   obsidianConfiguration(status("livesync", "livesync-server-joining")),
-  obsidianConfiguration(status("livesync", "ready", { remoteVault: "Self-hosted LiveSync", workerRunning: true })),
+  obsidianConfiguration(
+    status("livesync", "ready", {
+      remoteVault: "Self-hosted LiveSync",
+      liveSyncWorker: { running: true }
+    })
+  ),
   obsidianConfiguration(status("livesync", "recovery-required", { lastError: "Restore the original connection." }))
 ];

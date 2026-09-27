@@ -8,7 +8,11 @@ import {
   ConfigurationActions
 } from "../../../packages/controller-runtime/configuration-actions.mjs";
 import { obsidianConfigurationFixtures } from "./configuration.fixtures.mjs";
-import { attachCurrentSectionWhenAvailable, validateObsidianConfigurationAction } from "./configuration.mjs";
+import {
+  attachCurrentSectionWhenAvailable,
+  obsidianConfiguration,
+  validateObsidianConfigurationAction
+} from "./configuration.mjs";
 
 test("LiveSync advances through preparation, explicit device output, joining and ready without echoing credentials", () => {
   const [setup, preparing, device, joining, ready] = obsidianConfigurationFixtures.slice(5, 10);
@@ -41,6 +45,32 @@ test("official Sync and recovery reflect actual status stages without offering v
     false
   );
   assert.equal(recovery.actions.length, 0);
+});
+
+test("ready configuration reports the selected sync worker rather than the other mode", () => {
+  const officialRunning = obsidianConfiguration({
+    profile: "official",
+    state: "ready",
+    workerRunning: true,
+    liveSyncWorker: { running: false }
+  });
+  const liveSyncRunning = obsidianConfiguration({
+    profile: "livesync",
+    state: "ready",
+    workerRunning: false,
+    liveSyncWorker: { running: true }
+  });
+  const liveSyncStopped = obsidianConfiguration({
+    profile: "livesync",
+    state: "ready",
+    workerRunning: true,
+    liveSyncWorker: { running: false }
+  });
+  const serverSync = (section) => section.summary.find((item) => item.label === "Server sync")?.value;
+
+  assert.equal(serverSync(officialRunning), "Running");
+  assert.equal(serverSync(liveSyncRunning), "Running");
+  assert.equal(serverSync(liveSyncStopped), "Not confirmed running");
 });
 
 test("LiveSync validation rejects unsafe connection and mismatched passphrases before receipt", () => {

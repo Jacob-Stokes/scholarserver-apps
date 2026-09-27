@@ -1,5 +1,16 @@
 # Obsidian development notes
 
+## Manager LiveSync status parity — 27 September 2026
+
+The isolated LiveSync installation's Manager Configuration tab reported
+"Not confirmed running" while the app overview reported its LiveSync worker
+running. The configuration summary read the official Sync worker flag, which
+remains false for the LiveSync profile. It now selects the LiveSync worker's
+reported running state for that profile and retains the official worker flag
+for Obsidian Sync. Focused tests cover both running paths and a stopped
+LiveSync worker. The full apps source suite passes. This is a source correction;
+an updated image, immutable package and browser acceptance remain separate.
+
 ## LiveSync 1.0 continuous mode — 27 September 2026
 
 The isolated Docker Obsidian desktop joined the second Freelove instance from
