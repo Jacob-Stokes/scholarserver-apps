@@ -8,8 +8,17 @@ running. The configuration summary read the official Sync worker flag, which
 remains false for the LiveSync profile. It now selects the LiveSync worker's
 reported running state for that profile and retains the official worker flag
 for Obsidian Sync. Focused tests cover both running paths and a stopped
-LiveSync worker. The full apps source suite passes. This is a source correction;
-an updated image, immutable package and browser acceptance remain separate.
+LiveSync worker. The full apps source suite passes. Native multi-platform
+[run 36342991675](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36342991675)
+passed for source `aa70ab6a09a8103bd2f4bd8ecfc7bf6d5251d032`. Its Obsidian
+sync image index is
+`sha256:c7c52f75a26eb9c30bb7176433eba0a37ded63dd1fbccb854bcf57c6cf99f772`;
+the published AMD64 and ARM64 config digests match the native build receipts.
+Package candidate `0.5.1-private-origin.20260927.3` selects that image and
+includes the earlier explicit LiveSync mode fix. The other service images,
+data, endpoints and permissions remain unchanged. Apps tests, lint, the selected
+source lock and paired core check pass. The earlier `.2` candidate was imported
+but never applied; installation and browser acceptance of `.3` remain separate.
 
 ## LiveSync 1.0 continuous mode — 27 September 2026
 
