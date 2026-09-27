@@ -1,5 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import {
+  decodeSettingsFromSetupURI,
+  encodeSettingsToSetupURI
+} from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { createNewVaultSettings, PREFERRED_SETTING_SELF_HOSTED } from "@vrtmrz/livesync-commonlib/settings";
 import { couchRequest } from "./couchdb-request.mjs";
@@ -186,4 +189,61 @@ export async function generateSetupUri({
     true
   );
   return { setupURI: setupURI.trim(), setupPassphrase };
+}
+
+// Repair only a pending device link. Database identity, encryption and worker setup
+// belong to the existing installation and must never be reprovisioned here.
+export async function repairDeviceOnboarding({ onboarding, enrollment, worker, connectionUrl }) {
+  if (
+    !onboarding?.setupURI ||
+    !onboarding.setupPassphrase ||
+    !onboarding.database ||
+    enrollment?.profile !== "livesync" ||
+    enrollment.database !== onboarding.database ||
+    worker?.enabled !== false ||
+    !worker.setupURI ||
+    !worker.setupPassphrase
+  ) {
+    throw new Error(
+      "The pending LiveSync records are incomplete. Restore the original connection records before continuing."
+    );
+  }
+  const target = new URL(connectionUrl);
+  if (
+    target.protocol !== "https:" ||
+    !target.hostname.endsWith(".ts.net") ||
+    target.username ||
+    target.password ||
+    target.pathname !== "/" ||
+    target.search ||
+    target.hash
+  ) {
+    throw new Error("Choose the private LiveSync address supplied by ScholarServer.");
+  }
+  const url = target.origin;
+  // A lost response can be reconciled without creating another setup password.
+  if (onboarding.connectionUrl === url && onboarding.accessMethod === "tailscale") return onboarding;
+  let settings;
+  try {
+    settings = await decodeSettingsFromSetupURI(onboarding.setupURI, onboarding.setupPassphrase);
+  } catch {
+    throw new Error("The saved device link could not be read. Restore the original connection records.");
+  }
+  if (
+    !settings ||
+    settings.couchDB_DBNAME !== onboarding.database ||
+    !settings.couchDB_USER ||
+    !settings.couchDB_PASSWORD ||
+    !settings.passphrase
+  ) {
+    throw new Error("The saved device link does not match this vault. Restore the original connection records.");
+  }
+  const setup = await generateSetupUri({
+    url,
+    username: settings.couchDB_USER,
+    password: settings.couchDB_PASSWORD,
+    database: onboarding.database,
+    vaultPassphrase: settings.passphrase
+  });
+  return { ...onboarding, ...setup, accessMethod: "tailscale", connectionUrl: url };
 }

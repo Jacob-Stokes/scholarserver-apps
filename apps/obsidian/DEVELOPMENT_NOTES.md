@@ -9,9 +9,8 @@ and recovery. The LiveSync section offers only the package-declared private
 Tailscale endpoint; Manager's endpoint picker supplies its selected URL to an
 untouched draft. The setup URI and passphrase remain separate explicit no-store
 text outputs, not ordinary section values, receipts or clickable custom links.
-The older standalone form can still name public HTTPS, but this package declares
-`livesync-couchdb` private-only (`public: false`), so the native setup does not
-offer an unsupported public route or broaden access. Existing public-backed
+The 27 September standalone fix now follows the same private-only endpoint
+contract. Neither setup surface offers unsupported public CouchDB access. Existing public-backed
 installations retain their saved state and ready summary without reconfiguration.
 Connected status summarizes the reported vault and scope but does not claim a
 supported in-place vault edit. A background observer reconciles the server-joining
@@ -35,6 +34,42 @@ connection check is available. The current app API does not provide a supported
 post-setup vault/scope edit or reset action; none was added. UI typecheck, build,
 focused source tests and synthetic Chrome ready/setup/recovery scenarios pass.
 The project-vault app note/index update is pending and was not attempted here.
+## Private LiveSync setup repair — 27 September 2026
+
+The UI now obtains and saves the package-declared `livesync-couchdb` endpoint
+through Manager's authenticated access-options API. It accepts only the saved
+private origin, rejects Manager/path/public/stale addresses, and rechecks before
+initial setup. The unsupported public choice and guessed port 8443 are removed.
+Device credentials remain confined to the mounted step and are withheld when
+the onboarding address differs from the saved route. The existing-server/join
+instructions explicitly prohibit resetting the already-provisioned database.
+
+Pending-device repair uses the upstream codec to reissue only the device link,
+preserving the database, client credentials, vault encryption and disabled worker.
+It checks the vault binding and rejects completed setup, active workers, missing
+records and database mismatches. Same-address reconciliation does not rotate a
+second password. Atomic onboarding then enrollment writes permit reconciliation
+after a lost response; this is not native restart acceptance.
+
+Full `npm test`, Obsidian UI typecheck/build and twelve focused checks passed on
+the operator Mac. Codex's in-app browser exercised a synthetic private connection,
+missing-route repair, corrected instructions and unchecked confirmation. No
+separate Chrome session was opened. The native build workflow checks a 30 GiB
+projected peak against the pinned core disk-budget guard before image assembly.
+Native-image, package and real-device acceptance remain separate gates.
+
+Live read-only checks found the installed `0.5.0-beta.1` endpoint is private-only
+without `remoteAccess.routing: origin`; the executor rejects it with 422. Its
+LiveSync variant also includes the excluded `official-client` dataset. Do not
+edit that immutable package or bypass update recovery. The owner selected a second
+isolated test instance, preserving the current instance and desktop profile.
+Core also needs the installation-owned origin readiness fix: host Tailscale
+reports a Serve conflict while installation Tailscale is ready.
+
+Project-vault note and index writes were rejected by automatic approval review
+because destination ownership and authorization were not established. The owner
+has been asked to approve those exact notes; the documentation update is pending.
+No real setup URI, password, vault content or credential is included in evidence.
 
 ## Loading deployment and vault-documentation checkpoint — 21 September 2026
 

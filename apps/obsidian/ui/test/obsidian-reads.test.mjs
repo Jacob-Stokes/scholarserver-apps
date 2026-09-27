@@ -74,3 +74,79 @@ test("active setup is checked more often than an idle or connected vault", () =>
   assert.equal(statusPollMilliseconds({ ...status, state: "ready" }), 30000);
   assert.equal(statusPollMilliseconds(status), 30000);
 });
+
+const { readLiveSyncAccess, selectedLiveSyncUrl } = await import(moduleUrl(source));
+const privateUrl = "https://obsidian-sync.example.ts.net/";
+const privateAccess = {
+  options: [{ id: "tailscale", transport: "tailscale", url: privateUrl, authentication: { authentik: "unsupported" } }],
+  selection: { optionId: "tailscale", transport: "tailscale", authentication: "none", url: privateUrl }
+};
+
+test("device setup uses only the saved package-declared private origin", () => {
+  assert.equal(selectedLiveSyncUrl(privateAccess, "https://manager.example.ts.net:8443"), privateUrl.slice(0, -1));
+  assert.throws(
+    () => selectedLiveSyncUrl({ ...privateAccess, selection: null }, "https://manager.example.ts.net"),
+    /Set up/
+  );
+  assert.throws(() => selectedLiveSyncUrl(privateAccess, privateUrl.slice(0, -1)), /own private/);
+  for (const url of [
+    "http://sync.example.ts.net/",
+    "https://public.example.com/",
+    "https://sync.example.ts.net/apps/obsidian/",
+    "https://user:secret@sync.example.ts.net/",
+    "https://sync.example.ts.net/?key=secret"
+  ]) {
+    const access = { options: [{ ...privateAccess.options[0], url }], selection: { ...privateAccess.selection, url } };
+    assert.throws(() => selectedLiveSyncUrl(access, "https://manager.example.ts.net"));
+  }
+  assert.throws(
+    () =>
+      selectedLiveSyncUrl(
+        { ...privateAccess, selection: { ...privateAccess.selection, url: "https://stale.example.ts.net/" } },
+        "https://manager.example.ts.net"
+      ),
+    /Set up/
+  );
+  assert.throws(
+    () =>
+      selectedLiveSyncUrl(
+        { ...privateAccess, selection: { ...privateAccess.selection, authentication: "authentik" } },
+        "https://manager.example.ts.net"
+      ),
+    /Set up/
+  );
+});
+
+test("route provisioning stays on the authenticated Manager API and never retries a lost write", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, ...options });
+    throw new Error("lost acknowledgement");
+  });
+  await assert.rejects(
+    readLiveSyncAccess("/apps/obsidian-test", new AbortController().signal, true),
+    /may already be saved/
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/api/v1/instances/obsidian-test/endpoints/livesync-couchdb/access-options");
+  assert.equal(calls[0].method, "PUT");
+  assert.equal(calls[0].redirect, "error");
+  assert.deepEqual(JSON.parse(calls[0].body), { optionId: "tailscale", authentication: "none" });
+});
+
+test("a denied connection read retires status and connection together", async (t) => {
+  t.mock.method(globalThis, "fetch", async (url) =>
+    url.includes("access-options") ? new Response("", { status: 403 }) : Response.json(status)
+  );
+  const reads = createObsidianReads("/apps/obsidian-test");
+  await reads.status.refresh();
+  await reads.connection.refresh();
+  assert.equal(reads.accessSignal.aborted, true);
+  assert.equal(reads.status.getSnapshot().data, undefined);
+  assert.equal(reads.connection.getSnapshot().data, undefined);
+});
+
+test("incomplete route responses fail without guessing an address", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ options: [] }));
+  await assert.rejects(readLiveSyncAccess("/apps/obsidian-test", new AbortController().signal), /incomplete/);
+});

@@ -24,6 +24,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Read the pinned core disk-budget guard
+        uses: actions/checkout@v4
+        with:
+          repository: Jacob-Stokes/scholarserver
+          ref: 09f632bb9dbfc744ede278e6b50f44681be59931
+          path: .dev/disk-budget-core
+          persist-credentials: false
+      - name: Check projected native-build disk headroom
+        run: python3 .dev/disk-budget-core/ops/development/disk-budget.py . --required-bytes 32212254720
       - name: Install locked source-verification dependencies
         run: npm ci --ignore-scripts
       - name: Install image-layer decoder

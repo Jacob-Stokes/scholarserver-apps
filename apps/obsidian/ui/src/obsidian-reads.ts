@@ -1,3 +1,4 @@
+import type { EndpointAccessOption } from "@scholarserver/ui/endpoint-access";
 import { ReadAccessRequired, ReadScope } from "@scholarserver/ui/read-resource";
 
 export type RemoteVault = { id: string; name: string };
@@ -114,5 +115,81 @@ export function createObsidianReads(base: string) {
     async (signal) => statusPresentation(await requestObsidian<Status>(base, "status", { signal })),
     2000
   );
-  return { status, block: scope.block, accessSignal: scope.signal };
+  const connection = scope.create((signal) => readLiveSyncAccess(base, signal), 2000);
+  return { status, connection, block: scope.block, accessSignal: scope.signal };
+}
+
+export type LiveSyncAccess = {
+  options: EndpointAccessOption[];
+  selection: { optionId: string; transport: string; authentication: string; url: string } | null;
+};
+
+export async function readLiveSyncAccess(base: string, signal: AbortSignal, enable = false): Promise<LiveSyncAccess> {
+  const instance = base.match(/\/apps\/([^/]+)$/)?.[1];
+  if (!instance) throw new Error("Open this application through ScholarServer to configure its private connection.");
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/instances/${instance}/endpoints/livesync-couchdb/access-options`, {
+      method: enable ? "PUT" : "GET",
+      headers: enable ? { "content-type": "application/json" } : undefined,
+      body: enable ? JSON.stringify({ optionId: "tailscale", authentication: "none" }) : undefined,
+      redirect: enable ? "error" : "manual",
+      cache: "no-store",
+      signal
+    });
+  } catch {
+    throw new Error(
+      enable
+        ? "The connection was interrupted. The address may already be saved. Refresh its status before retrying."
+        : "Could not read the private connection. Check your connection and refresh its status."
+    );
+  }
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    response.type === "opaqueredirect" ||
+    response.redirected ||
+    (response.status >= 300 && response.status < 400) ||
+    response.headers.get("content-type")?.includes("text/html")
+  ) {
+    throw new ReadAccessRequired("Open ScholarServer and sign in again, then retry.");
+  }
+  if (!response.ok)
+    throw new Error("ScholarServer could not confirm the private connection. Check Access and application activity.");
+  const value = await response.json().catch(() => null);
+  if (!value || !Array.isArray(value.options) || !("selection" in value)) {
+    throw new Error("ScholarServer returned an incomplete connection response. Refresh its status before continuing.");
+  }
+  return value;
+}
+
+export function selectedLiveSyncUrl(access: LiveSyncAccess, managerOrigin: string): string {
+  const selected = access.selection;
+  const option = access.options.find((candidate) => candidate.id === selected?.optionId);
+  if (
+    !selected ||
+    selected.optionId !== "tailscale" ||
+    selected.transport !== "tailscale" ||
+    selected.authentication !== "none" ||
+    !option ||
+    option.transport !== "tailscale" ||
+    option.authentication.authentik !== "unsupported" ||
+    option.url !== selected.url
+  ) {
+    throw new Error("Set up the private LiveSync connection before continuing.");
+  }
+  const url = new URL(selected.url);
+  if (
+    url.protocol !== "https:" ||
+    !url.hostname.endsWith(".ts.net") ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash ||
+    url.origin === managerOrigin
+  ) {
+    throw new Error("LiveSync needs its own private HTTPS address. Check Access in ScholarServer.");
+  }
+  return url.origin;
 }
