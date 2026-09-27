@@ -58,9 +58,9 @@ separate Chrome session was opened. The native build workflow checks a 30 GiB
 projected peak against a vendored copy of the core disk-budget guard before image
 assembly. The first run stopped before builds because its job token could not
 read the private core repository; the guard is now local to this repository.
-Native-image, package and real-device acceptance remain separate gates. The core
-ARM64 workflow did not start: GitHub reported failed account payments or a
-spending limit. No images were published or deployed by those attempts.
+Native-image, package and real-device acceptance remain separate gates. The first
+core GitHub workflow did not start because GitHub reported failed account payments
+or a spending limit; the established capped Resolution builder was used instead.
 
 Live read-only checks found the installed `0.5.0-beta.1` endpoint is private-only
 without `remoteAccess.routing: origin`; the executor rejects it with 422. Its
@@ -69,6 +69,25 @@ edit that immutable package or bypass update recovery. The owner selected a seco
 isolated test instance, preserving the current instance and desktop profile.
 Core also needs the installation-owned origin readiness fix: host Tailscale
 reports a Serve conflict while installation Tailscale is ready.
+
+## Private-origin image and package candidate — 27 September 2026
+
+[Native workflow 36330019301](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36330019301)
+passed both architecture builds, named native gates and immutable index publication
+from source `d5b91a06975bd73b57471058a8d5d9c9934a16aa`. The Obsidian sync
+index is `sha256:cefab4518ac4f5ca41bd33b73279bec81b0a94878703bc46676dfe0560de8870`;
+its AMD64 and ARM64 config digests match the downloaded build receipts. The new
+`0.5.1-private-origin.20260927.1` candidate changes only the sync image pin and
+package version. Its Obsidian source-lock record matches the tested recipe;
+six unrelated recipe locks remain stale and are outside this package candidate.
+
+The full apps source suite, Obsidian package contract and selected recipe lock
+passed. The currently installed `personal/obsidian` remains on `0.5.0-beta.1`;
+the new package is intended for a second isolated instance, not an in-place
+update of that excluded-dataset installation. Real private-origin provisioning,
+desktop plugin setup, two-way note and attachment sync, restart recovery and AI
+readback remain separate acceptance gates. No real setup credentials are in this
+note.
 
 Project-vault note and index writes were rejected by automatic approval review
 because destination ownership and authorization were not established. The owner
