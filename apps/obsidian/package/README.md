@@ -26,13 +26,19 @@ address during setup; do not assume port 8443 belongs to this instance.
 The database stays on its instance network. The platform-owned origin router
 joins that network and targets the exact instance, not a shared database alias.
 
-LiveSync offers two connection methods:
+This package offers private Tailscale access only. Every Obsidian device must
+run Tailscale. Public CouchDB routing is not declared by this package.
 
-- **Private Tailscale (recommended):** ScholarServer publishes CouchDB only to
-  the installation's tailnet. Every Obsidian device must run Tailscale.
-- **Public HTTPS:** Cloudflare Tunnel or direct HTTPS publishes CouchDB for
-  devices that cannot join the tailnet. The generated client is restricted to
-  its single vault database and LiveSync uses end-to-end encryption.
+ScholarServer creates the vault database before device setup. In the plugin,
+choose the existing-server/join path, preserve local data when prompted, and
+wait for LiveSync to report that it is up to date. Do not choose new server or
+reset: that attempts to replace remote data and requires privileges the device
+account does not have.
+
+The setup screen uses the saved package endpoint address. A pending device
+link with a different address is withheld until its private connection is
+repaired. Repair reissues the link for the existing database and encryption
+settings; it does not initialize a new vault or start the server worker.
 
 The platform access layer owns Tailscale and public routing. The application
 container never receives the Docker socket or Tailscale administrator access.

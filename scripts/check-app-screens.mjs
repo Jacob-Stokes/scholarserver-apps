@@ -863,14 +863,39 @@ try {
     lastError: null,
     liveSyncOnboarding: { setupPassphrase: "legacy-secret-must-not-render" }
   };
+  await page.route("**/api/v1/instances/obsidian/endpoints/livesync-couchdb/access-options", (route) =>
+    route.fulfill({
+      json: {
+        options: [
+          {
+            id: "tailscale",
+            transport: "tailscale",
+            url: "https://synthetic.example.ts.net/",
+            authentication: { authentik: "unsupported" }
+          }
+        ],
+        selection: {
+          optionId: "tailscale",
+          transport: "tailscale",
+          authentication: "none",
+          url: "https://synthetic.example.ts.net/"
+        }
+      }
+    })
+  );
   let deviceReads = 0;
   let releaseDeviceRead;
+  let startedDeviceRead;
+  const firstDeviceRead = new Promise((resolve) => {
+    startedDeviceRead = resolve;
+  });
   let denyDeviceRead = false;
   await page.route("**/apps/obsidian/api/livesync/onboarding", async (route) => {
     const requestNumber = ++deviceReads;
     if (requestNumber === 1)
       await new Promise((resolve) => {
         releaseDeviceRead = resolve;
+        startedDeviceRead();
       });
     if (denyDeviceRead) return route.fulfill({ status: 401, json: {} });
     await route
@@ -878,7 +903,7 @@ try {
         json: {
           onboarding: {
             accessMethod: "tailscale",
-            connectionUrl: "https://synthetic.example.test",
+            connectionUrl: "https://synthetic.example.ts.net",
             setupURI: `obsidian://setuplivesync?settings=synthetic-${requestNumber}`,
             setupPassphrase: `synthetic-device-passphrase-${requestNumber}`
           }
@@ -892,6 +917,10 @@ try {
   assert(!(await page.getByText("legacy-secret-must-not-render").count()));
   await page.getByRole("button", { name: "Configuration", exact: true }).click();
   await page.getByText("Loading device setup details", { exact: false }).waitFor();
+  await Promise.race([
+    firstDeviceRead,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Device read did not start")), 10000))
+  ]);
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   releaseDeviceRead();
   await page.getByRole("button", { name: "Configuration", exact: true }).click();

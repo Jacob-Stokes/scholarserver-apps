@@ -11,7 +11,8 @@ import {
   generateSetupUri,
   initializeCouchDb,
   normalizeCouchDbUrl,
-  provisionCouchDb
+  provisionCouchDb,
+  repairDeviceOnboarding
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
 import { createResearchNote } from "./research-note.mjs";
@@ -392,6 +393,22 @@ async function configureLiveSync(input) {
   return statusSummary();
 }
 
+async function repairLiveSyncConnection(input) {
+  if (state.profile !== "livesync" || state.state !== "livesync-device-setup") {
+    throw new Error("Device connection repair is only available before the first device is confirmed.");
+  }
+  await vaultBinding.assertCurrent();
+  const onboarding = await readJson(liveSyncOnboardingPath, null);
+  const enrollment = await readJson(enrollmentPath, null);
+  const worker = await readJson(liveSyncWorkerPath, null);
+  const repaired = await repairDeviceOnboarding({ onboarding, enrollment, worker, connectionUrl: input.connectionUrl });
+  // Each record is atomic. If the second write fails, the same-address retry
+  // keeps the new link and finishes the informational enrollment address update.
+  if (repaired !== onboarding) await atomicJson(liveSyncOnboardingPath, repaired);
+  await atomicJson(enrollmentPath, { ...enrollment, accessMethod: "tailscale", connectionUrl: repaired.connectionUrl });
+  return statusSummary();
+}
+
 async function completeLiveSync(input) {
   if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync has not been prepared");
   if (input.confirmedPluginConnected !== true)
@@ -476,6 +493,8 @@ async function action(request) {
       return connectVault(request.input ?? {});
     case "configure-livesync":
       return configureLiveSync(request.input ?? {});
+    case "repair-livesync-connection":
+      return repairLiveSyncConnection(request.input ?? {});
     case "complete-livesync":
       return completeLiveSync(request.input ?? {});
     default:
@@ -649,6 +668,7 @@ async function handleHttp(request, response) {
       "/api/account/login": "login",
       "/api/vault/connect": "connect-vault",
       "/api/livesync/configure": "configure-livesync",
+      "/api/livesync/repair-connection": "repair-livesync-connection",
       "/api/livesync/complete": "complete-livesync"
     };
     if (request.method === "POST" && actions[url.pathname])

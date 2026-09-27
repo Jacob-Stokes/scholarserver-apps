@@ -6,15 +6,18 @@ import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
 import {
   createObsidianReads,
-  type LiveSyncAccessMethod,
   type LiveSyncOnboarding,
   normalizeVaults,
   type RemoteVault,
+  readLiveSyncAccess,
   requestObsidian,
   type Status,
   type SyncProfile,
+  selectedLiveSyncUrl,
   statusPollMilliseconds
 } from "./obsidian-reads";
+
+import { PrivateLiveSyncConnection } from "./PrivateLiveSyncConnection";
 
 type Tab = "overview" | "configuration";
 type LiveSyncSetupPage = "connection" | "security" | "scope";
@@ -77,10 +80,7 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   const [vault, setVault] = useState("");
   const [encryptionPassword, setEncryptionPassword] = useState("");
   const [scopePath, setScopePath] = useState("/");
-  const [liveSyncAccess, setLiveSyncAccess] = useState<LiveSyncAccessMethod>("tailscale");
-  const [connectionUrl, setConnectionUrl] = useState(() =>
-    window.location.hostname.endsWith(".ts.net") ? `https://${window.location.hostname}:8443` : ""
-  );
+  const [connectionUrl, setConnectionUrl] = useState("");
   const [vaultPassphrase, setVaultPassphrase] = useState("");
   const [vaultPassphraseAgain, setVaultPassphraseAgain] = useState("");
   const [otherSyncOff, setOtherSyncOff] = useState(false);
@@ -203,11 +203,16 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
     run(async () => {
       if (vaultPassphrase !== vaultPassphraseAgain)
         throw new Error("The two vault encryption passphrases do not match");
+      const access = await readLiveSyncAccess(base, reads.accessSignal);
+      reads.accessSignal.throwIfAborted();
+      const verifiedUrl = selectedLiveSyncUrl(access, window.location.origin);
+      if (verifiedUrl !== connectionUrl)
+        throw new Error("The private address changed. Return to Connection before continuing.");
       await request("livesync/configure", {
         method: "POST",
         body: JSON.stringify({
-          accessMethod: liveSyncAccess,
-          connectionUrl,
+          accessMethod: "tailscale",
+          connectionUrl: verifiedUrl,
           vaultPassphrase,
           scopePath: scopePath.trim() || "/",
           confirmedNoOtherSync: otherSyncOff
@@ -379,8 +384,7 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
               page={liveSyncPage}
               setPage={setLiveSyncPage}
               busy={busy}
-              accessMethod={liveSyncAccess}
-              setAccessMethod={setLiveSyncAccess}
+              reads={reads}
               connectionUrl={connectionUrl}
               setConnectionUrl={setConnectionUrl}
               vaultPassphrase={vaultPassphrase}
@@ -412,6 +416,7 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
           ) : null}
           {status.profile === "livesync" && status.state === "livesync-device-setup" ? (
             <LiveSyncDevicePanel
+              reads={reads}
               accessSignal={reads.accessSignal}
               onAccessRequired={reads.block}
               busy={busy}
@@ -696,8 +701,7 @@ type PrepareProps = {
   page: LiveSyncSetupPage;
   setPage: (page: LiveSyncSetupPage) => void;
   busy: boolean;
-  accessMethod: LiveSyncAccessMethod;
-  setAccessMethod: (value: LiveSyncAccessMethod) => void;
+  reads: ReturnType<typeof createObsidianReads>;
   connectionUrl: string;
   setConnectionUrl: (value: string) => void;
   vaultPassphrase: string;
@@ -711,12 +715,6 @@ type PrepareProps = {
   configure: () => Promise<void>;
 };
 function LiveSyncPrepare(props: PrepareProps) {
-  const choose = (method: LiveSyncAccessMethod) => {
-    props.setAccessMethod(method);
-    if (method === "tailscale" && window.location.hostname.endsWith(".ts.net"))
-      props.setConnectionUrl(`https://${window.location.hostname}:8443`);
-    if (method === "public" && props.connectionUrl.includes(".ts.net")) props.setConnectionUrl("");
-  };
   if (props.page === "connection")
     return (
       <>
@@ -724,54 +722,17 @@ function LiveSyncPrepare(props: PrepareProps) {
         <SetupPanel
           stage={2}
           total={6}
-          title="How should your devices connect?"
-          description="Private Tailscale is simplest when all your devices can run it. Public HTTPS works from anywhere."
-          next={() => props.setPage("security")}
-          nextDisabled={!props.connectionUrl}
+          title="Connect your devices privately"
+          description="Set up the private LiveSync address before protecting your vault."
         >
-          <div className="ss-choice-grid" role="radiogroup" aria-label="LiveSync access method">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={props.accessMethod === "tailscale"}
-              className={`ss-choice-card ${props.accessMethod === "tailscale" ? "ss-choice-card-selected" : ""}`}
-              onClick={() => choose("tailscale")}
-            >
-              <strong>Private with Tailscale</strong>
-              <span className="ss-badge ss-badge-success">Recommended</span>
-              <p>Only devices signed into your private Tailscale network can connect.</p>
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={props.accessMethod === "public"}
-              className={`ss-choice-card ${props.accessMethod === "public" ? "ss-choice-card-selected" : ""}`}
-              onClick={() => choose("public")}
-            >
-              <strong>Public HTTPS</strong>
-              <span className="ss-badge">More compatible</span>
-              <p>Works without Tailscale. Requires a domain and a public HTTPS connection.</p>
-            </button>
-          </div>
-          <label className="ss-field">
-            LiveSync address{" "}
-            <span className="ss-field-help">
-              {props.accessMethod === "tailscale"
-                ? "ScholarServer normally fills this private address for you."
-                : "Use the public LiveSync hostname configured in Access."}
-            </span>
-            <input
-              className="ss-input"
-              type="url"
-              placeholder={
-                props.accessMethod === "tailscale"
-                  ? "https://your-server.example.ts.net:8443"
-                  : "https://notes-sync.example.com"
-              }
-              value={props.connectionUrl}
-              onChange={(event) => props.setConnectionUrl(event.target.value)}
-            />
-          </label>
+          <PrivateLiveSyncConnection
+            base={base}
+            reads={props.reads}
+            onReady={(url) => {
+              props.setConnectionUrl(url);
+              props.setPage("security");
+            }}
+          />
         </SetupPanel>
       </>
     );
@@ -860,7 +821,7 @@ function LiveSyncPrepare(props: PrepareProps) {
         </label>
         <dl className="ss-details">
           <dt>Connection</dt>
-          <dd>{props.accessMethod === "tailscale" ? "Private Tailscale" : "Public HTTPS"}</dd>
+          <dd>Private Tailscale</dd>
           <dt>Address</dt>
           <dd>{props.connectionUrl}</dd>
           <dt>AI-accessible folder</dt>
@@ -885,6 +846,7 @@ type DeviceProps = {
 };
 function LiveSyncDevicePanel(
   props: Omit<DeviceProps, "onboarding"> & {
+    reads: ReturnType<typeof createObsidianReads>;
     accessSignal: AbortSignal;
     onAccessRequired: (message: string) => void;
   }
@@ -901,10 +863,21 @@ function LiveSyncDevicePanel(
     setOnboarding(null);
     setError(null);
     setPending(true);
-    void requestObsidian<{ onboarding: LiveSyncOnboarding | null }>(base, "livesync/onboarding", {
-      signal,
-      cache: "no-store"
-    })
+    void (async () => {
+      const access = await readLiveSyncAccess(base, signal);
+      signal.throwIfAborted();
+      const privateUrl = selectedLiveSyncUrl(access, window.location.origin);
+      const result = await requestObsidian<{ onboarding: LiveSyncOnboarding | null }>(base, "livesync/onboarding", {
+        signal,
+        cache: "no-store"
+      });
+      if (result.onboarding?.connectionUrl.replace(/\/$/, "") !== privateUrl) {
+        throw new Error(
+          "The saved device setup uses a different address. Repair the device connection before continuing; do not reset the vault."
+        );
+      }
+      return result;
+    })()
       .then((result) => {
         if (signal.aborted) return;
         const value = result.onboarding;
@@ -921,7 +894,7 @@ function LiveSyncDevicePanel(
       .catch((caught) => {
         if (controller.signal.aborted || accessSignal.aborted) return;
         if (caught instanceof ReadAccessRequired) onAccessRequired(caught.message);
-        else setError("Could not load the setup details. Try again.");
+        else setError(caught instanceof Error ? caught.message : "Could not load the setup details. Try again.");
       })
       .finally(() => {
         if (!controller.signal.aborted && !accessSignal.aborted) setPending(false);
@@ -939,6 +912,28 @@ function LiveSyncDevicePanel(
         error={error}
         onRetry={() => setAttempt((value) => value + 1)}
       />
+      {error ? (
+        <>
+          <p>
+            Set up or confirm the private route to repair the pending device link. Keep the existing vault and database.
+          </p>
+          <PrivateLiveSyncConnection
+            base={base}
+            reads={props.reads}
+            onReady={async (url, connectionSignal) => {
+              const signal = AbortSignal.any([connectionSignal, AbortSignal.timeout(30000)]);
+              await requestObsidian(base, "livesync/repair-connection", {
+                method: "POST",
+                body: JSON.stringify({ connectionUrl: url }),
+                signal
+              });
+              signal.throwIfAborted();
+              props.setPluginConnected(false);
+              setAttempt((value) => value + 1);
+            }}
+          />
+        </>
+      ) : null}
     </section>
   );
 }
@@ -997,8 +992,12 @@ function LiveSyncDevice(props: DeviceProps) {
             </div>
           </li>
           <li>
-            <strong>Choose “I am setting up a new server for the first time”.</strong>
-            <p>Wait until LiveSync reports that it is up to date.</p>
+            <strong>Choose the option to join an existing server.</strong>
+            <p>
+              ScholarServer has already created the database. Do not choose new server or reset: that attempts to
+              replace remote data. Preserve local data when prompted, then wait until LiveSync reports that it is up to
+              date.
+            </p>
           </li>
         </ol>
         <label className="ss-check">
