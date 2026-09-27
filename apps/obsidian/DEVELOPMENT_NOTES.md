@@ -55,8 +55,12 @@ Full `npm test`, Obsidian UI typecheck/build and twelve focused checks passed on
 the operator Mac. Codex's in-app browser exercised a synthetic private connection,
 missing-route repair, corrected instructions and unchecked confirmation. No
 separate Chrome session was opened. The native build workflow checks a 30 GiB
-projected peak against the pinned core disk-budget guard before image assembly.
-Native-image, package and real-device acceptance remain separate gates.
+projected peak against a vendored copy of the core disk-budget guard before image
+assembly. The first run stopped before builds because its job token could not
+read the private core repository; the guard is now local to this repository.
+Native-image, package and real-device acceptance remain separate gates. The core
+ARM64 workflow did not start: GitHub reported failed account payments or a
+spending limit. No images were published or deployed by those attempts.
 
 Live read-only checks found the installed `0.5.0-beta.1` endpoint is private-only
 without `remoteAccess.routing: origin`; the executor rejects it with 422. Its

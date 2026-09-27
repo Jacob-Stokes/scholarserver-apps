@@ -518,3 +518,13 @@ test("workflow publishes only after the named native qualification entry point",
   assert.match(n8nWorkflow, /native-image-receipt\.mjs assert-source/);
   assert.match(n8nWorkflow, /check-image-contents\.py/);
 });
+
+test("native builds apply the local disk budget without a private-repository checkout", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/images.yml", import.meta.url), "utf8");
+  assert.match(workflow, /python3 scripts\/disk-budget.py \. --required-bytes 32212254720/);
+  assert.ok(
+    workflow.indexOf("Check projected native-build disk headroom") <
+      workflow.indexOf("Build native images without publishing")
+  );
+  assert.doesNotMatch(workflow, /repository: Jacob-Stokes\/scholarserver\n/);
+});
