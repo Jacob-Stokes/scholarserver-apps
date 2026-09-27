@@ -15,8 +15,21 @@ New setup links now declare `syncMode: "LIVESYNC"` explicitly. The upstream
 codec round-trip test checks that the field survives in the device link, and the
 full apps source suite passes with local loopback permission. The currently
 installed immutable package predates this fix; the successful desktop test used
-a manual mode correction. Build, publish, package update and fresh-link browser
-acceptance remain separate work. The project-vault note write is still pending.
+a manual mode correction. Package update and fresh-link browser acceptance
+remain separate work. The project-vault note write is still pending.
+
+Native [run 36338619912](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36338619912)
+then passed both architectures' builds, named native and broader app gates, and
+all multi-platform manifest jobs for source `16856b3785462ec6f9e4c58142d1f92d2c927c38`.
+The Obsidian sync index is
+`sha256:933f7ae2ab1f07799f6b9168be8cd4b1c3ef1d028c85c08312257567ec2f3de3`;
+its ARM64 and AMD64 image config digests match the downloaded receipts and both
+record source digest
+`sha256:18777820ae82fa364750c265195e3bb649168de9ab992d7298a0e5375f05c4e1`.
+Package candidate `0.5.1-private-origin.20260927.2` selects only the new sync
+image; other service pins, permissions, variants and data declarations remain
+unchanged. This candidate is not yet installed and does not qualify a fresh
+desktop link by itself.
 
 ## Native Manager configuration source — 25 September 2026
 
