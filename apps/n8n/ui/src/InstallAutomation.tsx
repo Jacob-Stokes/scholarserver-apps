@@ -7,8 +7,19 @@ import {
   ResearchSettings
 } from "./ResearchSettings";
 
-export type Schedule = { hoursInterval?: number; minutesInterval?: number; minimum: number; maximum: number };
-export type AutomationSettings = { hoursInterval?: number; minutesInterval?: number; research?: ResearchBindings };
+export type Schedule = {
+  hoursInterval?: number;
+  minutesInterval?: number;
+  daysInterval?: number;
+  minimum: number;
+  maximum: number;
+};
+export type AutomationSettings = {
+  hoursInterval?: number;
+  minutesInterval?: number;
+  daysInterval?: number;
+  research?: ResearchBindings;
+};
 
 export function InstallAutomation({
   schedule,
@@ -30,8 +41,12 @@ export function InstallAutomation({
   onInstall: (settings: AutomationSettings) => void;
 }) {
   // Status refreshes must not replace this unsaved choice.
-  const minutes = schedule?.minutesInterval !== undefined;
-  const [interval, setInterval] = useState(String(schedule?.minutesInterval ?? schedule?.hoursInterval ?? 1));
+  let scheduleUnit: "minutes" | "days" | "hours" = "hours";
+  if (schedule?.minutesInterval !== undefined) scheduleUnit = "minutes";
+  else if (schedule?.daysInterval !== undefined) scheduleUnit = "days";
+  const [interval, setInterval] = useState(
+    String(schedule?.minutesInterval ?? schedule?.daysInterval ?? schedule?.hoursInterval ?? 1)
+  );
   const [bindings, setBindings] = useState<ResearchBindings | null>(null);
   const [researchAvailability, setResearchAvailability] = useState<ResearchAvailability>("loading");
   const feedbackId = useId();
@@ -63,8 +78,11 @@ export function InstallAutomation({
         event.preventDefault();
         if (valid && !busy && !disabledReason) {
           const settings: AutomationSettings = {};
-          if (schedule && minutes) settings.minutesInterval = value;
-          else if (schedule) settings.hoursInterval = value;
+          if (schedule) {
+            if (scheduleUnit === "minutes") settings.minutesInterval = value;
+            else if (scheduleUnit === "days") settings.daysInterval = value;
+            else settings.hoursInterval = value;
+          }
           if (research && bindings) settings.research = bindings;
           onInstall(settings);
         }
@@ -84,7 +102,7 @@ export function InstallAutomation({
           <legend>Schedule</legend>
           <div className="automation-field-grid">
             <label>
-              {minutes ? "Check every (minutes)" : "Run every (hours)"}
+              {scheduleUnit === "minutes" ? "Check every (minutes)" : `Run every (${scheduleUnit})`}
               <input
                 className="ss-input"
                 type="number"
@@ -101,7 +119,7 @@ export function InstallAutomation({
             </label>
             {!validSchedule ? (
               <p className="automation-field-hint" id={scheduleErrorId} role="status">
-                Enter a whole number from {schedule.minimum} to {schedule.maximum} {minutes ? "minutes" : "hours"}.
+                Enter a whole number from {schedule.minimum} to {schedule.maximum} {scheduleUnit}.
               </p>
             ) : null}
           </div>

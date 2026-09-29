@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: zotero-weekly-roundup
-version: 1
+version: 2
 name: Create a weekly reading roundup
 description: Create an Obsidian metadata roundup for the previous completed UTC Monday-to-Monday week. Empty weeks create no note; existing dated roundups are left unchanged. No AI service is used.
 research: weekly-roundup
@@ -69,7 +69,7 @@ workflow:
       parameters:
         rule:
           interval:
-            - {field: hours, hoursInterval: 24}
+            - {field: days, daysInterval: 1}
     - id: papers
       name: Read the completed UTC week
       type: n8n-nodes-base.httpRequest

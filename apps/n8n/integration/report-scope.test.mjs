@@ -84,9 +84,9 @@ test("report writes narrow the selected folder and cannot choose another report 
 
 test("daily report schedules cannot skip days; the weekly report permits at most one week", () => {
   for (const [kind, maximum] of [
-    ["reference-audit", 24],
-    ["bibliography", 24],
-    ["weekly-roundup", 168]
+    ["reference-audit", 1],
+    ["bibliography", 1],
+    ["weekly-roundup", 7]
   ]) {
     const template = {
       research: kind,
@@ -96,13 +96,13 @@ test("daily report schedules cannot skip days; the weekly report permits at most
           {
             id: "schedule",
             type: "n8n-nodes-base.scheduleTrigger",
-            parameters: { rule: { interval: [{ field: "hours", hoursInterval: maximum }] } }
+            parameters: { rule: { interval: [{ field: "days", daysInterval: maximum }] } }
           }
         ]
       }
     };
     assert.equal(scheduleConfiguration(template).maximum, maximum);
-    template.workflow.nodes[0].parameters.rule.interval[0].hoursInterval++;
+    template.workflow.nodes[0].parameters.rule.interval[0].daysInterval++;
     assert.throws(() => scheduleConfiguration(template), /whole number/);
   }
 });

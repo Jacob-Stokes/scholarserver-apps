@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: zotero-bibliography
-version: 1
+version: 2
 name: Create a Markdown bibliography
 description: Create a plain Markdown metadata bibliography for papers added during the previous UTC day. Empty days create no note; existing dated bibliographies are left unchanged. This is not a CSL, APA or other style-formatted export, and no AI service is used.
 research: bibliography
@@ -69,7 +69,7 @@ workflow:
       parameters:
         rule:
           interval:
-            - {field: hours, hoursInterval: 24}
+            - {field: days, daysInterval: 1}
     - id: papers
       name: Read yesterday's Zotero papers
       type: n8n-nodes-base.httpRequest

@@ -1,4 +1,4 @@
-// Supported settings are n8n's native minute and hour schedules. This is not a
+// Supported settings are n8n's native minute, hour and day schedules. This is not a
 // parameter-path language: reviewed templates identify the one schedule node.
 export class AutomationConfigurationError extends Error {}
 
@@ -14,29 +14,39 @@ export function scheduleConfiguration(template) {
     node?.type !== "n8n-nodes-base.scheduleTrigger" ||
     !Array.isArray(intervals) ||
     intervals.length !== 1 ||
-    !["hours", "minutes"].includes(intervals[0].field)
+    !["hours", "minutes", "days"].includes(intervals[0].field)
   ) {
-    throw new Error("Template configuration requires one native minute or hour schedule");
+    throw new Error("Template configuration requires one native minute, hour or day schedule");
   }
   if (intervals[0].field === "minutes") {
     validateMinutes(intervals[0].minutesInterval);
-    return { minutesInterval: intervals[0].minutesInterval, minimum: 1, maximum: 60 };
+    return { minutesInterval: intervals[0].minutesInterval, minimum: 1, maximum: 59 };
+  }
+  if (intervals[0].field === "hours") {
+    validateHours(intervals[0].hoursInterval);
+    return { hoursInterval: intervals[0].hoursInterval, minimum: 1, maximum: 23 };
   }
   const dailyReport = ["research-digest", "reference-audit", "bibliography"].includes(template.research);
-  const maximum = dailyReport ? 24 : 168;
-  validateHours(intervals[0].hoursInterval, maximum);
-  return { hoursInterval: intervals[0].hoursInterval, minimum: 1, maximum };
+  const maximum = dailyReport ? 1 : 7;
+  validateDays(intervals[0].daysInterval, maximum);
+  return { daysInterval: intervals[0].daysInterval, minimum: 1, maximum };
 }
 
-function validateHours(value, maximum = 168) {
-  if (!Number.isInteger(value) || value < 1 || value > maximum) {
-    throw new AutomationConfigurationError(`Choose a whole number of hours from 1 to ${maximum}`);
+function validateHours(value) {
+  if (!Number.isInteger(value) || value < 1 || value > 23) {
+    throw new AutomationConfigurationError("Choose a whole number of hours from 1 to 23");
   }
 }
 
 function validateMinutes(value) {
-  if (!Number.isInteger(value) || value < 1 || value > 60) {
-    throw new AutomationConfigurationError("Choose a whole number of minutes from 1 to 60");
+  if (!Number.isInteger(value) || value < 1 || value > 59) {
+    throw new AutomationConfigurationError("Choose a whole number of minutes from 1 to 59");
+  }
+}
+
+function validateDays(value, maximum) {
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new AutomationConfigurationError(`Choose a whole number of days from 1 to ${maximum}`);
   }
 }
 
@@ -45,7 +55,9 @@ export function configureWorkflow(template, workflow, settings = {}) {
     throw new AutomationConfigurationError("Invalid automation settings");
   }
   const schedule = scheduleConfiguration(template);
-  const setting = schedule?.minutesInterval === undefined ? "hoursInterval" : "minutesInterval";
+  const setting = schedule
+    ? ["minutesInterval", "hoursInterval", "daysInterval"].find((key) => key in schedule)
+    : undefined;
   const allowed = schedule ? [setting] : [];
   if (template.research) allowed.push("research");
   if (Object.keys(settings).some((key) => !allowed.includes(key)))
@@ -53,7 +65,8 @@ export function configureWorkflow(template, workflow, settings = {}) {
   if (!schedule) return workflow;
   const value = Object.hasOwn(settings, setting) ? settings[setting] : schedule[setting];
   if (setting === "minutesInterval") validateMinutes(value);
-  else validateHours(value, schedule.maximum);
+  else if (setting === "hoursInterval") validateHours(value);
+  else validateDays(value, schedule.maximum);
   const node = workflow.nodes.find((candidate) => candidate.id === template.configuration.scheduleNode);
   node.parameters.rule.interval[0][setting] = value;
   return workflow;
@@ -77,4 +90,14 @@ export function workflowScheduleMinutes(template, workflow) {
   const interval = intervals[0];
   if (interval.field !== "minutes" || !Number.isInteger(interval.minutesInterval)) return null;
   return interval.minutesInterval;
+}
+
+export function workflowScheduleDays(template, workflow) {
+  const node = workflow.nodes?.find((candidate) => candidate.id === template.configuration?.scheduleNode);
+  const intervals = node?.parameters?.rule?.interval;
+  if (node?.type !== "n8n-nodes-base.scheduleTrigger" || !Array.isArray(intervals) || intervals.length !== 1)
+    return null;
+  const interval = intervals[0];
+  if (interval.field !== "days" || !Number.isInteger(interval.daysInterval)) return null;
+  return interval.daysInterval;
 }

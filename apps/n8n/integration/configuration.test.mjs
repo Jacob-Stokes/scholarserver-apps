@@ -23,7 +23,7 @@ test("schedule configuration changes only the native interval and leaves the tem
 test("schedule configuration rejects unknown settings, expressions and invalid intervals", () => {
   for (const settings of [
     { hoursInterval: 0 },
-    { hoursInterval: 169 },
+    { hoursInterval: 24 },
     { hoursInterval: 1.5 },
     { hoursInterval: null },
     { hoursInterval: "={{ $env.SECRET }}" },
@@ -37,26 +37,26 @@ test("schedule configuration rejects unknown settings, expressions and invalid i
 test("template configuration cannot target arbitrary nodes or parameter paths", () => {
   const invalid = structuredClone(template);
   invalid.configuration.scheduleNode = "test-result";
-  assert.throws(() => configureWorkflow(invalid, workflowFromTemplate(invalid)), /native minute or hour schedule/);
+  assert.throws(() => configureWorkflow(invalid, workflowFromTemplate(invalid)), /native minute, hour or day schedule/);
 });
 
-test("PDF watcher uses native minute polling and rejects ambiguous or invalid settings", async () => {
+test("PDF watcher defaults to a supported native hourly schedule and rejects invalid settings", async () => {
   const pdf = readTemplate(await readFile(new URL("../templates/zotero-pdf-markdown.yaml", import.meta.url), "utf8"));
-  assert.deepEqual(scheduleConfiguration(pdf), { minutesInterval: 60, minimum: 1, maximum: 60 });
-  const workflow = configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: 2 });
-  assert.equal(workflowScheduleMinutes(pdf, workflow), 2);
-  assert.equal(workflowScheduleHours(pdf, workflow), null);
-  const templateSchedule = pdf.workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
-  assert.equal(templateSchedule.parameters.rule.interval[0].minutesInterval, 60);
-  assert.deepEqual(workflow.connections, pdf.workflow.connections);
-  for (const value of [0, 61, 1.5, null, "1", "={{ $env.SECRET }}"]) {
-    assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: value }));
-  }
-  assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { hoursInterval: 1 }));
-  assert.throws(() => configureWorkflow(template, workflowFromTemplate(template), { minutesInterval: 1 }));
-  // Previously installed hourly graphs retain their actual cadence in inventory.
-  const installedSchedule = workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
-  installedSchedule.parameters.rule.interval = [{ field: "hours", hoursInterval: 6 }];
-  assert.equal(workflowScheduleHours(pdf, workflow), 6);
+  assert.deepEqual(scheduleConfiguration(pdf), { hoursInterval: 1, minimum: 1, maximum: 23 });
+  const workflow = configureWorkflow(pdf, workflowFromTemplate(pdf), { hoursInterval: 2 });
+  assert.equal(workflowScheduleHours(pdf, workflow), 2);
   assert.equal(workflowScheduleMinutes(pdf, workflow), null);
+  const templateSchedule = pdf.workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
+  assert.equal(templateSchedule.parameters.rule.interval[0].hoursInterval, 1);
+  assert.deepEqual(workflow.connections, pdf.workflow.connections);
+  for (const value of [0, 24, 1.5, null, "1", "={{ $env.SECRET }}"]) {
+    assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { hoursInterval: value }));
+  }
+  assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: 1 }));
+  assert.throws(() => configureWorkflow(template, workflowFromTemplate(template), { minutesInterval: 1 }));
+  // Previously installed minute graphs retain their actual cadence in inventory.
+  const installedSchedule = workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
+  installedSchedule.parameters.rule.interval = [{ field: "minutes", minutesInterval: 30 }];
+  assert.equal(workflowScheduleHours(pdf, workflow), null);
+  assert.equal(workflowScheduleMinutes(pdf, workflow), 30);
 });

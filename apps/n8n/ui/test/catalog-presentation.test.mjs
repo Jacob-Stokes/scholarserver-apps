@@ -41,12 +41,12 @@ test("blank names explain the disabled primary action without locking editable r
 });
 
 test("schedule presentation preserves units, whole-number limits and disabled installation guidance", () => {
-  assert.match(install, /minutes \? "Check every \(minutes\)" : "Run every \(hours\)"/);
+  assert.match(install, /scheduleUnit === "minutes" \? "Check every \(minutes\)" : `Run every \(\$\{scheduleUnit\}\)`/);
   assert.match(install, /Number\.isInteger\(value\) && value >= schedule.minimum && value <= schedule.maximum/);
   assert.match(install, /min=\{schedule.minimum\}\s*max=\{schedule.maximum\}\s*step="1"/);
   assert.match(
     install,
-    /if \(schedule && minutes\) settings.minutesInterval = value;\s*else if \(schedule\) settings.hoursInterval = value;/
+    /if \(schedule\) \{\s*if \(scheduleUnit === "minutes"\) settings.minutesInterval = value;\s*else if \(scheduleUnit === "days"\) settings.daysInterval = value;\s*else settings.hoursInterval = value;/
   );
   assert.match(install, /aria-describedby=\{!validSchedule \? scheduleErrorId : undefined\}/);
   assert.match(

@@ -38,7 +38,7 @@ const completePaper = {
   zoteroUrl: "zotero://select/library/items/PAPER123"
 };
 
-test("report templates declare the reviewed native hourly pipeline without retries", () => {
+test("report templates declare the reviewed native daily pipeline without retries", () => {
   assert.deepEqual(
     [...templates.values()].map((template) => template.name),
     ["Create a weekly reading roundup", "Check references for missing details", "Create a Markdown bibliography"]
@@ -50,7 +50,7 @@ test("report templates declare the reviewed native hourly pipeline without retri
     assert.deepEqual(template.requirements[1].actions, ["create-research-note"]);
     assert.ok(template.workflow.nodes.some((node) => node.type === "n8n-nodes-base.manualTrigger"));
     const schedule = template.workflow.nodes.find((node) => node.id === "schedule");
-    assert.deepEqual(schedule.parameters.rule.interval, [{ field: "hours", hoursInterval: 24 }]);
+    assert.deepEqual(schedule.parameters.rule.interval, [{ field: "days", daysInterval: 1 }]);
     const httpNodes = template.workflow.nodes.filter((node) => node.type === "n8n-nodes-base.httpRequest");
     assert.equal(httpNodes.length, 2);
     assert.equal(httpNodes[0].parameters.url, "http://integration:8081/research/papers");

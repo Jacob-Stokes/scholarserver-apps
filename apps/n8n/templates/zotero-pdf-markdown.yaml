@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: zotero-pdf-markdown
-version: 4
+version: 5
 name: Automatically convert new Zotero PDFs
 description: Process PDFs in a shared Zotero–Docling folder. Choose the run interval, per-run limit, OCR and whether to attach Markdown. Existing PDFs are checked when enabled; completed conversions are reused. Unmatched files are skipped.
 research: convert-pdfs
@@ -79,7 +79,7 @@ workflow:
       parameters:
         rule:
           interval:
-            - {field: minutes, minutesInterval: 60}
+            - {field: hours, hoursInterval: 1}
     - id: discover
       name: Find shared PDFs
       type: n8n-nodes-base.httpRequest

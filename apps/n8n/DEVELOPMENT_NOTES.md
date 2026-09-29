@@ -1327,3 +1327,32 @@ acceptance or authenticated conversion check in this pass. Full app tests, lint
 and builds passed; the `n8n-app` image source lock is deliberately stale until a
 new native image is qualified. Project-vault documentation remains pending the
 existing external-write approval.
+
+## Native schedule ranges and explicit shared root — 29 September 2026
+
+The previous PDF template's 60-minute Schedule Trigger was outside n8n's
+documented 1–59 minute range. The reviewed upstream trigger also limits native
+hour intervals to 1–23 and day intervals to 1–31. Template revision 5 now
+starts with a supported one-hour interval. Daily and weekly report templates
+advance to revision 2 and use a one-day trigger instead of an unsupported
+24-hour interval. The app-owned install and edit paths now validate native
+minute, hour and day units; Manager receives only the selected unit and value
+for display. Existing workflow graphs and grants are not rewritten.
+
+PDF setup can now deliberately select the entire shared folder. The default
+still requires a subfolder, and the scoped grant records `wholeSharedFolder:
+true` only after an explicit choice. The bridge continues to reject absolute,
+hidden and parent paths under that grant. Source tests cover the root choice,
+scope conflicts, supported schedule boundaries, day edits and old grants. A
+paired nine-field v2 parser check passed. A generic synthetic Manager dialog
+with the same field types and folder dependency was inspected at desktop and
+390 CSS px in Codex's in-app browser. The preview did not call an app backend
+or n8n and is not app-specific browser acceptance.
+
+These corrections do not yet migrate the Zotero PDF worker, preserve its
+history in n8n, or represent every old 15–10080-minute interval. Values that
+cannot map exactly to a supported native unit need an explicit review choice;
+no legacy schedule has been changed. Native image, package publication,
+deployment and authenticated conversion remain separate gates.
+
+Upstream references: [Schedule Trigger node ranges](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts) and [native interval validation tests](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts).

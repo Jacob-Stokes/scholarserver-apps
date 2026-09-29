@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   configureWorkflow,
   scheduleConfiguration,
+  workflowScheduleDays,
   workflowScheduleHours,
   workflowScheduleMinutes
 } from "./configuration.mjs";
@@ -42,6 +43,15 @@ function scheduleDetails(template, workflow) {
       min: configured.minimum,
       max: configured.maximum,
       savedValue: workflowScheduleMinutes(template, workflow)
+    };
+  }
+  if (configured.daysInterval !== undefined) {
+    return {
+      unit: "days",
+      label: "Run every",
+      min: configured.minimum,
+      max: configured.maximum,
+      savedValue: workflowScheduleDays(template, workflow)
     };
   }
   return {
@@ -183,7 +193,7 @@ export class ScheduleManagement {
       if (value < details.min || value > details.max) {
         throw new ScheduleRequestError(`Choose a whole number from ${details.min} to ${details.max}`, 400);
       }
-      const setting = details.unit === "minutes" ? "minutesInterval" : "hoursInterval";
+      const setting = { minutes: "minutesInterval", hours: "hoursInterval", days: "daysInterval" }[details.unit];
       const updatedWorkflow = configureWorkflow(template, editableWorkflow(workflow), { [setting]: value });
       const edit = {
         operationId: randomUUID(),

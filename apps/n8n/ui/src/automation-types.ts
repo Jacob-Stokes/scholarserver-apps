@@ -36,6 +36,7 @@ export type Workflow = {
   active: boolean;
   hoursInterval: number | null;
   minutesInterval?: number | null;
+  daysInterval?: number | null;
 };
 export type Inventory = {
   templates: Template[];

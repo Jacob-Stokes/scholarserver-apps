@@ -29,7 +29,17 @@ function folderHint(template, folder) {
   return `Notes are saved in ${output}. Existing notes are not replaced.`;
 }
 
-const valueKeys = ["name", "source", "target", "folder", "interval", "limit", "ocr", "attachMarkdown"];
+const valueKeys = [
+  "name",
+  "source",
+  "target",
+  "wholeSharedFolder",
+  "folder",
+  "interval",
+  "limit",
+  "ocr",
+  "attachMarkdown"
+];
 const appIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 export class NativeSetupFormError extends Error {
@@ -99,6 +109,16 @@ function validateFolder(value) {
   );
 }
 
+function scheduleSelection(schedule) {
+  if (schedule.minutesInterval !== undefined) {
+    return { setting: "minutesInterval", label: "Check every (minutes)", initial: schedule.minutesInterval };
+  }
+  if (schedule.daysInterval !== undefined) {
+    return { setting: "daysInterval", label: "Run every (days)", initial: schedule.daysInterval };
+  }
+  return { setting: "hoursInterval", label: "Run every (hours)", initial: schedule.hoursInterval };
+}
+
 function matchingChoice(applications, value) {
   return applications.find((application) => choiceFor(application) === value);
 }
@@ -160,7 +180,10 @@ export class N8nNativeSetupForm {
 
     const initial = suppliedValues === undefined;
     const values = initial ? {} : validateValues(suppliedValues);
-    if (template.research !== "convert-pdfs" && ["limit", "ocr", "attachMarkdown"].some((key) => key in values)) {
+    if (
+      template.research !== "convert-pdfs" &&
+      ["wholeSharedFolder", "limit", "ocr", "attachMarkdown"].some((key) => key in values)
+    ) {
       throw new NativeSetupFormError("Unknown setup form field");
     }
     const initialSource = sources.length === 1 ? choiceFor(sources[0]) : "";
@@ -187,10 +210,12 @@ export class N8nNativeSetupForm {
     }
     const selectedTarget = matchingChoice(targets, targetValue);
     const nameValue = initial ? template.name : (values.name ?? "");
+    const wholeSharedFolderValue =
+      template.research === "convert-pdfs" ? (values.wholeSharedFolder ?? "false") : undefined;
     const folderValue = initial ? "" : (values.folder ?? "");
     const schedule = scheduleConfiguration(template);
-    const initialInterval = schedule.minutesInterval ?? schedule.hoursInterval;
-    const intervalValue = initial ? String(initialInterval) : (values.interval ?? "");
+    const cadence = scheduleSelection(schedule);
+    const intervalValue = initial ? String(cadence.initial) : (values.interval ?? "");
     const interval = Number(intervalValue);
 
     let nameError;
@@ -207,9 +232,17 @@ export class N8nNativeSetupForm {
       targetError = `No compatible ${destination.label} has folder browsing access in this workspace.`;
     } else if (!targets.length) targetError = `No compatible ${destination.label} is available in this workspace.`;
     else if (!selectedTarget) targetError = `Choose a current ${destination.label} in the same workspace.`;
-    let folderError = validateFolder(folderValue)
-      ? undefined
-      : "Enter a relative folder without hidden folders, empty names or parent paths.";
+    const rootSelected = wholeSharedFolderValue === "true";
+    const rootError =
+      wholeSharedFolderValue === undefined || ["true", "false"].includes(wholeSharedFolderValue)
+        ? undefined
+        : "Choose whether to include the entire shared folder.";
+    let folderError;
+    if (rootSelected && folderValue !== "") {
+      folderError = "Clear the subfolder to use the entire shared folder.";
+    } else if (!rootSelected && !validateFolder(folderValue)) {
+      folderError = "Enter a relative folder without hidden folders, empty names or parent paths.";
+    }
     if (!folderError && noteOutputFolder({ kind: template.research, folder: folderValue }).length > 200) {
       folderError = "Choose a shorter folder to leave room for the report subfolder.";
     }
@@ -238,19 +271,40 @@ export class N8nNativeSetupForm {
         error: targetError,
         disabled: !sourceWorkspace
       },
+      ...(template.research === "convert-pdfs"
+        ? [
+            {
+              id: "wholeSharedFolder",
+              label: "PDF folder scope",
+              type: "select",
+              value: wholeSharedFolderValue,
+              options: [
+                { value: "false", label: "Choose a subfolder" },
+                { value: "true", label: "Entire shared folder" }
+              ],
+              dependsOn: ["source", "target"],
+              hint: "Scans PDFs across this shared folder and its subfolders. Only files matched to Zotero attachments are converted.",
+              error: rootError,
+              disabled: !selectedSource || !selectedTarget
+            }
+          ]
+        : []),
       {
         id: "folder",
         label: destination.folderLabel,
         type: "folder",
         value: folderValue,
-        dependsOn: ["source", "target"],
-        hint: folderHint(template, folderValue),
+        dependsOn:
+          template.research === "convert-pdfs" ? ["source", "target", "wholeSharedFolder"] : ["source", "target"],
+        hint: rootSelected
+          ? "The whole shared folder is selected; no subfolder is needed."
+          : folderHint(template, folderValue),
         error: folderError,
-        disabled: !selectedSource || !selectedTarget
+        disabled: !selectedSource || !selectedTarget || rootSelected
       },
       {
         id: "interval",
-        label: schedule.minutesInterval === undefined ? "Run every (hours)" : "Check every (minutes)",
+        label: cadence.label,
         type: "number",
         value: intervalValue,
         min: schedule.minimum,
@@ -365,6 +419,7 @@ export class N8nNativeSetupForm {
       folder: selected.values.folder
     };
     if (template.research === "convert-pdfs" && requireCompleteForm) {
+      if (selected.values.wholeSharedFolder === "true") scope.wholeSharedFolder = true;
       scope.limit = Number(selected.values.limit);
       scope.ocr = selected.values.ocr === "true";
       scope.attachMarkdown = selected.values.attachMarkdown === "true";
@@ -408,7 +463,7 @@ export class N8nNativeSetupForm {
     }
     await this.requiredClient();
     const schedule = scheduleConfiguration(this.template(templateId));
-    const intervalSetting = schedule.minutesInterval === undefined ? "hoursInterval" : "minutesInterval";
+    const intervalSetting = scheduleSelection(schedule).setting;
     return this.installations.install(
       templateId,
       { [intervalSetting]: Number(formValues.interval), research: scope },

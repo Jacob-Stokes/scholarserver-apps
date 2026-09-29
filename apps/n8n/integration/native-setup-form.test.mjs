@@ -93,14 +93,19 @@ test("all six reviewed research templates advertise native setup; unknown and mi
 });
 
 for (const template of templates.filter((item) => advertisesNativeSetup(item) && item.id !== templateId)) {
-  test(`${template.id}: native vault picker, hour interval and app-owned scope reach installation unchanged`, async () => {
+  test(`${template.id}: native vault picker and app-owned cadence and scope reach installation unchanged`, async () => {
     const { service, calls } = fixture();
     const form = await service.evaluate(template.id);
-    const values = { ...valuesFrom(form), folder: "Research", interval: "12" };
+    const hourly = template.research === "reading-notes";
+    const interval = hourly ? 12 : 1;
+    const values = { ...valuesFrom(form), folder: "Research", interval: String(interval) };
     const folder = form.fields.find((field) => field.id === "folder");
     assert.equal(folder.type, "folder");
     assert.equal(form.fields.find((field) => field.id === "target").label, "Obsidian vault");
-    assert.equal(form.fields.find((field) => field.id === "interval").label, "Run every (hours)");
+    assert.equal(
+      form.fields.find((field) => field.id === "interval").label,
+      hourly ? "Run every (hours)" : "Run every (days)"
+    );
     assert.equal(form.canSubmit, false);
     await service.folders(template.id, values, "Research");
     assert.deepEqual(calls.folders[0], {
@@ -118,7 +123,7 @@ for (const template of templates.filter((item) => advertisesNativeSetup(item) &&
     assert.deepEqual(calls.installs[0], [
       template.id,
       {
-        hoursInterval: 12,
+        [hourly ? "hoursInterval" : "daysInterval"]: interval,
         research: { workspaceId: "personal", zotero: "zotero-one", obsidian: "obsidian-one", folder: "Research" }
       },
       null,
@@ -173,7 +178,8 @@ test("initial evaluation selects compatible same-workspace apps and leaves the r
   assert.ok(values.source);
   assert.ok(values.target);
   assert.equal(values.folder, "");
-  assert.equal(values.interval, "60");
+  assert.equal(values.interval, "1");
+  assert.equal(values.wholeSharedFolder, "false");
   assert.equal(values.limit, "3");
   assert.equal(values.ocr, "false");
   assert.equal(values.attachMarkdown, "true");
@@ -184,7 +190,11 @@ test("initial evaluation selects compatible same-workspace apps and leaves the r
     ["docling-one"]
   );
   assert.deepEqual(target.dependsOn, ["source"]);
-  assert.deepEqual(form.fields.find((field) => field.id === "folder").dependsOn, ["source", "target"]);
+  assert.deepEqual(form.fields.find((field) => field.id === "folder").dependsOn, [
+    "source",
+    "target",
+    "wholeSharedFolder"
+  ]);
 });
 
 test("initial evaluation leaves ambiguous source and target choices unselected", async () => {
@@ -223,7 +233,13 @@ test("supplied drafts are preserved rather than replaced by defaults or current 
   const { service } = fixture();
   const draft = { name: "", source: "stale-source", target: "stale-target", folder: "Draft", interval: "7" };
   const form = await service.evaluate(templateId, draft);
-  assert.deepEqual(valuesFrom(form), { ...draft, limit: "3", ocr: "false", attachMarkdown: "true" });
+  assert.deepEqual(valuesFrom(form), {
+    ...draft,
+    wholeSharedFolder: "false",
+    limit: "3",
+    ocr: "false",
+    attachMarkdown: "true"
+  });
   assert.equal(form.canSubmit, false);
   assert.match(form.fields.find((field) => field.id === "source").error, /current Zotero/);
   assert.equal(form.fields.find((field) => field.id === "target").disabled, true);
@@ -234,7 +250,7 @@ test("PDF setup retains the selected batch, OCR and conversion-only choices", as
   const values = {
     ...valuesFrom(await service.evaluate(templateId)),
     folder: "Papers",
-    interval: "45",
+    interval: "4",
     limit: "7",
     ocr: "true",
     attachMarkdown: "false"
@@ -245,7 +261,7 @@ test("PDF setup retains the selected batch, OCR and conversion-only choices", as
   const automationId = randomUUID();
   await service.submit(templateId, values, automationId);
   assert.deepEqual(calls.installs[0][1], {
-    minutesInterval: 45,
+    hoursInterval: 4,
     research: {
       workspaceId: "personal",
       zotero: "zotero-one",
@@ -261,6 +277,24 @@ test("PDF setup retains the selected batch, OCR and conversion-only choices", as
     assert.equal(blocked.canSubmit, false);
     await assert.rejects(service.submit(templateId, { ...values, ...invalid }, randomUUID()), NativeSetupFormError);
   }
+  assert.equal(calls.installs.length, 1);
+});
+
+test("the shared root requires an explicit PDF choice and cannot be combined with a subfolder", async () => {
+  const { service, calls } = fixture();
+  const initial = valuesFrom(await service.evaluate(templateId));
+  assert.equal((await service.evaluate(templateId, initial)).canSubmit, false);
+  const root = { ...initial, wholeSharedFolder: "true" };
+  const ready = await service.evaluate(templateId, root, 2);
+  assert.equal(ready.canSubmit, true);
+  assert.equal(ready.fields.find((field) => field.id === "folder").disabled, true);
+  await service.submit(templateId, root, randomUUID());
+  assert.equal(calls.installs[0][1].research.folder, "");
+  assert.equal(calls.installs[0][1].research.wholeSharedFolder, true);
+
+  const conflicting = { ...root, folder: "Papers" };
+  assert.equal((await service.evaluate(templateId, conflicting)).canSubmit, false);
+  await assert.rejects(service.submit(templateId, conflicting, randomUUID()), NativeSetupFormError);
   assert.equal(calls.installs.length, 1);
 });
 
@@ -483,6 +517,7 @@ test("both negotiated versions preserve an explicit empty draft instead of resto
       name: "",
       source: "",
       target: "",
+      wholeSharedFolder: "false",
       folder: "",
       interval: "",
       limit: "3",
@@ -525,7 +560,13 @@ test("malformed v2 source tuples cannot unlock the target picker or authorize a 
   for (const source of invalidSources) {
     const values = { ...draft, source };
     const form = await service.evaluate(templateId, values, 2);
-    assert.deepEqual(valuesFrom(form), { ...values, limit: "3", ocr: "false", attachMarkdown: "true" });
+    assert.deepEqual(valuesFrom(form), {
+      ...values,
+      wholeSharedFolder: "false",
+      limit: "3",
+      ocr: "false",
+      attachMarkdown: "true"
+    });
     assert.equal(form.fields.find((field) => field.id === "target").disabled, true);
     assert.equal(form.canSubmit, false);
     await assert.rejects(service.folders(templateId, values, ""), NativeSetupFormError);
@@ -649,7 +690,7 @@ test("submit revalidates current choices, then passes native settings and durabl
     [
       templateId,
       {
-        minutesInterval: 12,
+        hoursInterval: 12,
         research: {
           workspaceId: "personal",
           zotero: "zotero-one",

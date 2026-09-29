@@ -111,9 +111,10 @@ export class ResearchBridge {
   }
 
   sourcePath(scope, value) {
+    if (typeof value !== "string") throw new Error("The document is outside the selected folder");
+    const withinFolder = scope.wholeSharedFolder === true ? scope.folder === "" : value.startsWith(`${scope.folder}/`);
     if (
-      typeof value !== "string" ||
-      !value.startsWith(`${scope.folder}/`) ||
+      !withinFolder ||
       value.length > 1000 ||
       value.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part))
     ) {

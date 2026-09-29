@@ -1,6 +1,6 @@
 schemaVersion: 1
 id: zotero-daily-digest
-version: 1
+version: 2
 name: Create a daily list of new papers
 description: Create an Obsidian list of papers added during the previous UTC day. Empty days create no note; existing digests are left unchanged. No AI service is used.
 research: research-digest
@@ -39,7 +39,7 @@ workflow:
       parameters:
         rule:
           interval:
-            - {field: hours, hoursInterval: 24}
+            - {field: days, daysInterval: 1}
     - id: papers
       name: Read yesterday's Zotero papers
       type: n8n-nodes-base.httpRequest

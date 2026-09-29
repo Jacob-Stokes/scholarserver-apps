@@ -10,7 +10,12 @@ import { readTemplate, workflowFingerprint, workflowFromTemplate } from "./templ
 import { WorkflowInstallations } from "./workflows.mjs";
 
 const hourly = readTemplate(await readFile(new URL("../templates/connection-check.yaml", import.meta.url), "utf8"));
-const minutes = readTemplate(await readFile(new URL("../templates/zotero-pdf-markdown.yaml", import.meta.url), "utf8"));
+const pdf = readTemplate(await readFile(new URL("../templates/zotero-pdf-markdown.yaml", import.meta.url), "utf8"));
+const daily = readTemplate(await readFile(new URL("../templates/zotero-weekly-roundup.yaml", import.meta.url), "utf8"));
+const minutes = structuredClone(pdf);
+minutes.workflow.nodes.find((node) => node.id === "schedule").parameters.rule.interval = [
+  { field: "minutes", minutesInterval: 15 }
+];
 
 async function fixture(t, template = hourly) {
   const directory = await mkdtemp(path.join(tmpdir(), "n8n-schedule-"));
@@ -88,16 +93,18 @@ async function fixture(t, template = hourly) {
   };
 }
 
-test("reads and safely edits saved hourly and minute schedules", async (t) => {
+test("reads and safely edits saved hour, minute and day schedules", async (t) => {
   for (const [template, unit, value] of [
     [hourly, "hours", 12],
-    [minutes, "minutes", 15]
+    [pdf, "hours", 12],
+    [minutes, "minutes", 30],
+    [daily, "days", 3]
   ]) {
     await t.test(unit, async (child) => {
       const valueFixture = await fixture(child, template);
       const before = await valueFixture.service.read(valueFixture.automationId);
       assert.equal(before.unit, unit);
-      assert.equal(before.savedValue, template === minutes ? 60 : 1);
+      assert.equal(before.savedValue, template === minutes ? 15 : 1);
       assert.equal(before.canEdit, true);
       assert.equal(before.editState, "none");
       assert.equal(before.label, "Run every");
@@ -138,7 +145,7 @@ test("rejects active, customised, stale-version and out-of-range edits before wr
 
   const stale = await fixture(t);
   await assert.rejects(stale.service.edit(stale.automationId, 2, "older-version"), /Refresh before/);
-  await assert.rejects(stale.service.edit(stale.automationId, 169, "version-1"), /1 to 168/);
+  await assert.rejects(stale.service.edit(stale.automationId, 24, "version-1"), /1 to 23/);
   assert.equal(stale.updates, 0);
 });
 

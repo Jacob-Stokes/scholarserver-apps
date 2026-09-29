@@ -34,10 +34,10 @@ test("catalog contains seven unique native workflows with disabled-by-default cr
   }
 });
 
-test("PDF watcher defaults to 60-minute checks and checks cached conversion status before waiting", () => {
+test("PDF watcher defaults to hourly checks and checks cached conversion status before waiting", () => {
   const template = templates.find((candidate) => candidate.research === "convert-pdfs");
   const trigger = template.workflow.nodes.find((node) => node.id === "schedule");
-  assert.deepEqual(trigger.parameters.rule.interval, [{ field: "minutes", minutesInterval: 60 }]);
+  assert.deepEqual(trigger.parameters.rule.interval, [{ field: "hours", hoursInterval: 1 }]);
   assert.equal(template.workflow.connections[trigger.name].main[0][0].node, "Find shared PDFs");
   assert.equal(template.workflow.connections["Queue Docling conversion"].main[0][0].node, "Check conversion status");
   assert.equal(
@@ -79,6 +79,17 @@ test("research scopes reject URLs, traversal, hidden folders and extra bindings"
   for (const folder of ["", "/Papers", "Papers/../vault", "Papers/.obsidian", "Papers\\secret", "Papers//x"]) {
     assert.throws(() => researchConfiguration(template, { research: { ...bindings, folder } }));
   }
+  assert.deepEqual(
+    researchConfiguration(template, { research: { ...bindings, folder: "", wholeSharedFolder: true } }),
+    { ...scope, folder: "", wholeSharedFolder: true }
+  );
+  for (const invalid of [
+    { folder: "", wholeSharedFolder: false },
+    { folder: "", wholeSharedFolder: "true" },
+    { folder: "Papers", wholeSharedFolder: true }
+  ]) {
+    assert.throws(() => researchConfiguration(template, { research: { ...bindings, ...invalid } }));
+  }
   assert.throws(() => researchConfiguration(template, { research: { ...bindings, url: "http://host" } }));
   assert.deepEqual(
     researchConfiguration(template, {
@@ -103,6 +114,23 @@ test("research scopes reject URLs, traversal, hidden folders and extra bindings"
       research: { workspaceId: "personal", zotero: "zotero", obsidian: "obsidian", folder: "Notes", ocr: true }
     })
   );
+});
+
+test("an explicitly granted shared root still rejects absolute, hidden and traversal paths", () => {
+  const bridge = new ResearchBridge({});
+  const root = { ...scope, folder: "", wholeSharedFolder: true };
+  assert.equal(bridge.sourcePath(root, "Papers/one.pdf"), "Papers/one.pdf");
+  assert.equal(bridge.sourcePath(root, "one.pdf"), "one.pdf");
+  for (const value of [
+    "/one.pdf",
+    "../one.pdf",
+    "Papers/../one.pdf",
+    ".hidden/one.pdf",
+    "Papers//one.pdf",
+    "Papers\\one.pdf"
+  ]) {
+    assert.throws(() => bridge.sourcePath(root, value), /outside the selected folder/);
+  }
 });
 
 test("PDF grant applies saved batch and OCR choices and skips Zotero writes for conversion-only runs", async () => {

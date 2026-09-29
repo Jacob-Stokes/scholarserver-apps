@@ -53,7 +53,7 @@ export function researchConfiguration(template, settings) {
   const destination = template.research === "convert-pdfs" ? "docling" : "obsidian";
   const allowed = ["workspaceId", "zotero", destination, "folder"];
   if (template.research === "convert-pdfs") {
-    allowed.push("limit", "ocr", "attachMarkdown");
+    allowed.push("wholeSharedFolder", "limit", "ocr", "attachMarkdown");
     pdfProcessingSettings(bindings);
   }
   if (Object.keys(bindings).some((key) => !allowed.includes(key))) {
@@ -65,11 +65,19 @@ export function researchConfiguration(template, settings) {
     }
   }
   const folder = bindings.folder;
+  const wholeSharedFolder = template.research === "convert-pdfs" && bindings.wholeSharedFolder === true;
+  if (Object.hasOwn(bindings, "wholeSharedFolder") && !wholeSharedFolder) {
+    throw new AutomationConfigurationError("Choose the entire shared folder explicitly");
+  }
+  if (typeof folder !== "string" || folder.length > 200) {
+    throw new AutomationConfigurationError("Choose a relative folder, without hidden folders or parent paths");
+  }
+  if (wholeSharedFolder && folder !== "") {
+    throw new AutomationConfigurationError("Choose the entire shared folder without a subfolder");
+  }
   if (
-    typeof folder !== "string" ||
-    !folder ||
-    folder.length > 200 ||
-    folder.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part))
+    !wholeSharedFolder &&
+    (!folder || folder.split("/").some((part) => !part || part.startsWith(".") || /[\\\x00-\x1f]/.test(part)))
   ) {
     throw new AutomationConfigurationError("Choose a relative folder, without hidden folders or parent paths");
   }

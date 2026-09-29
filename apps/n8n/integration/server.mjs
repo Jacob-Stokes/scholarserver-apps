@@ -8,6 +8,7 @@ import { readCatalog } from "./catalog.mjs";
 import {
   AutomationConfigurationError,
   scheduleConfiguration,
+  workflowScheduleDays,
   workflowScheduleHours,
   workflowScheduleMinutes
 } from "./configuration.mjs";
@@ -379,10 +380,11 @@ createServer(async (request, response) => {
 function installedSchedule(workflow, receipts) {
   const receipt = Object.values(receipts).find((candidate) => candidate.workflowId === workflow.id);
   const template = templates.find((candidate) => candidate.id === receipt?.templateId);
-  if (!template) return { hoursInterval: null, minutesInterval: null };
+  if (!template) return { hoursInterval: null, minutesInterval: null, daysInterval: null };
   return {
     hoursInterval: workflowScheduleHours(template, workflow),
-    minutesInterval: workflowScheduleMinutes(template, workflow)
+    minutesInterval: workflowScheduleMinutes(template, workflow),
+    daysInterval: workflowScheduleDays(template, workflow)
   };
 }
 
