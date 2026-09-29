@@ -706,3 +706,24 @@ in the description, not catalog filters. Reserved a new `.20260929.2` source
 package identity; published packages and installed instances remain unchanged.
 Replacement image qualification and package publication remain separate gates.
 Project-vault documentation remains pending the existing external-write approval.
+
+## Official Sync account-step recovery after interrupted vault setup — 29 September 2026
+
+On the retained `obsidian-2` installation, the approved `.2` package was installed,
+but the earlier uncertain `connect-vault` receipt remained unresolved. The official
+client's remote-vault listing returned setup to the account step after a restart.
+The reconciler only admitted `vault-selection-required`, so Manager disabled the
+account form and the user could not sign in again. Read-only host inspection found
+no enrollment, an empty local replica and no local configured vaults; the prior
+same-vault reservation remains. The reason the remote listing failed is not proven.
+
+The controller now admits `setup-required` to the same read-only reconciliation
+check. It still requires an idle controller, official profile, uncertain vault
+receipt, no enrollment, empty replica and no local configured vaults. A terminal
+rejection at that step instructs the user to sign in again and retry the reserved
+vault. The retry path still checks the saved binding before another vault can be
+selected. It does not replay the uncertain command or modify paid Sync data.
+
+Source tests cover the account-step acceptance and the existing refusal cases.
+This source change requires a newly qualified immutable sync image and package;
+there is no live acceptance or paid Sync completion yet.

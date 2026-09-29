@@ -21,7 +21,7 @@ export function unconfiguredVaultRejection({ receipt, status, busy, enrolled, va
     busy ||
     enrolled ||
     status.profile !== "official" ||
-    status.state !== "vault-selection-required" ||
+    (status.state !== "vault-selection-required" && status.state !== "setup-required") ||
     receipt.status !== "unconfirmed" ||
     receipt.actionId !== "connect-vault" ||
     receipt.sectionId !== "setup" ||
@@ -32,7 +32,9 @@ export function unconfiguredVaultRejection({ receipt, status, busy, enrolled, va
     return null;
   // No configured replica or downloaded data exists. The durable vault binding
   // still restricts a corrected attempt to the originally selected remote vault.
-  return new ConfigurationActionRejected(
-    "The vault connection did not complete. Check the encryption password and retry the same vault."
-  );
+  const message =
+    status.state === "setup-required"
+      ? "The vault connection did not complete. Sign in again, then retry the same vault."
+      : "The vault connection did not complete. Check the encryption password and retry the same vault.";
+  return new ConfigurationActionRejected(message);
 }

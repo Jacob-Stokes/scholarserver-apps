@@ -279,6 +279,12 @@ test("old uncertain vault setup is retryable only when idle with no replica, con
     localVaults: []
   };
   assert.ok(unconfiguredVaultRejection(observed) instanceof ConfigurationActionRejected);
+  const accountStep = unconfiguredVaultRejection({
+    ...observed,
+    status: { profile: "official", state: "setup-required" }
+  });
+  assert.ok(accountStep instanceof ConfigurationActionRejected);
+  assert.match(accountStep.message, /Sign in again, then retry the same vault/);
   for (const override of [
     { busy: true },
     { enrolled: true },
@@ -286,6 +292,7 @@ test("old uncertain vault setup is retryable only when idle with no replica, con
     { localVaults: [{ id: "some-vault" }] },
     { localVaults: undefined },
     { status: { profile: "official", state: "initial-sync" } },
+    { status: { profile: "official", state: "ready" } },
     { status: { profile: "livesync", state: "vault-selection-required" } },
     { receipt: { ...observed.receipt, actionId: "configure-livesync" } }
   ])

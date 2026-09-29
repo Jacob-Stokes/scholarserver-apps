@@ -532,8 +532,8 @@ async function configurationReceipt(requestId) {
     return receipt;
   try {
     return await configurationActions.reconcileRejected(requestId, async (current) => {
-      if (mutationRunning || syncProcess || state.profile !== "official" || state.state !== "vault-selection-required")
-        return null;
+      const canReconcile = state.state === "vault-selection-required" || state.state === "setup-required";
+      if (mutationRunning || syncProcess || state.profile !== "official" || !canReconcile) return null;
       const local = JSON.parse(await runOb(["sync-list-local", "--json"]));
       const enrolled = await stat(enrollmentPath)
         .then(() => true)
