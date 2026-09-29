@@ -336,6 +336,7 @@
         "apps/obsidian/sync/livesync-setup.mjs",
         "apps/obsidian/sync/official-client.mjs",
         "apps/obsidian/sync/official-command.mjs",
+        "apps/obsidian/sync/official-failure.mjs",
         "apps/obsidian/sync/package.json",
         "apps/obsidian/sync/package-lock.json",
         "apps/obsidian/sync/research-note.mjs",
