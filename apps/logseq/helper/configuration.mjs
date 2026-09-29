@@ -66,9 +66,16 @@ export function logseqConfiguration(status, graphs = []) {
       text: "Logseq owns account sign-in and notebook encryption. Account consent happens in Logseq."
     });
     if (status.account?.state === "waiting") {
-      section.outputs = [{ id: "sign-in-url", label: "Open Logseq sign-in", sensitive: true, kind: "link" }];
+      section.outputs = [{ id: "sign-in-url", label: "Logseq sign-in link", sensitive: true, kind: "link" }];
       section.fields = [
-        { id: "returnLink", label: "Full return link", type: "secret", required: true, autocomplete: "off" }
+        {
+          id: "returnLink",
+          label: "Full return link",
+          type: "secret",
+          required: true,
+          autocomplete: "off",
+          hint: "After signing in, the new tab may say it cannot connect. Copy its full address and paste it here."
+        }
       ];
       section.actions = [
         submit("complete-sign-in", "Finish sign-in", ["returnLink"]),
@@ -126,6 +133,7 @@ export function logseqConfiguration(status, graphs = []) {
         });
     }
   } else {
+    delete section.stage;
     section.summary = [
       { label: "Notebook", value: status.graph || "Not reported" },
       { label: "Sync address", value: status.syncAddress || "Not reported" },

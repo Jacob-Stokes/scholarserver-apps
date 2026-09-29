@@ -30,7 +30,7 @@ test("LiveSync advances through preparation, explicit device output, joining and
   );
   assert.equal(device.actions[0].id, "complete-livesync");
   assert.equal(joining.actions.length, 0);
-  assert.equal(ready.stage.id, "ready");
+  assert.equal(ready.stage, undefined, "connected settings do not show unfinished setup steps");
   assert.ok(!JSON.stringify(obsidianConfigurationFixtures).includes("setupPassphrase"));
 });
 
@@ -99,6 +99,78 @@ test("LiveSync validation rejects unsafe connection and mismatched passphrases b
     () => validateObsidianConfigurationAction("configure-livesync", { ...values, confirmedNoOtherSync: false }),
     /Confirm/
   );
+});
+
+test("device address repair is explicit, retains the saved revision and hides stale setup outputs", () => {
+  const status = { profile: "livesync", state: "livesync-device-setup" };
+  const saved = { deviceConnectionUrl: "https://vault.example.ts.net:8443" };
+  const device = obsidianConfiguration(status, saved);
+  const repair = obsidianConfiguration(status, { ...saved, values: { repairConnection: true } });
+  assert.equal(device.actions[0].id, "complete-livesync");
+  assert.equal(repair.actions[0].id, "repair-livesync-connection");
+  assert.equal(repair.revision, device.revision);
+  assert.equal(repair.outputs, undefined);
+  assert.deepEqual(repair.endpointIds, ["livesync-couchdb"]);
+  assert.equal(repair.fields.find((field) => field.id === "connectionUrl").sourceEndpointId, "livesync-couchdb");
+
+  const updated = obsidianConfiguration(status, { deviceConnectionUrl: "https://vault.example.ts.net:14000" });
+  assert.notEqual(updated.revision, device.revision, "a repaired address must invalidate revealed setup credentials");
+  for (const state of ["ready", "livesync-server-joining", "recovery-required"]) {
+    const section = obsidianConfiguration({ ...status, state }, { ...saved, values: { repairConnection: true } });
+    assert.ok(!section.actions.some((action) => action.id === "repair-livesync-connection"));
+  }
+});
+
+test("repair rejects unconfirmed or non-private addresses before a receipt is written", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "obsidian-config-repair-test-"));
+  try {
+    const status = { profile: "livesync", state: "livesync-device-setup" };
+    let connectionUrl = "https://vault.example.ts.net:8443";
+    const prepare = ({ values }) => obsidianConfiguration(status, { deviceConnectionUrl: connectionUrl, values });
+    const actions = new ConfigurationActions(directory, "setup");
+    const expectedRevision = prepare({ values: {} }).revision;
+    let applied = 0;
+    const apply = async (values) => {
+      applied++;
+      connectionUrl = values.connectionUrl;
+    };
+    const validate = (values) => {
+      validateObsidianConfigurationAction("repair-livesync-connection", values);
+      return values;
+    };
+    for (const [index, values] of [
+      { repairConnection: false, connectionUrl: "https://vault.example.ts.net:14000" },
+      { repairConnection: true, connectionUrl: "https://public.example.org" },
+      { repairConnection: true, connectionUrl: "https://vault.example.ts.net:14000/path" }
+    ].entries()) {
+      const input = assertConfigurationActionRequest(
+        { requestId: `repair-refusal-000${index}`, expectedRevision, values },
+        "repair-livesync-connection",
+        "setup"
+      );
+      await assert.rejects(actions.run(input, prepare, apply, validate));
+      assert.equal(await actions.read(input.requestId), null);
+    }
+    assert.equal(applied, 0);
+    const request = assertConfigurationActionRequest(
+      {
+        requestId: "repair-success-0001",
+        expectedRevision,
+        values: { repairConnection: true, connectionUrl: "https://vault.example.ts.net:14000" }
+      },
+      "repair-livesync-connection",
+      "setup"
+    );
+    assert.equal((await actions.run(request, prepare, apply, validate)).status, "succeeded");
+    assert.equal((await actions.run(request, prepare, apply, validate)).status, "succeeded");
+    assert.equal(applied, 1, "an observed receipt must not replay the repair");
+    await assert.rejects(
+      actions.run({ ...request, requestId: "repair-stale-000001" }, prepare, apply, validate),
+      /Configuration changed/
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("LiveSync action receipt survives reload without storing passphrase or replaying setup", async () => {

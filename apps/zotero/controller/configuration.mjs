@@ -2,12 +2,21 @@ import { createHash } from "node:crypto";
 
 const target = { kind: "app" };
 const submit = (id, label, fieldIds = [], extra = {}) => ({ id, label, kind: "submit", fieldIds, target, ...extra });
+const attachmentAccessLabels = {
+  "metadata-only": "Citation data only",
+  "zotero-storage": "Zotero Storage",
+  webdav: "WebDAV",
+  "linked-folder": "Shared linked folder",
+  "server-only": "References only"
+};
+const downloadLabels = { "on-demand": "When opened", "on-sync": "During every sync" };
 
 export function zoteroConfiguration(status, draft = {}) {
   const online = status.connectionMode === "online-library";
+  const editingStorage = status.state === "ready" && draft.editStorage === true;
   const stages = online ? ["account", "storage", "ready"] : ["account", "storage", "authorization", "ready"];
   let stageId = "account";
-  if (status.state === "ready") stageId = "ready";
+  if (status.state === "ready") stageId = editingStorage ? "storage" : "ready";
   else if (status.state === "authorization-required") stageId = "authorization";
   else if (status.accountConnected && status.state === "storage-required") stageId = "storage";
   else if (!online && status.userId && status.desktop !== "available") stageId = "recovery";
@@ -19,6 +28,8 @@ export function zoteroConfiguration(status, draft = {}) {
         status.accountConnected,
         status.userId,
         status.storageMode,
+        status.downloadMode,
+        status.groupFileSync,
         status.localApi
       ])
     )
@@ -60,15 +71,40 @@ export function zoteroConfiguration(status, draft = {}) {
     return section;
   }
   if (stageId === "ready") {
+    delete section.stage;
     section.summary = [
       { label: "Account", value: status.username || status.userId || "Not reported" },
       { label: "Library mode", value: online ? "Online library only" : "Complete Zotero workspace" },
-      { label: "Attachment access", value: status.storageMode || "Not configured" },
-      { label: "File downloads", value: status.downloadMode || "Not applicable" }
+      {
+        label: "Attachment access",
+        value: attachmentAccessLabels[status.storageMode] || status.storageMode || "Not configured"
+      },
+      { label: "File downloads", value: downloadLabels[status.downloadMode] || status.downloadMode || "Not applicable" }
     ];
     if (status.storageMode === "linked-folder")
       section.summary.push({ label: "Linked folder", value: status.linkedFolder || "Not reported" });
+    if (online) {
+      section.summary.push(
+        { label: "Make changes", value: status.permissions?.write ? "Allowed" : "Read only" },
+        { label: "Group libraries", value: String(status.permissions?.groups ?? "None") }
+      );
+    } else {
+      section.summary.push({
+        label: "Local API",
+        value: status.localApi === "authorized" ? "Approved" : status.localApi || "Not checked"
+      });
+    }
+    section.fields = [{ id: "editStorage", label: "Change attachment settings", type: "boolean" }];
+    section.values = { editStorage: false };
     section.actions = [{ id: "check-connection", label: "Check connection", kind: "read", target }];
+    if (!online) {
+      section.actions.push(
+        submit("sync-now", "Sync now", [], {
+          disabled: status.syncInProgress === true,
+          ...(status.syncInProgress ? { reason: "A sync is already running." } : {})
+        })
+      );
+    }
     section.notices.push({
       kind: "info",
       text: online
@@ -93,7 +129,7 @@ export function zoteroConfiguration(status, draft = {}) {
     } else {
       const session = status.accountLink;
       if (session?.state === "pending") {
-        section.outputs = [{ id: "account-login-url", label: "Open Zotero sign-in", sensitive: true, kind: "link" }];
+        section.outputs = [{ id: "account-login-url", label: "Zotero sign-in link", sensitive: true, kind: "link" }];
         section.notices.push({
           kind: "info",
           text: "Complete approval in Zotero. ScholarServer observes the same pending request across page reloads."
@@ -132,7 +168,14 @@ export function zoteroConfiguration(status, draft = {}) {
             ]
       }
     ];
-    section.values = { storageMode: status.storageMode || defaultMode };
+    section.values = { storageMode: selectedMode };
+    if (editingStorage) {
+      delete section.stage;
+      section.title = "Attachment settings";
+      section.description = "Changes apply to this connected library. Account sign-in is kept.";
+      section.fields.unshift({ id: "editStorage", label: "Change attachment settings", type: "boolean" });
+      section.values.editStorage = true;
+    }
     if (!online) {
       section.fields.push({
         id: "downloadMode",

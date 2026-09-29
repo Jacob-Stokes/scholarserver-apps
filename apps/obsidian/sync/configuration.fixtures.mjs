@@ -32,5 +32,9 @@ export const obsidianConfigurationFixtures = [
       liveSyncWorker: { running: true }
     })
   ),
-  obsidianConfiguration(status("livesync", "recovery-required", { lastError: "Restore the original connection." }))
+  obsidianConfiguration(status("livesync", "recovery-required", { lastError: "Restore the original connection." })),
+  obsidianConfiguration(status("livesync", "livesync-device-setup"), {
+    deviceConnectionUrl: "https://vault.example.ts.net:8443",
+    values: { repairConnection: true }
+  })
 ];

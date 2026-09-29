@@ -11,6 +11,7 @@ import {
   requestDocling,
   type Settings
 } from "./docling-reads";
+import { managerDestination } from "./manager-navigation";
 
 type Tab = "queue" | "process" | "configuration";
 
@@ -131,6 +132,11 @@ export function App() {
   }, []);
 
   const navigate = (next: Tab) => {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   };

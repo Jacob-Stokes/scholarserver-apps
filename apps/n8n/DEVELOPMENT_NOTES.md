@@ -1287,3 +1287,15 @@ to Manager's request ID, so a lost executor response cannot be called rejected
 or safe to retry from `ready` status alone. Synthetic section tests and the
 core parser check pass; native image, package, deployment and browser
 acceptance remain separate. The project-vault note update remains pending.
+
+
+## Manager configuration source pass — 29 September 2026
+
+New Configuration routes return to Manager, while catalog/automation routes retain the instance engine parameter in Manager Automations. The explicit /automation-setup?managerSetup=1 surface remains available for embedded setup. Native recovery points to restoration; independent settings omit fake setup counters.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.

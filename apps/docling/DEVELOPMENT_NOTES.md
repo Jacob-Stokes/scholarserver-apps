@@ -257,3 +257,15 @@ markers, invalid input before a receipt, stale revisions, duplicate requests and
 receipt reads. This is source-level evidence only: no new image, package,
 deployment or browser acceptance is claimed. The project-vault note update for
 this candidate remains pending.
+
+
+## Manager configuration source pass — 29 September 2026
+
+New Configuration navigation returns to Manager while queue/process remain document workspaces. Native defaults, queue control and service details are independent sections; duplicate OCR summaries and sequential setup counters were removed. Existing queue and conversion operations are unchanged.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.

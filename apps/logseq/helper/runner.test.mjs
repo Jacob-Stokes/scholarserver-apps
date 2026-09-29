@@ -64,10 +64,17 @@ test("commands serialize, including after a failed operation", async () => {
   assert.equal(results[2].status, "fulfilled");
 });
 
-test("a timeout reports an unknown outcome and does not repeat the write", async () => {
+test("a timeout reports an unknown outcome and does not repeat the write", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
   const { runner, calls } = fixture(() => {});
   runner.timeoutMs = 10;
-  await assert.rejects(runner.run(["upsert", "block"]), (error) => error.code === "outcome-unknown");
+  const outcome = assert.rejects(runner.run(["upsert", "block"]), (error) => error.code === "outcome-unknown");
+  // Admit the command before advancing its execution deadline. A loaded test
+  // host must not turn this into a test of expiry while still in the queue.
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 1);
+  t.mock.timers.tick(10);
+  await outcome;
   assert.equal(calls.length, 1);
 });
 

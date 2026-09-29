@@ -209,3 +209,13 @@ Keep unresolved questions explicit, remove obsolete advice, and never include
 credentials, enrollment links or personal research data.
 
 Current worked example: [Logseq development notes](../apps/logseq/DEVELOPMENT_NOTES.md).
+
+
+### Native configuration migration includes navigation
+
+Declaring native sections does not retire old install-completion links, bookmarked
+overviews or an app's own Configuration tab. Test those entry points with the
+actual instance ID, preserve genuine document/attachment workspaces, and keep
+explicit embedded automation consumers working. Compare ready-state editing and
+recovery actions as well as first setup before redirecting a package's routes.
+See [the 29 September source pass](manager-configuration-20260929.md).

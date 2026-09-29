@@ -5,6 +5,7 @@ import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
 import { createLogseqReads } from "./logseq-reads";
+import { managerDestination } from "./manager-navigation";
 import { PrivateConnection } from "./PrivateConnection";
 
 type Account = { state: string; authorizationUrl?: string | null; error?: string | null };
@@ -109,6 +110,11 @@ function LogseqSession({ onAccessRetry }: { onAccessRetry: () => void }) {
     return () => window.removeEventListener("popstate", pop);
   }, []);
   function navigate(next: string) {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   }

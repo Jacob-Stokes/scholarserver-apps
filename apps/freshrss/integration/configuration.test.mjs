@@ -49,6 +49,7 @@ test("appearance action is revisioned and saves through existing setup function 
     JSON.stringify({ fingerprint: bindingFingerprint(binding) })
   );
   const section = await configurationSection(setup, "appearance");
+  assert.equal((await configurationSection(setup, "account")).stage, undefined);
   assert.equal(section.actions[0].disabled, undefined);
   const actions = new ConfigurationActions(path.join(directory, "configuration-actions"), "appearance");
   const input = assertConfigurationActionRequest(

@@ -652,3 +652,15 @@ client and LiveSync checks passed; AMD64, paid-account and actual desktop-plugin
 acceptance are not claimed. See [the scoped report](../../docs/native-research-candidates-20260915.md)
 and the remaining release gate in `RELEASE_BLOCKED.md`. The project vault note
 update is pending because Jacob Gateway note reads timed out.
+
+
+## Manager configuration source pass — 29 September 2026
+
+Pending first-device address repair now has a native Manager draft/action. It preserves the existing database and encryption, invalidates old revealed outputs by revision, and requires fresh device confirmation. Setup URI/passphrase remain explicit sensitive reads. New installed UI routes return Configuration and obsolete Overview bookmarks to Manager.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.

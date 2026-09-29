@@ -501,14 +501,12 @@ def configuration_section(section_id: str) -> dict[str, Any]:
             **base,
             "title": "Conversion defaults",
             "description": "Changes affect new jobs. Existing queue entries keep their OCR choice.",
-            "stage": {"id": "defaults", "label": "Conversion defaults", "index": 1, "total": 3},
             "pollAfterMs": 30000,
             "fields": [{
                 "id": "defaultOcr", "label": "Use OCR by default", "type": "boolean",
                 "hint": "Use this when most PDFs contain scanned pages.", "required": True,
             }],
             "values": {"defaultOcr": default_ocr},
-            "summary": [{"label": "Default OCR", "value": "On" if default_ocr else "Off"}],
             "actions": [{
                 "id": "save-defaults", "label": "Save defaults", "kind": "submit",
                 "fieldIds": ["defaultOcr"], "target": {"kind": "app"},
@@ -521,7 +519,6 @@ def configuration_section(section_id: str) -> dict[str, Any]:
             **base,
             "title": "Queue control",
             "description": "Pause after the current conversion, or resume waiting work.",
-            "stage": {"id": "queue", "label": "Queue control", "index": 2, "total": 3},
             "summary": [
                 {"label": "Queue", "value": "Paused" if paused else "Ready"},
                 {"label": "Waiting", "value": str(state["counts"]["queued"])},
@@ -537,7 +534,6 @@ def configuration_section(section_id: str) -> dict[str, Any]:
     return {
         **base,
         "title": "Service details",
-        "stage": {"id": "service", "label": "Service details", "index": 3, "total": 3},
         "summary": [
             {"label": "Engine", "value": state["engine"]},
             {"label": "Parallel jobs", "value": str(state["workerConcurrency"])},

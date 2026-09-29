@@ -4,6 +4,7 @@ import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, type SetupPipelineStage, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useRef, useState } from "react";
+import { managerDestination } from "./manager-navigation";
 import {
   createObsidianReads,
   type LiveSyncOnboarding,
@@ -142,6 +143,11 @@ function ObsidianSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   }, []);
 
   const navigate = (next: Tab) => {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   };

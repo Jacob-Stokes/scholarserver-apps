@@ -56,7 +56,7 @@ test("Logseq sign-in URL remains a sensitive explicit output and download is not
   assert.equal(notebooks.actions[1].id, "join-notebook");
   assert.equal(downloading.actions.length, 0);
   assert.equal(retry.actions[0].id, "retry-download");
-  assert.equal(ready.stage.id, "ready");
+  assert.equal(ready.stage, undefined, "connected settings do not show unfinished setup steps");
   assert.equal(
     ready.actions.some((action) => action.id === "join-notebook"),
     false

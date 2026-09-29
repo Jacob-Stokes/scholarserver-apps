@@ -90,7 +90,7 @@ test("controller wires a separate no-store browser read and packages its helper"
   const controller = await readFile(new URL("./controller.mjs", import.meta.url), "utf8");
   const summary = controller.slice(
     controller.indexOf("async function statusSummary()"),
-    controller.indexOf("async function action(")
+    controller.indexOf("async function currentConfiguration(")
   );
   assert(!summary.includes("liveSyncOnboarding"));
   assert(controller.includes('url.pathname === "/api/livesync/onboarding"'));

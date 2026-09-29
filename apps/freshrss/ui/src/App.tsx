@@ -3,6 +3,7 @@ import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { SetupPanel, SetupProgress } from "@scholarserver/ui/setup-pipeline";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useState } from "react";
+import { managerDestination } from "./manager-navigation";
 import { ReaderAccess } from "./ReaderAccess";
 import { ReaderAppearance } from "./ReaderAppearance";
 import { createReaderReads } from "./reader-reads";
@@ -35,6 +36,11 @@ function ReaderSession({ onAccessRetry }: { onAccessRetry: () => void }) {
     return () => window.removeEventListener("popstate", pop);
   }, []);
   function navigate(next: string) {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   }

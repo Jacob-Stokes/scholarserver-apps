@@ -457,3 +457,15 @@ whose later section read fails. The existing standalone UI is unchanged.
 executor result still needs explicit recovery; current readiness alone cannot
 prove that request's outcome. No image, package, deployment or browser
 acceptance is claimed. The project-vault note update remains pending.
+
+
+## Manager configuration source pass — 29 September 2026
+
+New installed UI Configuration and Overview routes return to Manager. Reader appearance is an independent setting without a setup counter or duplicate saved-value row. Connected readers omit setup progress; identity linking and existing feed preservation are unchanged.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.

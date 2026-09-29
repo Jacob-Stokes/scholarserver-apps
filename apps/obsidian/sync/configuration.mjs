@@ -3,17 +3,24 @@ import { createHash } from "node:crypto";
 const target = { kind: "app" };
 const submit = (id, label, fieldIds = [], extra = {}) => ({ id, label, kind: "submit", fieldIds, target, ...extra });
 
-function revisionFor(status) {
+function revisionFor(status, deviceConnectionUrl) {
   // Health timestamps and errors do not change the saved setup revision.
-  const saved = [status.profile, status.state, status.remoteVault, status.scopePath, status.officialClient?.phase];
+  const saved = [
+    status.profile,
+    status.state,
+    status.remoteVault,
+    status.scopePath,
+    status.officialClient?.phase,
+    deviceConnectionUrl
+  ];
   return createHash("sha256").update(JSON.stringify(saved)).digest("hex");
 }
 
-export function obsidianConfiguration(status, { vaults = [] } = {}) {
+export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl = null, values = {} } = {}) {
   const section = {
     version: 1,
     id: "setup",
-    revision: revisionFor(status),
+    revision: revisionFor(status, deviceConnectionUrl),
     title: "Vault connection",
     description: "Connect one vault to this installation. Another vault needs a separate installation.",
     stage: { id: "sync-method", label: "Sync method", index: 1, total: 6 },
@@ -38,7 +45,7 @@ export function obsidianConfiguration(status, { vaults = [] } = {}) {
     if (status.profile === "livesync") {
       serverSyncRunning = status.liveSyncWorker?.running === true;
     }
-    section.stage = { id: "ready", label: "Connected", index: 6, total: 6 };
+    delete section.stage;
     section.summary = [
       { label: "Sync method", value: status.profile === "livesync" ? "Self-hosted LiveSync" : "Obsidian Sync" },
       { label: "Vault", value: status.remoteVault || "Not reported" },
@@ -128,6 +135,38 @@ export function obsidianConfiguration(status, { vaults = [] } = {}) {
   }
   if (status.state === "livesync-device-setup") {
     section.stage = { id: "device", label: "Connect first device", index: 5, total: 6 };
+    section.fields = [
+      {
+        id: "repairConnection",
+        label: "Change device address",
+        type: "boolean",
+        hint: "Use this if the setup link has an old address. The existing vault and database are kept."
+      }
+    ];
+    section.values = { repairConnection: false };
+    if (deviceConnectionUrl) section.summary = [{ label: "Device address", value: deviceConnectionUrl }];
+    if (values.repairConnection === true) {
+      section.stage = { id: "device-address", label: "Update device address", index: 5, total: 6 };
+      section.endpointIds = ["livesync-couchdb"];
+      section.fields.push({
+        id: "connectionUrl",
+        label: "HTTPS LiveSync address",
+        type: "url",
+        required: true,
+        sourceEndpointId: "livesync-couchdb",
+        dependsOn: ["repairConnection"],
+        hint: "Use the selected private LiveSync address."
+      });
+      section.values = { repairConnection: true };
+      section.actions = [
+        submit("repair-livesync-connection", "Update setup link", ["repairConnection", "connectionUrl"])
+      ];
+      section.notices.push({
+        kind: "info",
+        text: "This updates the pending device link. It keeps the vault encryption, database and server copy."
+      });
+      return section;
+    }
     section.outputs = [
       { id: "setup-uri", label: "LiveSync setup URI", sensitive: true, kind: "text" },
       { id: "setup-passphrase", label: "LiveSync setup passphrase", sensitive: true, kind: "text" }
@@ -135,17 +174,20 @@ export function obsidianConfiguration(status, { vaults = [] } = {}) {
     section.instructions = [
       {
         title: "Connect Obsidian on your first device",
-        text: "Install Self-hosted LiveSync, request the setup URI and passphrase separately, then connect to the existing ScholarServer database. Do not reset or delete it."
-      }
-    ];
-    section.fields = [
+        text: "Keep this device connected to Tailscale. Install and enable Self-hosted LiveSync in Obsidian, then open the setup URI and enter its one-time passphrase."
+      },
       {
-        id: "confirmedPluginConnected",
-        label: "The first device connected successfully",
-        type: "boolean",
-        required: true
+        title: "Join the existing server",
+        text: "Choose the existing-server option and preserve local data when prompted. Do not create a new server or reset the database. Wait until LiveSync reports that it is up to date."
       }
     ];
+    section.fields.unshift({
+      id: "confirmedPluginConnected",
+      label: "The plugin connected and LiveSync is up to date",
+      type: "boolean",
+      required: true,
+      dependsOn: ["repairConnection"]
+    });
     section.actions = [submit("complete-livesync", "Connect server copy", ["confirmedPluginConnected"])];
     section.notices.push({
       kind: "warning",
@@ -205,7 +247,7 @@ export function obsidianConfiguration(status, { vaults = [] } = {}) {
     },
     { id: "confirmedNoOtherSync", label: "Other vault sync methods are turned off", type: "boolean", required: true }
   ];
-  section.values = { scopePath: "/", confirmedNoOtherSync: false };
+  section.values = { accessMethod: "tailscale", scopePath: "/", confirmedNoOtherSync: false };
   section.actions = [
     submit(
       "configure-livesync",
@@ -228,7 +270,7 @@ export function validateObsidianConfigurationAction(actionId, values) {
     throw new Error("Vault passphrases do not match.");
   if (actionId === "configure-livesync" && values.confirmedNoOtherSync !== true)
     throw new Error("Confirm that other vault sync methods are turned off.");
-  if (actionId === "configure-livesync") {
+  if (["configure-livesync", "repair-livesync-connection"].includes(actionId)) {
     let address;
     try {
       address = new URL(values.connectionUrl);
@@ -236,9 +278,10 @@ export function validateObsidianConfigurationAction(actionId, values) {
       throw new Error("Choose the prepared HTTPS LiveSync address.");
     }
     if (
-      values.accessMethod !== "tailscale" ||
+      (actionId === "configure-livesync" && values.accessMethod !== "tailscale") ||
       address.protocol !== "https:" ||
       !address.hostname.endsWith(".ts.net") ||
+      address.pathname !== "/" ||
       address.username ||
       address.password ||
       address.search ||
@@ -246,6 +289,8 @@ export function validateObsidianConfigurationAction(actionId, values) {
     ) {
       throw new Error("Choose the prepared private Tailscale LiveSync address.");
     }
+    if (actionId === "repair-livesync-connection" && values.repairConnection !== true)
+      throw new Error("Choose to change the device address before updating the setup link.");
   }
   if (
     ["configure-livesync", "connect-vault"].includes(actionId) &&

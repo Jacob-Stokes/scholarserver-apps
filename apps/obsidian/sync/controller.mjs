@@ -461,7 +461,7 @@ async function statusSummary() {
   };
 }
 
-async function currentConfiguration() {
+async function currentConfiguration({ values = {} } = {}) {
   const status = await statusSummary();
   let vaults = [];
   if (status.profile === "official" && status.state === "vault-selection-required") {
@@ -471,7 +471,14 @@ async function currentConfiguration() {
       // The section remains readable; the action cannot select a vault that is not listed.
     }
   }
-  return obsidianConfiguration(status, { vaults });
+  let deviceConnectionUrl = null;
+  if (status.profile === "livesync" && status.state === "livesync-device-setup") {
+    const onboarding = await readJson(liveSyncOnboardingPath, null);
+    // Only the address belongs in ordinary configuration reads. Device setup
+    // credentials remain behind the separate explicit output requests.
+    deviceConnectionUrl = onboarding?.connectionUrl ?? null;
+  }
+  return obsidianConfiguration(status, { vaults, deviceConnectionUrl, values });
 }
 
 function evaluation(input) {
@@ -743,8 +750,8 @@ async function handleHttp(request, response) {
       if (parts[0] !== "setup" || parts.length > 3) return json(response, 404, { error: "Not found" });
       if (request.method === "GET" && parts.length === 1) return json(response, 200, await currentConfiguration());
       if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2) {
-        evaluation(await body(request));
-        return json(response, 200, await currentConfiguration());
+        const values = evaluation(await body(request));
+        return json(response, 200, await currentConfiguration({ values }));
       }
       if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
         const receipt = await configurationActions.read(parts[2]);

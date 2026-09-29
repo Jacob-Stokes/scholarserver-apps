@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountStep } from "./AccountStep";
 import { AuthorizationStep } from "./AuthorizationStep";
 import { AutomationsTab } from "./AutomationsTab";
+import { managerDestination } from "./manager-navigation";
 import { StorageStep } from "./StorageStep";
 import {
   type AccountSession,
@@ -220,6 +221,11 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
   }, [accountRead.data, refresh]);
 
   const navigate = (next: Tab) => {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
     window.history.pushState({}, "", `${base}/${next}`);
     setTab(next);
   };

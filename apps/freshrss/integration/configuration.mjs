@@ -33,12 +33,7 @@ export async function configurationSection(setup, sectionId) {
       description: ready
         ? "Your reader uses your ScholarServer sign-in."
         : "Link this reader to your ScholarServer sign-in before opening it.",
-      stage: {
-        id: ready ? "ready" : "account",
-        label: ready ? "Ready" : "Your sign-in",
-        index: ready ? 2 : 1,
-        total: 2
-      },
+      ...(!ready ? { stage: { id: "account", label: "Your sign-in", index: 1, total: 2 } } : {}),
       notices:
         status.phase === "preparing"
           ? [{ kind: "info", text: "Your reader is being prepared. Check status before continuing." }]
@@ -76,7 +71,6 @@ export async function configurationSection(setup, sectionId) {
     title: "Reader appearance",
     description:
       "Choose ScholarServer’s colours and branding or keep FreshRSS’s own look. Reload the reader after saving.",
-    stage: { id: "appearance", label: "Reader appearance", index: 2, total: 2 },
     fields: [
       {
         id: "style",
@@ -91,12 +85,6 @@ export async function configurationSection(setup, sectionId) {
       }
     ],
     values: { style: appearance.style },
-    summary: [
-      {
-        label: "Current appearance",
-        value: appearance.style === "scholarserver" ? "Match ScholarServer" : "FreshRSS original"
-      }
-    ],
     actions: [
       {
         id: "save-appearance",

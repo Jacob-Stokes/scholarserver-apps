@@ -382,3 +382,15 @@ runtime/security settings are unchanged. No package was published or deployed.
 The Obsidian project-vault note was updated through Jacob Gateway on 11
 September 2026; this repository's catalog-tags document remains authoritative
 for the exact vocabulary.
+
+
+## Manager configuration source pass — 29 September 2026
+
+Native Manager configuration now supports changing attachment settings after connection and requesting a sync. Saved storage settings participate in revision checks; WebDAV selection and conditional inputs agree. New UI Configuration/Overview routes return to Manager. Attachment and legacy automation workspaces remain operational app-owned screens; migration of legacy automation scheduling is still outstanding.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.

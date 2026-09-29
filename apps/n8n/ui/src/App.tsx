@@ -8,6 +8,7 @@ import { ConnectionSetup, type ConnectionStatus } from "./ConnectionSetup";
 import { parseEmbeddedSetup, resolveEmbeddedSetup } from "./embedded-setup";
 import { InstallAutomation } from "./InstallAutomation";
 import { MyAutomations } from "./MyAutomations";
+import { managerDestination } from "./manager-navigation";
 import { createN8nReads } from "./n8n-reads";
 import { N8nReadContext, useN8nReads } from "./read-context";
 
@@ -35,6 +36,14 @@ function N8nScreen({ onAccessRetry }: { onAccessRetry: () => void }) {
   const { request } = reads;
   const embeddedSetup = parseEmbeddedSetup(window.location.search);
   const [tab, setTab] = useState(window.location.pathname.endsWith("/configuration") ? "configuration" : "automations");
+  function navigate(next: string) {
+    const destination = managerDestination(`${base}/${next}`);
+    if (destination) {
+      window.location.assign(destination);
+      return;
+    }
+    setTab(next);
+  }
   const [runsId, setRunsId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +160,7 @@ function N8nScreen({ onAccessRetry }: { onAccessRetry: () => void }) {
         description="Reconnect to continue."
         tabs={tabs}
         currentTab={tab}
-        onNavigate={setTab}
+        onNavigate={navigate}
         feedback={connectionFeedback}
       >
         {null}
@@ -249,7 +258,7 @@ function N8nScreen({ onAccessRetry }: { onAccessRetry: () => void }) {
       description="Choose a research outcome, connect its apps and review runs."
       tabs={tabs}
       currentTab={tab}
-      onNavigate={setTab}
+      onNavigate={navigate}
       feedback={connectionFeedback}
       error={error}
     >

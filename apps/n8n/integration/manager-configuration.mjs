@@ -73,10 +73,24 @@ export async function managerConfigurationSection(sectionId, passwordSetup, inst
     actions: []
   };
   if (sectionId === "connection") {
+    let title = "Finish connecting n8n";
     let description = "Sign in to connect n8n. Existing accounts and workflows are not replaced.";
-    if (ready) description = "n8n is connected to ScholarServer.";
-    else if (status.phase === "password-required")
+    let connectionState = "Setup needed";
+    if (ready) {
+      title = "n8n connection";
+      description = "n8n is connected to ScholarServer.";
+      connectionState = "Ready";
+    } else if (status.phase === "password-required") {
       description = "Set your local n8n owner password to finish installation.";
+    } else if (status.phase === "recovery-required") {
+      title = "Restore n8n";
+      description = "Restore the saved application data before reconnecting.";
+      connectionState = "Recovery needed";
+    } else if (status.phase === "setting-up") {
+      title = "Connecting n8n";
+      description = "Wait for the current setup request to finish.";
+      connectionState = "Connecting";
+    }
     let notice = null;
     if (status.phase === "recovery-required")
       notice = {
@@ -91,13 +105,12 @@ export async function managerConfigurationSection(sectionId, passwordSetup, inst
     const fields = setupFields(status);
     return {
       ...base,
-      title: ready ? "n8n connection" : "Finish connecting n8n",
+      title,
       description,
-      stage: { id: ready ? "ready" : "connection", label: ready ? "Ready" : "Connect n8n", index: 1, total: 2 },
       notices: notice ? [notice] : [],
       fields,
       summary: [
-        { label: "Connection", value: ready ? "Ready" : "Setup needed" },
+        { label: "Connection", value: connectionState },
         ...(status.ownerEmail ? [{ label: "Owner sign-in", value: status.ownerEmail }] : [])
       ],
       actions: fields.length
@@ -120,17 +133,10 @@ export async function managerConfigurationSection(sectionId, passwordSetup, inst
     ...base,
     title: "Automation settings",
     description: "Review your automations and their schedules in Automations.",
-    stage: { id: "settings", label: "Automation settings", index: 2, total: 2 },
     summary: [
       { label: "Connection", value: ready ? "Ready" : "Setup needed" },
       { label: "Installed automations", value: String(installed) },
       { label: "Needs review", value: String(needsReview) }
-    ],
-    instructions: [
-      {
-        title: "Review automations",
-        text: "Use Automations to manage workflows and execution checks."
-      }
     ]
   };
 }

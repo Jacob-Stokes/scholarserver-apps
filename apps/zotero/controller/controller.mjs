@@ -293,6 +293,9 @@ async function runConfigurationAction(actionId, wireInput) {
           case "check-connection":
             await currentStatus();
             break;
+          case "sync-now":
+            await syncNow();
+            break;
           default:
             throw new Error("This configuration action is unavailable");
         }

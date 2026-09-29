@@ -47,6 +47,8 @@ test("recovery blocks setup and settings summarize installed and unresolved auto
   );
   assert.deepEqual(recovering.actions, []);
   assert.equal(recovering.notices[0].kind, "error");
+  assert.equal(recovering.summary[0].value, "Recovery needed");
+  assert.doesNotMatch(recovering.description, /Sign in/);
   const settings = await managerConfigurationSection(
     "settings",
     setup({ connected: true, phase: "ready" }),
@@ -56,5 +58,4 @@ test("recovery blocks setup and settings summarize installed and unresolved auto
     settings.summary.map((item) => item.value),
     ["Ready", "1", "1"]
   );
-  assert.equal(settings.instructions[0].link, undefined);
 });

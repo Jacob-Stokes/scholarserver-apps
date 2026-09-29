@@ -48,5 +48,20 @@ export const zoteroConfigurationFixtures = [
       "authorized"
     )
   ),
-  zoteroConfiguration(desktop({ userId: "123", storageMode: "zotero-storage" }, null, "unavailable", "unavailable"))
+  zoteroConfiguration(desktop({ userId: "123", storageMode: "zotero-storage" }, null, "unavailable", "unavailable")),
+  zoteroConfiguration(
+    desktop(
+      { userId: "123", storageMode: "zotero-storage" },
+      { accountConnected: true, userId: "123", downloadMode: "on-demand" },
+      "authorized"
+    ),
+    { editStorage: true }
+  ),
+  zoteroConfiguration(
+    online(
+      { mode: "online-library", userId: "123", storageMode: "metadata-only" },
+      { userId: "123", permissions: { library: true } }
+    ),
+    { editStorage: true }
+  )
 ];

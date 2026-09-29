@@ -600,3 +600,15 @@ is `0.1.0-beta.2`; existing images, requirements and runtime/security settings
 are unchanged. No package was published or deployed. The Obsidian project-vault
 note was updated through Jacob Gateway on 11 September 2026; this repository's
 catalog-tags document remains authoritative for the exact vocabulary.
+
+
+## Manager configuration source pass — 29 September 2026
+
+New installed UI Configuration and Overview routes return to Manager. Native sign-in guidance explains the full return-address handoff, and completed connections omit setup counters. A pre-existing real-clock timeout test was made deterministic after a loaded-host failure; runtime timeout behavior is unchanged.
+
+Full apps tests, lint and all local builds passed. App-generated Manager previews
+were inspected in Codex's in-app browser at desktop and phone widths. This is
+source and synthetic-browser evidence, not publication, native container
+qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
+
+Project-vault documentation update is pending this source checkpoint.
