@@ -28,17 +28,26 @@ Previously connected installations keep their existing key and expiration.
 If a connection expires, enter the existing owner's credentials to reconnect;
 ScholarServer creates its own restricted key without deleting unrelated keys.
 
-## Current limits
+## Templates and current limits
 
-The initial catalog contains a connection-check workflow. Workflows created in
-n8n appear in the inventory; ScholarServer does not overwrite them. Editing an
-installed template directly in n8n prevents ScholarServer from enabling an
-unexpected revision. Use n8n to review and manage those edits.
+Manager offers reviewed templates for connection checks, research reports and
+Zotero PDF conversion. The PDF setup asks which shared attachment folder to
+process, how many PDFs to process per run, whether to use OCR, and whether to
+attach converted Markdown to Zotero. Selecting the entire shared folder requires
+an explicit choice. The supported schedule units are minutes, hours or days;
+each template shows its own allowed range.
 
-Existing Zotero automations are unchanged. Migration, credential onboarding
-within ScholarServer, and editing an installed template's settings are not yet
-available. Public webhooks and Gateway MCP access are not configured by this
-package. n8n can make outbound requests; only configure destinations you trust.
+Workflows created in n8n appear in the inventory; ScholarServer does not
+overwrite them. Editing an installed template directly in n8n prevents
+ScholarServer from enabling an unexpected revision. Use n8n to review and
+manage those edits.
+
+The older PDF worker in Zotero and its saved settings and run history remain
+separate. This package does not migrate or disable that worker, and running both
+workers against the same folder could process a PDF twice. Review and handoff
+are required before switching. Public webhooks and Gateway MCP access are not
+configured by this package. n8n can make outbound requests; configure only
+destinations you trust.
 
 ## Data and recovery
 

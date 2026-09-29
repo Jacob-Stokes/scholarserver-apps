@@ -1356,3 +1356,23 @@ no legacy schedule has been changed. Native image, package publication,
 deployment and authenticated conversion remain separate gates.
 
 Upstream references: [Schedule Trigger node ranges](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts) and [native interval validation tests](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts).
+
+## Native cadence image and development package candidate — 29 September 2026
+
+[Run 36625073029](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36625073029)
+completed successfully at source `d7ac0d2baa2a0288d7016a7462a748471f717072`.
+Both native builders passed the named qualification gates before publication;
+the 17 multi-platform manifest jobs passed. Downloaded AMD64/ARM64 receipts
+match the clean source's 19 recipe fingerprints and the named test scopes.
+The published n8n integration index
+`sha256:2e35cd83de672c779cd4daae3c64fda40584d29759017c896923d45ef04b3f60`
+contains exactly the two qualified platform manifests. Their configuration
+digests and 18 layers each match the receipts.
+
+Development package `0.1.2-manager.20260929.3` now pins that integration
+index in the manifest, Compose and source lock. Its packaged guide describes
+the PDF choices and explicitly warns that the older Zotero worker remains
+separate. This package has not been imported or installed. Manager's latest
+day-cadence source has not received a new full production build, and neither
+authenticated PDF conversion nor legacy worker migration is complete. The
+project-vault note update remains pending the existing external-write approval.

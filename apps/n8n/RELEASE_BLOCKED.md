@@ -1,18 +1,21 @@
 # Current Manager development candidate — 29 September 2026
 
-Package `0.1.2-manager.20260929.1` now selects receipt-verified native AMD64/ARM64 images
-from source `f881ada53a14cf706b237484a4165c9635a9d377`, run
-[36557464955](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36557464955).
-All seven source packages use that same image build. Manifest, Compose and source
-records agree. This closes the stale-image-source gate for this candidate.
+Package `0.1.2-manager.20260929.3` selects the n8n integration image from
+source `d7ac0d2baa2a0288d7016a7462a748471f717072`, qualified on both
+native architectures and published by
+[run 36625073029](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36625073029).
+The image index is
+`sha256:2e35cd83de672c779cd4daae3c64fda40584d29759017c896923d45ef04b3f60`.
+The downloaded receipts bind source fingerprint
+`sha256:f942d420cbab783731d4434d0e29b6c3ac0c7fd165ca02211d3ec9c3fbf203b5`
+to the named native gates. The published AMD64 and ARM64 manifests match the
+receipts. The n8n runtime image, data, permissions and endpoint declarations
+remain pinned to their previous values.
 
-This is ready for the paired development qualification/update workflow, not an
-unrestricted official catalog publication. Final paired-core compatibility,
-fresh-install and authenticated retained-host acceptance remain separate gates.
-App-specific account, data and recovery limits are recorded in
-[the current report](../../docs/manager-configuration-20260929.md).
-Earlier entries below describe historical candidates and do not identify the
-currently selected source version or installed package.
+This closes the stale-image-source gate for the candidate; it does not import
+the package or update an installation. Final paired-core build, fresh-install,
+authenticated PDF conversion, and the older Zotero worker's reviewed handoff
+remain separate gates. Earlier entries below are historical candidates.
 
 # n8n release acceptance
 
