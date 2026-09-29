@@ -91,8 +91,21 @@ def main():
         assert output == "0.0.14", output
         assert probe(controller, "import Database from '/app/node_modules/better-sqlite3/lib/index.js'; const db=new Database(':memory:'); console.log(db.prepare('select 1 as ok').get().ok); db.close();") == "1"
         before = (root / "client/installed/receipt.json").read_bytes()
-        docker("restart", controller)
+        docker("stop", controller)
+        # Synthetic completed account progress exercises restart without a real
+        # account/token, vault enrollment or download being invented by the test.
+        saved_status = json.loads((root / "runtime/status.json").read_text())
+        saved_status.update(profile="official", state="vault-selection-required")
+        (root / "runtime/status.json").write_text(json.dumps(saved_status))
+        os.chown(root / "runtime/status.json", 1000, 1000)
+        docker("start", controller)
         wait_for("Restart preserves downloaded client without another install", lambda: status(controller)["officialClient"]["phase"] == "installed")
+        assert status(controller)["state"] == "vault-selection-required"
+        # No real account is connected. Failure to list vaults must report a
+        # failed observation while preserving the saved account step.
+        assert probe(controller, "console.log((await fetch('http://127.0.0.1:8080/api/configuration/setup')).status)") == "503"
+        assert json.loads((root / "runtime/status.json").read_text())["state"] == "vault-selection-required"
+        assert not (root / "runtime/enrollment.json").exists()
         assert (root / "client/installed/receipt.json").read_bytes() == before
         assert (root / "config/migration-proof").read_text() == "Synthetic account configuration sentinel"
 

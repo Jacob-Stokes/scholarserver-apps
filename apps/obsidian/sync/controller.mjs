@@ -26,7 +26,11 @@ import {
   repairDeviceOnboarding
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
-import { officialCommandFailure, unconfiguredVaultRejection } from "./official-failure.mjs";
+import {
+  officialCommandFailure,
+  restoredUnenrolledOfficialState,
+  unconfiguredVaultRejection
+} from "./official-failure.mjs";
 import { createResearchNote } from "./research-note.mjs";
 import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 import { createVaultBinding } from "./vault-binding.mjs";
@@ -118,9 +122,13 @@ async function ensureServiceToken() {
   }
 }
 
-async function runOb(args, { credentialKind = null } = {}) {
+async function runOb(args, { credentialKind = null, timeoutMs } = {}) {
   if (state.profile !== "official") throw new Error("Official Sync is not selected");
   const entrypoint = await officialClient.entrypoint();
+  let commandTimeout = timeoutMs;
+  if (commandTimeout === undefined) {
+    commandTimeout = credentialKind === "account" ? 55_000 : 15 * 60_000;
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["/app/official-command.mjs"], {
       cwd: vaultPath,
@@ -130,13 +138,10 @@ async function runOb(args, { credentialKind = null } = {}) {
     child.stdin.on("error", () => {});
     child.stdin.end(JSON.stringify({ entrypoint, args }));
     let timedOut = false;
-    const deadline = setTimeout(
-      () => {
-        timedOut = true;
-        child.kill("SIGKILL");
-      },
-      credentialKind === "account" ? 55_000 : 15 * 60_000
-    );
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, commandTimeout);
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -160,7 +165,7 @@ async function runOb(args, { credentialKind = null } = {}) {
 }
 
 async function listRemoteVaults() {
-  const output = await runOb(["sync-list-remote", "--json"]);
+  const output = await runOb(["sync-list-remote", "--json"], { timeoutMs: 15_000 });
   const parsed = JSON.parse(output || "[]");
   return Array.isArray(parsed) ? parsed : (parsed.vaults ?? []);
 }
@@ -462,7 +467,8 @@ async function currentConfiguration({ values = {} } = {}) {
     try {
       vaults = await listRemoteVaults();
     } catch {
-      // The section remains readable; the action cannot select a vault that is not listed.
+      // Fail the observation so Manager retains its last accepted form and draft.
+      throw new ConfigurationActionError(503, "Could not refresh remote vaults. Check your connection and retry.");
     }
   }
   let deviceConnectionUrl = null;
@@ -586,8 +592,7 @@ async function action(request) {
         }
         return { ...(await statusSummary()), vaults };
       } catch {
-        if (state.state !== "setup-required")
-          await updateStatus({ state: "setup-required", profile: state.profile === "official" ? "official" : "none" });
+        // A failed observation does not undo completed account setup.
         return statusSummary();
       }
     }
@@ -685,6 +690,13 @@ async function restore() {
     };
     if ((await officialClient.status()).phase === "installed") await startContinuousSync();
     else state.state = "client-install-required";
+  } else if (installedProfile === "official") {
+    const savedStatus = await readJson(statusPath, null);
+    if ((await officialClient.status()).phase === "installed") {
+      state.state = restoredUnenrolledOfficialState(savedStatus);
+    } else {
+      state.state = "client-install-required";
+    }
   }
   await updateStatus();
 }

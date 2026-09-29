@@ -14,7 +14,27 @@ import {
   obsidianConfiguration,
   validateObsidianConfigurationAction
 } from "./configuration.mjs";
-import { officialCommandFailure, unconfiguredVaultRejection } from "./official-failure.mjs";
+import {
+  officialCommandFailure,
+  restoredUnenrolledOfficialState,
+  unconfiguredVaultRejection
+} from "./official-failure.mjs";
+
+test("restart resumes completed official account setup without treating an unfinished download as enrollment", () => {
+  const saved = { profile: "official", state: "vault-selection-required", remoteVault: null };
+  const before = structuredClone(saved);
+  assert.equal(restoredUnenrolledOfficialState(saved), "vault-selection-required");
+  assert.deepEqual(saved, before);
+  for (const status of [
+    null,
+    { ...saved, profile: "livesync" },
+    { ...saved, state: "initial-sync" },
+    { ...saved, state: "ready" },
+    { ...saved, state: "recovery-required" }
+  ]) {
+    assert.equal(restoredUnenrolledOfficialState(status), "setup-required");
+  }
+});
 
 test("LiveSync advances through preparation, explicit device output, joining and ready without echoing credentials", () => {
   const [setup, preparing, device, joining, ready] = obsidianConfigurationFixtures.slice(5, 10);

@@ -1,5 +1,14 @@
 import { ConfigurationActionRejected } from "@scholarserver/controller-runtime/configuration-actions";
 
+export function restoredUnenrolledOfficialState(savedStatus) {
+  // Completed enrollment and interrupted initial downloads require their own
+  // recovery checks; only the completed account step can resume here.
+  if (savedStatus?.profile === "official" && savedStatus.state === "vault-selection-required") {
+    return "vault-selection-required";
+  }
+  return "setup-required";
+}
+
 export function officialCommandFailure(credentialKind, output) {
   if (credentialKind === "vault") {
     // The official client validates the key before saving its vault connection.

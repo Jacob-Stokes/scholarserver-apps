@@ -1,5 +1,30 @@
 # Obsidian development notes
 
+## Paid Sync account progress after restart — 30 September 2026
+
+Updating the retained paid Sync instance reproduced a return to Account even
+though the downloaded client, saved account configuration and a read-only remote
+vault listing still worked. Startup restored completed enrollment but discarded
+the completed account step before enrollment. The native configuration route
+then displayed that reset state without invoking the legacy status reconciler.
+
+Startup now resumes only a saved official `vault-selection-required` state when
+the approved client is installed. It does not treat saved ready/initial-sync
+labels as completed enrollment, replay credentials or discard the vault binding.
+Remote vault reads have a 15-second deadline. A failed native configuration read
+returns a failure so Manager keeps its accepted form/draft, and the status reader
+does not reset account progress after an observation failure.
+
+Source regression tests and the full apps suite/lint pass. The native final-image
+harness now seeds synthetic completed-account progress in its own disposable
+runtime, restarts the controller and verifies an unavailable vault listing does
+not erase that step or manufacture enrollment. Native qualification is required
+before selecting a new immutable image/package. The retained instance's supported
+read-only status reconciliation restored Choose vault without submitting any
+password or retrying vault setup. A real paid-account download/device roundtrip
+still requires the owner to finish the encrypted vault connection. The project
+vault note/index update remains pending; no vault connector was used.
+
 ## Manager LiveSync status parity — 27 September 2026
 
 The isolated LiveSync installation's Manager Configuration tab reported
