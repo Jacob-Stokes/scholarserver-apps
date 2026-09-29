@@ -79,3 +79,27 @@ already redirected away from its former diagnostic panel. Track this as a
 remaining migration gap rather than treating the normal catalog as complete
 operation parity. The project-vault append remains pending the
 existing request for approval to transmit project details.
+
+## Qualified package batch
+
+Native AMD64 and ARM64 build, controller/restart/LiveSync gates and the
+Docling/Logseq/Zotero development gates passed for source
+`439a9bc182e9ac31bf9100d130dc4ad7b13e1490` in
+[run 36583182239](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36583182239).
+All 19 published multi-architecture image indexes were checked against both
+build receipts: child manifest/config hashes, actual architecture, root filesystem
+layer identities, source revision and source fingerprint labels. Qualification
+and development summaries match their build-receipt hashes.
+
+The seven package manifests now reserve new `manager.20260929.2` versions and pin
+those immutable indexes in both their image declarations and Compose templates.
+The source lock validates against the current metadata-only source tree. Single
+primary-purpose tags are included. These are package source candidates, not an
+installed batch or evidence of paid Obsidian Sync completing.
+
+Deployment still needs recovery of an existing uncertain configuration request:
+core cutover rejects unresolved receipts, and Manager currently scopes receipt
+reads to the installed package version. Preserve history and establish supported
+upgrade/reconciliation before installing the recovery package. Do not delete the
+receipt, replay setup, or silently relax the cutover guard. The downloaded official
+client also requires a reviewed preservation path under the update tooling.

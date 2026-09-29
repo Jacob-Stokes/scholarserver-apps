@@ -116,11 +116,11 @@ hardening:
     - ALL
 images:
   - service: helper
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:2dd4b0e3885d20bf14e83434223983cb86a44f68cc35e8d2540e90cb5307f382
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-helper@sha256:cc48c820e34d377d16920b45c617a2dfd1e9b681ce0d004d0e774fce6510ebf9
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:b2724770d068530be2b38b013774eee6245f0c74def6c53891f81c332fff208d
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-mcp@sha256:e6826480d8cc139c77724f89d233143584dbc8ca830527f5987bedd9567d3919
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:138a19cb6bff814d88e118ff49c219925860dcb8cbdebe76b686ca580b9e5840
+    reference: ghcr.io/jacob-stokes/scholarserver-logseq-sync@sha256:0e104a79f6eb9b706ae84b5bd23471107188eb8ec8ca193f4cb394258b958a52
   - service: editor
     reference: ghcr.io/yshalsager/logseq-selfhost-web@sha256:46d425b4eafdf5552b22ecefb58ed37d547460f47bec7f25ab77f75520ac4a1d
 data:

@@ -1,6 +1,6 @@
 services:
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-files@sha256:81c0c5787fe676b48605d11999c364d19610cb8aa78f5705d313a669a684cc2b
+    image: ghcr.io/jacob-stokes/scholarserver-files@sha256:8a11a3077db7f83fade235a1254519fa218427764e4a927943c772d98d9daf56
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

@@ -57,3 +57,9 @@ Application backups include vaults, credentials and the recorded client version,
 but exclude the downloaded executable directory. Restore to a new server asks
 before reinstalling. Keep older backups private; they are not rewritten.
 This packaging separation does not establish permission for managed hosting.
+
+Configure this installation in **Applications → Manage → Configuration**.
+An account MFA code comes from your authenticator; it is separate from the vault
+encryption password requested after sign-in. A recognised incorrect vault
+password leaves the vault choice available for correction. An uncertain outcome
+must be checked before submitting another connection request.

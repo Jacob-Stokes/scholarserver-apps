@@ -67,15 +67,15 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:c1d28c8fa427e65e1648a318027226637b5d88173d1ba7ae679d1097623f0870
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:ddbd0f3ba98905ef25c50bb6ca6d4cb48ebd23d4354b37e8915820d8452c9ac4
   - service: api
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:09ef94121f7bead9c87018e3527b87b1f6a1c775dce61d1c093fba637afa299e
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:7d383fbbe5b3db3d443f0956d80d042e1af349a4daf1e46600ce6e0602d4ca7d
   - service: mcp
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:83717170f355340a79b644acd90de7cb34ef747caf85cb79a9943f4985a1a5e7
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:04097da36e1baf86ea21a5dd23549d27d3aeddaad7f9f64b410abe24c850a60a
   - service: livesync-couchdb
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:b33c10728ab970734af7116d7219ec862400a7595e4bc1cfe360bff762d182f8
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:458854857c98097a02652e6c5d8293a206e2471b7e5f7c9f0e36dfb139a037ef
   - service: livesync-worker
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:7725158d64ae37da17e952c2335c3cf1354a564e6a754f70b7330dc31c083801
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:e8234c3c8a6126b3900ae4d6e76596a5e430825bc5f4db6ddcc4c2ffec3fa879
 data:
   - id: official-client
     mountPath: /official-client
