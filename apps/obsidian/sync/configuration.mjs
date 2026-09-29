@@ -31,12 +31,17 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     summary: [],
     actions: []
   };
-  if (status.lastError) section.notices.push({ kind: "error", text: status.lastError });
+  const errors = [status.lastError];
+  if (status.profile === "livesync") errors.push(status.liveSyncWorker?.lastError);
+  if (status.profile === "official") errors.push(status.officialClient?.error);
+  for (const error of new Set(errors)) {
+    if (typeof error === "string" && error) section.notices.push({ kind: "error", text: error.slice(0, 1000) });
+  }
   if (status.state === "recovery-required") {
     section.stage = { id: "recovery", label: "Recovery needed", index: 1, total: 6 };
     section.notices.push({
       kind: "warning",
-      text: "Restore the original vault connection and installation choice. Setup cannot safely be replayed."
+      text: "Restore the original vault connection and installation choice, then restart this application and check its status. Setup cannot safely be replayed."
     });
     return section;
   }
@@ -77,6 +82,20 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
   if (status.profile === "official") {
     if (status.officialClient?.phase !== "installed") {
       section.stage = { id: "client", label: "Official client", index: 2, total: 6 };
+      const phase = status.officialClient?.phase;
+      const installing = phase === "downloading" || phase === "verifying";
+      if (installing) {
+        section.summary.push({
+          label: "Download",
+          value: phase === "verifying" ? "Verifying download" : "Downloading"
+        });
+      }
+      if (typeof status.officialClient?.approvedVersion === "string") {
+        section.summary.push({ label: "Client version", value: status.officialClient.approvedVersion });
+      }
+      section.instructions = [
+        { title: "Obsidian's terms", link: { label: "Read the terms", url: "https://obsidian.md/terms" } }
+      ];
       section.fields = [
         {
           id: "confirmed",
@@ -85,7 +104,12 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
           required: true
         }
       ];
-      section.actions = [submit("install-client", "Install official client", ["confirmed"])];
+      section.actions = [
+        submit("install-client", "Install official client", ["confirmed"], {
+          disabled: installing,
+          ...(installing ? { reason: "Wait for the current download to finish." } : {})
+        })
+      ];
       section.notices.push({
         kind: "info",
         text: "Obsidian Sync requires your own subscription. The official client is downloaded after confirmation."

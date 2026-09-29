@@ -69,3 +69,24 @@ Files uses Manager's existing folder and AI controls; its runtime acceptance is
 still to do. Paperless is an unreleased draft without an installable package.
 No retained server, personal desktop profile, account or research dataset was
 changed in this source pass.
+
+## Failure-state parity follow-up
+
+A direct comparison with the old panels found omitted errors in the native
+sections. Obsidian now reports the active worker/client errors, deduplicates the
+same reported failure, and shows official-client download/verification progress
+with a disabled second-install action. It retains the upstream terms link and
+reviewed client version. FreshRSS retains worker errors alongside its setup
+instructions. Zotero retains the linked-folder automation warning.
+
+The app-generated preview set now has 48 sections. Targeted failure regressions,
+the complete `npm test` command and `npm run lint` passed. The paired core parser
+accepted all 48 sections, and all five added states were inspected in Codex's
+in-app browser. The remaining runtime and deployment gates are unchanged.
+
+Six new unpublished package candidates now use the suffix
+`manager.20260929.1`: Obsidian 0.5.2, Zotero 0.5.12, Logseq/FreshRSS/n8n 0.1.2,
+and Docling 0.3.7. Obsidian declares the official terms link origin required by
+the native form contract. Existing image references are still pending replacement
+and source-lock qualification; these candidates must not be installed or published
+until that gate passes. Previously published package versions remain immutable.

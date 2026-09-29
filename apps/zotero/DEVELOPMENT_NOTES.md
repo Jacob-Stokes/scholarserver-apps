@@ -394,3 +394,8 @@ source and synthetic-browser evidence, not publication, native container
 qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
 
 Project-vault documentation update is pending this source checkpoint.
+
+A subsequent parity review retained failure information previously visible only
+on the standalone screen: active sync/download errors and download progress in
+Obsidian, worker errors in FreshRSS, and linked-folder automation warnings in
+Zotero. The five added synthetic states also exercise these in Manager.

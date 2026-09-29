@@ -13,6 +13,16 @@ export async function configurationFixtureCases() {
   return {
     "freshrss-unlinked": await configurationSection(unlinked, "account"),
     "freshrss-linked": await configurationSection(ready, "account"),
-    "freshrss-appearance": await configurationSection(ready, "appearance")
+    "freshrss-appearance": await configurationSection(ready, "appearance"),
+    "freshrss-worker-error": await configurationSection(
+      fixtureSetup({
+        phase: "preparing",
+        ready: false,
+        username: "researcher",
+        signIn: "scholarserver",
+        error: "The reader is not responding yet."
+      }),
+      "account"
+    )
   };
 }

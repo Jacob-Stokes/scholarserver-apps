@@ -63,5 +63,13 @@ export const zoteroConfigurationFixtures = [
       { userId: "123", permissions: { library: true } }
     ),
     { editStorage: true }
-  )
+  ),
+  zoteroConfiguration({
+    ...desktop(
+      { userId: "123", storageMode: "linked-folder" },
+      { accountConnected: true, userId: "123", downloadMode: "on-demand" },
+      "authorized"
+    ),
+    linkedFolderAutomation: false
+  })
 ];

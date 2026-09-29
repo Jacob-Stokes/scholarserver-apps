@@ -111,3 +111,18 @@ test("invalid appearance input creates no receipt", async (t) => {
   );
   assert.equal(await actions.read(input.requestId), null);
 });
+
+test("native account configuration retains a worker failure rather than presenting only setup instructions", async () => {
+  const section = await configurationSection(
+    {
+      status: async () => ({ ready: false, phase: "preparing", error: "The reader is not responding yet." }),
+      appearance: async () => ({ style: "original" })
+    },
+    "account"
+  );
+  assert.equal(
+    section.notices.some((notice) => notice.kind === "error" && notice.text === "The reader is not responding yet."),
+    true
+  );
+  assert.equal(section.actions[0].disabled, true);
+});

@@ -27,6 +27,11 @@ export async function configurationSection(setup, sectionId) {
     actions: []
   };
   if (sectionId === "account") {
+    const notices = [];
+    if (typeof status.error === "string" && status.error)
+      notices.push({ kind: "error", text: status.error.slice(0, 1000) });
+    if (status.phase === "preparing")
+      notices.push({ kind: "info", text: "Your reader is being prepared. Check status before continuing." });
     return {
       ...base,
       title: "Your sign-in",
@@ -34,10 +39,7 @@ export async function configurationSection(setup, sectionId) {
         ? "Your reader uses your ScholarServer sign-in."
         : "Link this reader to your ScholarServer sign-in before opening it.",
       ...(!ready ? { stage: { id: "account", label: "Your sign-in", index: 1, total: 2 } } : {}),
-      notices:
-        status.phase === "preparing"
-          ? [{ kind: "info", text: "Your reader is being prepared. Check status before continuing." }]
-          : [],
+      notices,
       summary: [
         { label: "Reader account", value: status.username ?? "Not created" },
         { label: "Sign-in", value: linked ? "ScholarServer" : "Not linked" },

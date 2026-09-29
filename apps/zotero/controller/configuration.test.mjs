@@ -117,3 +117,20 @@ test("a connected library can edit attachment settings without replaying account
   assert.equal(unavailable.stage.id, "recovery");
   assert.deepEqual(unavailable.actions, []);
 });
+
+test("a connected linked-folder library retains its automation warning", () => {
+  const section = zoteroConfiguration({
+    connectionMode: "complete-workspace",
+    state: "ready",
+    storageMode: "linked-folder",
+    linkedFolderAutomation: false
+  });
+  assert.equal(
+    section.notices.some((notice) => notice.kind === "warning" && notice.text.includes("ZotMoov")),
+    true
+  );
+  assert.equal(
+    section.actions.some((action) => action.id === "start-account-link"),
+    false
+  );
+});

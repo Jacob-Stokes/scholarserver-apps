@@ -219,3 +219,39 @@ test("LiveSync action receipt survives reload without storing passphrase or repl
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("native setup retains worker/download failures and blocks a second in-progress download", () => {
+  const worker = obsidianConfiguration({
+    profile: "livesync",
+    state: "ready",
+    lastError: "Sync stopped.",
+    liveSyncWorker: { running: false, lastError: "Sync stopped." }
+  });
+  assert.deepEqual(
+    worker.notices.filter((notice) => notice.kind === "error"),
+    [{ kind: "error", text: "Sync stopped." }]
+  );
+  for (const phase of ["downloading", "verifying"]) {
+    const pending = obsidianConfiguration({
+      profile: "official",
+      state: "client-install-required",
+      officialClient: { phase, approvedVersion: "1.0.0" }
+    });
+    assert.equal(pending.actions[0].disabled, true);
+    assert.equal(
+      pending.summary.some((item) => item.label === "Download"),
+      true
+    );
+    assert.equal(pending.instructions[0].link.url, "https://obsidian.md/terms");
+  }
+  const failed = obsidianConfiguration({
+    profile: "official",
+    state: "client-install-required",
+    officialClient: { phase: "failed", error: "Download verification failed." }
+  });
+  assert.equal(failed.actions[0].disabled, false);
+  assert.equal(
+    failed.notices.some((notice) => notice.kind === "error" && notice.text === "Download verification failed."),
+    true
+  );
+});

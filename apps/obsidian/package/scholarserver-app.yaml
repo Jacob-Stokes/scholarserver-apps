@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.1-private-origin.20260927.3
+packageVersion: 0.5.2-manager.20260929.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -173,6 +173,8 @@ presentation:
   details:
     description: Connect your notes in a Markdown vault.
     tags: [Notes, Vaults, Sync]
+    links:
+      - { label: Obsidian terms, kind: website, url: https://obsidian.md/terms }
   icon:
     path: assets/icons/obsidian.webp
     mediaType: image/webp

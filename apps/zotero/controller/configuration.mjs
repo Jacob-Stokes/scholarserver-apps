@@ -81,8 +81,15 @@ export function zoteroConfiguration(status, draft = {}) {
       },
       { label: "File downloads", value: downloadLabels[status.downloadMode] || status.downloadMode || "Not applicable" }
     ];
-    if (status.storageMode === "linked-folder")
+    if (status.storageMode === "linked-folder") {
       section.summary.push({ label: "Linked folder", value: status.linkedFolder || "Not reported" });
+      if (status.linkedFolderAutomation === false) {
+        section.notices.push({
+          kind: "warning",
+          text: "Linked-folder automation is not enabled. Check ZotMoov in the Zotero desktop."
+        });
+      }
+    }
     if (online) {
       section.summary.push(
         { label: "Make changes", value: status.permissions?.write ? "Allowed" : "Read only" },

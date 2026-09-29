@@ -36,5 +36,18 @@ export const obsidianConfigurationFixtures = [
   obsidianConfiguration(status("livesync", "livesync-device-setup"), {
     deviceConnectionUrl: "https://vault.example.ts.net:8443",
     values: { repairConnection: true }
-  })
+  }),
+  obsidianConfiguration(
+    status("livesync", "ready", {
+      liveSyncWorker: { running: false, lastError: "The sync worker could not reconnect." }
+    })
+  ),
+  obsidianConfiguration(
+    status("official", "client-install-required", { officialClient: { phase: "verifying", approvedVersion: "1.0.21" } })
+  ),
+  obsidianConfiguration(
+    status("official", "client-install-required", {
+      officialClient: { phase: "failed", error: "The download could not be verified." }
+    })
+  )
 ];
