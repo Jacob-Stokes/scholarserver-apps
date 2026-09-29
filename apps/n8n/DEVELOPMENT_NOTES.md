@@ -1305,3 +1305,25 @@ Project-vault documentation update is pending this source checkpoint.
 Removed the standalone catalog, workflow-list and configuration presentation, their unused readers and catalog styles. Manager owns discovery and lifecycle presentation. The explicit automation-setup?managerSetup=1 embed retains connection recovery and a focused AutomationSetup form with one draft and request identity. Updated native browser gates use that embed, then check enable/disable through the integration API; they no longer claim Manager catalog/lifecycle browser acceptance.
 
 Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.
+
+## PDF processing choices in the automation owner — 29 September 2026
+
+The new `zotero-pdf-markdown` template revision 4 keeps processing in n8n and
+starts paused. Its app-owned Manager setup form now offers a per-run PDF limit,
+OCR and conversion-only or Markdown-attachment choice. The default schedule is
+60 minutes instead of one minute. The scoped integration enforces the selected
+limit and OCR option; conversion-only runs verify the finished Docling job and
+skip the Zotero attachment write. Existing grants without these fields keep
+their earlier 100-PDF discovery bound, OCR-off behavior and attachment action.
+Malformed explicit options fail closed. The paired core form parser accepts the
+new eight-field v2 form without Manager-specific PDF rules.
+
+This is source work toward moving the older Zotero PDF worker into Automations,
+not a migration. The Zotero worker, saved settings and run history remain intact.
+Intervals above 60 minutes and the existing empty-folder/root selection cannot
+yet be represented by this n8n setup form, so neither may be imported silently.
+There is no live workflow handoff, native image, package update, browser
+acceptance or authenticated conversion check in this pass. Full app tests, lint
+and builds passed; the `n8n-app` image source lock is deliberately stale until a
+new native image is qualified. Project-vault documentation remains pending the
+existing external-write approval.

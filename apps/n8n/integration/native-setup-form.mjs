@@ -29,7 +29,7 @@ function folderHint(template, folder) {
   return `Notes are saved in ${output}. Existing notes are not replaced.`;
 }
 
-const valueKeys = ["name", "source", "target", "folder", "interval"];
+const valueKeys = ["name", "source", "target", "folder", "interval", "limit", "ocr", "attachMarkdown"];
 const appIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 export class NativeSetupFormError extends Error {
@@ -160,6 +160,9 @@ export class N8nNativeSetupForm {
 
     const initial = suppliedValues === undefined;
     const values = initial ? {} : validateValues(suppliedValues);
+    if (template.research !== "convert-pdfs" && ["limit", "ocr", "attachMarkdown"].some((key) => key in values)) {
+      throw new NativeSetupFormError("Unknown setup form field");
+    }
     const initialSource = sources.length === 1 ? choiceFor(sources[0]) : "";
     const sourceValue = initial ? initialSource : (values.source ?? "");
     const selectedSource = matchingChoice(sources, sourceValue);
@@ -257,6 +260,54 @@ export class N8nNativeSetupForm {
     ].map((field) =>
       Object.fromEntries(Object.entries(field).filter(([, value]) => value !== undefined && value !== false))
     );
+    if (template.research === "convert-pdfs") {
+      const limitValue = values.limit ?? "3";
+      const ocrValue = values.ocr ?? "false";
+      const attachValue = values.attachMarkdown ?? "true";
+      const limit = Number(limitValue);
+      const limitError =
+        !Number.isInteger(limit) || limit < 1 || limit > 100 ? "Enter a whole number from 1 to 100." : undefined;
+      const ocrError = ["true", "false"].includes(ocrValue) ? undefined : "Choose whether to use OCR.";
+      const attachError = ["true", "false"].includes(attachValue) ? undefined : "Choose whether to attach Markdown.";
+      const pdfFields = [
+        {
+          id: "limit",
+          label: "PDFs per run",
+          type: "number",
+          value: limitValue,
+          min: 1,
+          max: 100,
+          error: limitError
+        },
+        {
+          id: "ocr",
+          label: "Use OCR for scanned PDFs",
+          type: "select",
+          value: ocrValue,
+          options: [
+            { value: "false", label: "No" },
+            { value: "true", label: "Yes" }
+          ],
+          error: ocrError
+        },
+        {
+          id: "attachMarkdown",
+          label: "Attach Markdown to Zotero",
+          type: "select",
+          value: attachValue,
+          options: [
+            { value: "true", label: "Yes" },
+            { value: "false", label: "No, convert only" }
+          ],
+          error: attachError
+        }
+      ];
+      fields.push(
+        ...pdfFields.map((field) =>
+          Object.fromEntries(Object.entries(field).filter(([, value]) => value !== undefined))
+        )
+      );
+    }
 
     const form = {
       version,
@@ -313,6 +364,11 @@ export class N8nNativeSetupForm {
       [destination.binding]: target.id,
       folder: selected.values.folder
     };
+    if (template.research === "convert-pdfs" && requireCompleteForm) {
+      scope.limit = Number(selected.values.limit);
+      scope.ocr = selected.values.ocr === "true";
+      scope.attachMarkdown = selected.values.attachMarkdown === "true";
+    }
     if (requireCompleteForm) {
       researchConfiguration(template, { research: scope });
     }

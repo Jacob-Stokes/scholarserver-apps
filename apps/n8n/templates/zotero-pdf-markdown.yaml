@@ -1,14 +1,14 @@
 schemaVersion: 1
 id: zotero-pdf-markdown
-version: 3
+version: 4
 name: Automatically convert new Zotero PDFs
-description: Check the shared Zotero–Docling folder every minute and attach converted Markdown to the matching paper. Existing PDFs are also checked when enabled; completed results are reused. Choose a folder with fewer than 100 PDFs. OCR is off; unmatched files are skipped.
+description: Process PDFs in a shared Zotero–Docling folder. Choose the run interval, per-run limit, OCR and whether to attach Markdown. Existing PDFs are checked when enabled; completed conversions are reused. Unmatched files are skipped.
 research: convert-pdfs
 presentation:
   tags: [PDFs, Conversion]
-  summary: "Watch a shared folder for Zotero PDFs and attach Markdown automatically. Checks every minute by default; OCR is off."
+  summary: "Convert linked Zotero PDFs with Docling. Choose the schedule, PDF limit, OCR and optional Markdown attachments."
   maturity: preview
-  effects: "Converts matching PDFs and attaches Markdown; existing results are reused."
+  effects: "Converts matching PDFs and optionally attaches Markdown; existing results are reused."
   ai: none
 requirements:
   - binding: zotero
@@ -31,7 +31,7 @@ workflow:
       typeVersion: 1
       position: [-80, -220]
       parameters:
-        content: "## 1 · Find new PDFs\nCheck the selected folder every minute by default. Process PDFs one at a time; skip files without exactly one matching Zotero attachment."
+        content: "## 1 · Find new PDFs\nCheck the selected folder on the chosen schedule. Process up to the selected limit one PDF at a time; skip files without exactly one matching Zotero attachment."
         width: 1360
         height: 600
         color: 4
@@ -41,7 +41,7 @@ workflow:
       typeVersion: 1
       position: [1340, -220]
       parameters:
-        content: "## 2 · Convert with Docling\nReuse completed results, or start a conversion and check its status. OCR is off."
+        content: "## 2 · Convert with Docling\nReuse completed results, or start a conversion with the selected OCR setting and check its status."
         width: 760
         height: 600
         color: 5
@@ -51,7 +51,7 @@ workflow:
       typeVersion: 1
       position: [2160, -220]
       parameters:
-        content: "## 3 · Save to Zotero\nAttach Markdown to the original paper, then continue to the next PDF. Existing attachments are reused."
+        content: "## 3 · Finish each PDF\nAttach Markdown to the original paper when selected, then continue to the next PDF. Existing attachments are reused."
         width: 460
         height: 600
         color: 4
@@ -79,7 +79,7 @@ workflow:
       parameters:
         rule:
           interval:
-            - {field: minutes, minutesInterval: 1}
+            - {field: minutes, minutesInterval: 60}
     - id: discover
       name: Find shared PDFs
       type: n8n-nodes-base.httpRequest

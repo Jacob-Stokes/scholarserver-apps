@@ -97,7 +97,7 @@ test("reads and safely edits saved hourly and minute schedules", async (t) => {
       const valueFixture = await fixture(child, template);
       const before = await valueFixture.service.read(valueFixture.automationId);
       assert.equal(before.unit, unit);
-      assert.equal(before.savedValue, 1);
+      assert.equal(before.savedValue, template === minutes ? 60 : 1);
       assert.equal(before.canEdit, true);
       assert.equal(before.editState, "none");
       assert.equal(before.label, "Run every");

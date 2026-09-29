@@ -173,7 +173,10 @@ test("initial evaluation selects compatible same-workspace apps and leaves the r
   assert.ok(values.source);
   assert.ok(values.target);
   assert.equal(values.folder, "");
-  assert.equal(values.interval, "1");
+  assert.equal(values.interval, "60");
+  assert.equal(values.limit, "3");
+  assert.equal(values.ocr, "false");
+  assert.equal(values.attachMarkdown, "true");
   assert.equal(form.canSubmit, false);
   const target = form.fields.find((field) => field.id === "target");
   assert.deepEqual(
@@ -220,10 +223,45 @@ test("supplied drafts are preserved rather than replaced by defaults or current 
   const { service } = fixture();
   const draft = { name: "", source: "stale-source", target: "stale-target", folder: "Draft", interval: "7" };
   const form = await service.evaluate(templateId, draft);
-  assert.deepEqual(valuesFrom(form), draft);
+  assert.deepEqual(valuesFrom(form), { ...draft, limit: "3", ocr: "false", attachMarkdown: "true" });
   assert.equal(form.canSubmit, false);
   assert.match(form.fields.find((field) => field.id === "source").error, /current Zotero/);
   assert.equal(form.fields.find((field) => field.id === "target").disabled, true);
+});
+
+test("PDF setup retains the selected batch, OCR and conversion-only choices", async () => {
+  const { service, calls } = fixture();
+  const values = {
+    ...valuesFrom(await service.evaluate(templateId)),
+    folder: "Papers",
+    interval: "45",
+    limit: "7",
+    ocr: "true",
+    attachMarkdown: "false"
+  };
+  const form = await service.evaluate(templateId, values);
+  assert.equal(form.canSubmit, true);
+  assert.deepEqual(valuesFrom(form), values);
+  const automationId = randomUUID();
+  await service.submit(templateId, values, automationId);
+  assert.deepEqual(calls.installs[0][1], {
+    minutesInterval: 45,
+    research: {
+      workspaceId: "personal",
+      zotero: "zotero-one",
+      docling: "docling-one",
+      folder: "Papers",
+      limit: 7,
+      ocr: true,
+      attachMarkdown: false
+    }
+  });
+  for (const invalid of [{ limit: "101" }, { limit: "0" }, { ocr: "sometimes" }, { attachMarkdown: "" }]) {
+    const blocked = await service.evaluate(templateId, { ...values, ...invalid });
+    assert.equal(blocked.canSubmit, false);
+    await assert.rejects(service.submit(templateId, { ...values, ...invalid }, randomUUID()), NativeSetupFormError);
+  }
+  assert.equal(calls.installs.length, 1);
 });
 
 test("unknown fields and invalid schedules are rejected before any client or installation write", async () => {
@@ -441,7 +479,16 @@ test("both negotiated versions preserve an explicit empty draft instead of resto
   for (const version of [2, 1]) {
     const form = await service.evaluate(templateId, {}, version);
     assert.equal(form.version, version);
-    assert.deepEqual(valuesFrom(form), { name: "", source: "", target: "", folder: "", interval: "" });
+    assert.deepEqual(valuesFrom(form), {
+      name: "",
+      source: "",
+      target: "",
+      folder: "",
+      interval: "",
+      limit: "3",
+      ocr: "false",
+      attachMarkdown: "true"
+    });
     assert.equal(form.canSubmit, false);
     assert.equal(form.fields.find((field) => field.id === "target").disabled, true);
     assert.equal(form.fields.find((field) => field.id === "folder").disabled, true);
@@ -478,7 +525,7 @@ test("malformed v2 source tuples cannot unlock the target picker or authorize a 
   for (const source of invalidSources) {
     const values = { ...draft, source };
     const form = await service.evaluate(templateId, values, 2);
-    assert.deepEqual(valuesFrom(form), values);
+    assert.deepEqual(valuesFrom(form), { ...values, limit: "3", ocr: "false", attachMarkdown: "true" });
     assert.equal(form.fields.find((field) => field.id === "target").disabled, true);
     assert.equal(form.canSubmit, false);
     await assert.rejects(service.folders(templateId, values, ""), NativeSetupFormError);
@@ -607,7 +654,10 @@ test("submit revalidates current choices, then passes native settings and durabl
           workspaceId: "personal",
           zotero: "zotero-one",
           docling: "docling-one",
-          folder: "Papers"
+          folder: "Papers",
+          limit: 3,
+          ocr: false,
+          attachMarkdown: true
         }
       },
       null,

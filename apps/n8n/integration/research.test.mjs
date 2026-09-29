@@ -34,10 +34,10 @@ test("catalog contains seven unique native workflows with disabled-by-default cr
   }
 });
 
-test("PDF watcher polls every minute and checks cached conversion status before waiting", () => {
+test("PDF watcher defaults to 60-minute checks and checks cached conversion status before waiting", () => {
   const template = templates.find((candidate) => candidate.research === "convert-pdfs");
   const trigger = template.workflow.nodes.find((node) => node.id === "schedule");
-  assert.deepEqual(trigger.parameters.rule.interval, [{ field: "minutes", minutesInterval: 1 }]);
+  assert.deepEqual(trigger.parameters.rule.interval, [{ field: "minutes", minutesInterval: 60 }]);
   assert.equal(template.workflow.connections[trigger.name].main[0][0].node, "Find shared PDFs");
   assert.equal(template.workflow.connections["Queue Docling conversion"].main[0][0].node, "Check conversion status");
   assert.equal(
@@ -80,6 +80,83 @@ test("research scopes reject URLs, traversal, hidden folders and extra bindings"
     assert.throws(() => researchConfiguration(template, { research: { ...bindings, folder } }));
   }
   assert.throws(() => researchConfiguration(template, { research: { ...bindings, url: "http://host" } }));
+  assert.deepEqual(
+    researchConfiguration(template, {
+      research: { ...bindings, limit: 3, ocr: true, attachMarkdown: false }
+    }),
+    { ...scope, limit: 3, ocr: true, attachMarkdown: false }
+  );
+  for (const invalid of [
+    { limit: 0 },
+    { limit: 101 },
+    { limit: "3" },
+    { limit: null },
+    { ocr: "true" },
+    { ocr: null },
+    { attachMarkdown: 0 }
+  ]) {
+    assert.throws(() => researchConfiguration(template, { research: { ...bindings, ...invalid } }));
+  }
+  const report = templates.find((candidate) => candidate.research === "reading-notes");
+  assert.throws(() =>
+    researchConfiguration(report, {
+      research: { workspaceId: "personal", zotero: "zotero", obsidian: "obsidian", folder: "Notes", ocr: true }
+    })
+  );
+});
+
+test("PDF grant applies saved batch and OCR choices and skips Zotero writes for conversion-only runs", async () => {
+  const bridge = new ResearchBridge({});
+  bridge.validateScope = async () => {};
+  const calls = [];
+  bridge.action = async (_scope, app, action, input) => {
+    calls.push({ app, action, input });
+    if (action === "discover") return { files: [{ path: "Papers/one.pdf" }] };
+    if (action === "match-attachment") return { state: "matched", attachmentKey: "ABCD1234" };
+    if (action === "job-status") {
+      return { state: "succeeded", sourcePath: "Papers/one.pdf", sourceAttachmentKey: "ABCD1234" };
+    }
+    return { state: "queued" };
+  };
+  const selected = { ...scope, limit: 3, ocr: true, attachMarkdown: false };
+  await bridge.execute(selected, "discover");
+  assert.deepEqual(calls.at(-1), { app: "docling", action: "discover", input: { folder: "Papers", limit: 3 } });
+  await bridge.execute(selected, "enqueue", { sourcePath: "Papers/one.pdf" });
+  assert.deepEqual(calls.at(-1), {
+    app: "docling",
+    action: "enqueue",
+    input: { sourcePath: "Papers/one.pdf", sourceAttachmentKey: "ABCD1234", ocr: true }
+  });
+  assert.deepEqual(await bridge.execute(selected, "attach", { jobId: "job-one" }), {
+    state: "skipped",
+    reason: "Markdown attachment is off for this automation"
+  });
+  assert.equal(
+    calls.some((call) => call.action === "attach-docling-result"),
+    false
+  );
+});
+
+test("existing PDF grants keep their previous discovery bound and OCR default", async () => {
+  const bridge = new ResearchBridge({});
+  bridge.validateScope = async () => {};
+  const calls = [];
+  bridge.action = async (_scope, app, action, input) => {
+    calls.push({ app, action, input });
+    if (action === "discover") {
+      return { files: Array.from({ length: 100 }, (_, index) => ({ path: `Papers/${index}.pdf` })) };
+    }
+    if (action === "match-attachment") return { state: "matched", attachmentKey: "ABCD1234" };
+    return { state: "queued" };
+  };
+  await assert.rejects(bridge.execute(scope, "discover"), /fewer than 100 PDFs/);
+  assert.deepEqual(calls[0], { app: "docling", action: "discover", input: { folder: "Papers", limit: 100 } });
+  await bridge.execute(scope, "enqueue", { sourcePath: "Papers/one.pdf" });
+  assert.deepEqual(calls.at(-1), {
+    app: "docling",
+    action: "enqueue",
+    input: { sourcePath: "Papers/one.pdf", sourceAttachmentKey: "ABCD1234", ocr: false }
+  });
 });
 
 test("n8n owns the bearer; journal stores only verifier, scoped apps and credential receipt", async (t) => {

@@ -1,6 +1,6 @@
 import { readCatalog } from "./catalog.mjs";
 import { assertRequiredApplications, requirementsForScope } from "./requirements.mjs";
-import { noteOutputFolder, researchKinds } from "./research-access.mjs";
+import { noteOutputFolder, pdfProcessingSettings, researchKinds } from "./research-access.mjs";
 
 const templates = await readCatalog(new URL("../templates/", import.meta.url));
 
@@ -143,10 +143,17 @@ export class ResearchBridge {
       throw new Error("This operation is not allowed by the research connection");
     }
     if (scope.kind !== "convert-pdfs") throw new Error("Unknown research connection kind");
+    const pdfSettings = pdfProcessingSettings(scope);
     switch (operation) {
       case "discover": {
-        const result = await this.action(scope, "docling", "discover", { folder: scope.folder, limit: 100 });
-        if (!Array.isArray(result.files) || result.files.length >= 100) {
+        const result = await this.action(scope, "docling", "discover", {
+          folder: scope.folder,
+          limit: pdfSettings.limit
+        });
+        if (!Array.isArray(result.files) || result.files.length > pdfSettings.limit) {
+          throw new Error("The PDF discovery result exceeds the selected limit");
+        }
+        if (scope.limit === undefined && result.files.length === 100) {
           throw new Error("Choose a folder with fewer than 100 PDFs for this automation");
         }
         return result;
@@ -162,7 +169,7 @@ export class ResearchBridge {
         return this.action(scope, "docling", "enqueue", {
           sourcePath,
           sourceAttachmentKey: match.attachmentKey,
-          ocr: false
+          ocr: pdfSettings.ocr
         });
       }
       case "job":
@@ -174,6 +181,9 @@ export class ResearchBridge {
         this.sourcePath(scope, job.sourcePath);
         if (operation === "job") return job;
         if (job.state !== "succeeded") throw new Error("The conversion has not succeeded");
+        if (!pdfSettings.attachMarkdown) {
+          return { state: "skipped", reason: "Markdown attachment is off for this automation" };
+        }
         const match = await this.action(scope, "zotero", "match-attachment", { sourcePath: job.sourcePath });
         if (match.state !== "matched" || match.attachmentKey !== job.sourceAttachmentKey) {
           throw new Error("The source attachment no longer matches the conversion");

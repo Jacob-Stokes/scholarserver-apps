@@ -42,12 +42,12 @@ test("template configuration cannot target arbitrary nodes or parameter paths", 
 
 test("PDF watcher uses native minute polling and rejects ambiguous or invalid settings", async () => {
   const pdf = readTemplate(await readFile(new URL("../templates/zotero-pdf-markdown.yaml", import.meta.url), "utf8"));
-  assert.deepEqual(scheduleConfiguration(pdf), { minutesInterval: 1, minimum: 1, maximum: 60 });
+  assert.deepEqual(scheduleConfiguration(pdf), { minutesInterval: 60, minimum: 1, maximum: 60 });
   const workflow = configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: 2 });
   assert.equal(workflowScheduleMinutes(pdf, workflow), 2);
   assert.equal(workflowScheduleHours(pdf, workflow), null);
   const templateSchedule = pdf.workflow.nodes.find((node) => node.id === pdf.configuration.scheduleNode);
-  assert.equal(templateSchedule.parameters.rule.interval[0].minutesInterval, 1);
+  assert.equal(templateSchedule.parameters.rule.interval[0].minutesInterval, 60);
   assert.deepEqual(workflow.connections, pdf.workflow.connections);
   for (const value of [0, 61, 1.5, null, "1", "={{ $env.SECRET }}"]) {
     assert.throws(() => configureWorkflow(pdf, workflowFromTemplate(pdf), { minutesInterval: value }));

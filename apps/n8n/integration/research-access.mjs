@@ -28,6 +28,21 @@ export function noteOutputFolder(scope) {
   }
 }
 
+export function pdfProcessingSettings(scope) {
+  // Existing grants predate these choices. Only missing fields inherit the old
+  // workflow behavior; an explicitly malformed choice must fail closed.
+  const limit = Object.hasOwn(scope, "limit") ? scope.limit : 100;
+  const ocr = Object.hasOwn(scope, "ocr") ? scope.ocr : false;
+  const attachMarkdown = Object.hasOwn(scope, "attachMarkdown") ? scope.attachMarkdown : true;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new AutomationConfigurationError("Choose between 1 and 100 PDFs per run");
+  }
+  if (typeof ocr !== "boolean" || typeof attachMarkdown !== "boolean") {
+    throw new AutomationConfigurationError("Choose whether to use OCR and attach Markdown");
+  }
+  return { limit, ocr, attachMarkdown };
+}
+
 export function researchConfiguration(template, settings) {
   if (!template.research) return null;
   if (!researchKinds.includes(template.research)) throw new Error("Unknown research template kind");
@@ -37,6 +52,10 @@ export function researchConfiguration(template, settings) {
   }
   const destination = template.research === "convert-pdfs" ? "docling" : "obsidian";
   const allowed = ["workspaceId", "zotero", destination, "folder"];
+  if (template.research === "convert-pdfs") {
+    allowed.push("limit", "ocr", "attachMarkdown");
+    pdfProcessingSettings(bindings);
+  }
   if (Object.keys(bindings).some((key) => !allowed.includes(key))) {
     throw new AutomationConfigurationError("Unknown research connection setting");
   }
