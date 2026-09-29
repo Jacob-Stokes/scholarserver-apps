@@ -1,9 +1,10 @@
 # Guided automation catalog
 
-The `0.1.0-beta.6` source package selects new immutable native AMD64/ARM64 images
-containing this catalog. Earlier beta.4/beta.5 images do not contain it. Image
-publication does not publish an official catalog package or upgrade Freelove;
-see [acceptance and remaining gates](RELEASE_BLOCKED.md).
+Manager owns the catalog and saved-automation screens. This package supplies
+reviewed templates, inventory, actions and the explicit embedded setup surface.
+See [the current cleanup checkpoint](../../docs/manager-workspace-cleanup-20260929.md)
+for source evidence and [remaining release gates](RELEASE_BLOCKED.md) before
+publishing a replacement package.
 
 ## Experience
 
@@ -13,19 +14,13 @@ name. Icons are loaded only from the authenticated Manager's local catalog.
 Templates remain reviewed native n8n YAML; requirements and presentation live
 beside their nodes, not in Manager.
 
-The catalog uses a responsive card grid. Search matches all entered words across
-outcomes, descriptions, app names/roles and tags. The application filter combines
-with search and any selected tag. Tags belong to each reviewed YAML template;
-they are bounded, unique labels, not executable configuration. Name sorting is
-explicit in either direction; there are no invented popularity or usage counts.
-Filters survive opening setup and returning to the catalog. Missing app access
-stays visible on cards; detailed roles and configuration appear during setup.
-
-Choose **Set up**, give the automation a name, choose its app instances and output
-folder, and select the interval. The workflow is created disabled. **My automations**
-shows its saved bindings, schedule and recent execution statuses. A second copy
-has its own stable identity, n8n workflow, credential and scoped research grant.
-The connection-check template lives under Configuration as an execution diagnostic.
+Open **Automations** in Manager to browse the catalog and inspect saved workflows.
+Choose a template, give the automation a name, choose its app instances and output
+folder, and select the interval. The workflow starts disabled. Its management
+screen shows bindings, schedule and recent execution statuses. A second copy has
+its own stable identity, n8n workflow, credential and scoped research grant.
+The app-owned embedded surface handles setup; it does not recreate the catalog
+or workflow list. Old app bookmarks return to Manager with the engine selected.
 
 Availability is deliberately bounded: the service API lists healthy, authorised
 app actions. Absence alone does not tell this integration whether an app is

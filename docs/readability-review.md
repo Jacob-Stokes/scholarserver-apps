@@ -1,5 +1,27 @@
 # Readability review notes
 
+## Canonical Manager configuration and retained workspaces — 29 September 2026
+
+The consumer review removed the obsolete Obsidian, Logseq and FreshRSS setup
+forms/readers, Zotero account/storage/authorization panels, Docling configuration
+rendering and n8n catalog/workflow-list shell. This supersedes the deferred legacy
+UI ownership described in the older entries below. Shared presentation stays in
+`@scholarserver/ui`; app controllers still own rules, receipts and saved settings.
+Zotero keeps attachment diagnostics; Docling keeps queue/process and a read-only
+saved-default observation; n8n keeps explicit embedded setup and recovery.
+No polling loop, cross-app state owner or configuration framework was added.
+
+Reviewed: entry points, remaining component/import consumers, draft and access
+ownership, and the native/browser gates that referenced removed screens.
+The associated tests of removed code were retired; navigation and retained
+workspace checks now target the production entry points. Source and synthetic
+in-app evidence is recorded in [the cleanup report](manager-workspace-cleanup-20260929.md).
+
+Deferred: qualify replacement native images/packages; repair Zotero worker
+service permissions; test actual account/device transitions and remaining
+uncertain-write recovery. Existing controller compatibility APIs were deliberately
+retained. This is a scoped removal review, not a whole-application certification.
+
 ## Consolidated existing UI readers — 20 September 2026
 
 Zotero and n8n now supply app-specific requests and typed resources to the existing

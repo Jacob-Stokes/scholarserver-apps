@@ -5,7 +5,11 @@ import { N8nSetup } from "./setup.mjs";
 const setup = new N8nSetup({ directory: "/runtime", baseUrl: "http://n8n:5678" });
 const client = await setup.client();
 const inventory = await (await fetch("http://localhost:8080/api/automations")).json();
-const receipt = inventory.installations["connection-check"];
+const diagnostics = Object.entries(inventory.installations).filter(
+  ([, receipt]) => receipt.templateId === "connection-check"
+);
+assert.equal(diagnostics.length, 1);
+const [automationId, receipt] = diagnostics[0];
 assert.equal(receipt.state, "installed");
 const original = await client.getWorkflow(receipt.workflowId);
 assert.equal(original.active, false);
@@ -14,7 +18,7 @@ async function enabled(value) {
   return fetch("http://localhost:8080/api/enabled", {
     method: "POST",
     headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
-    body: JSON.stringify({ templateId: "connection-check", enabled: value })
+    body: JSON.stringify({ automationId, enabled: value })
   });
 }
 

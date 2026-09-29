@@ -269,3 +269,9 @@ source and synthetic-browser evidence, not publication, native container
 qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
 
 Project-vault documentation update is pending this source checkpoint.
+
+## Standalone form removal — 29 September 2026
+
+Removed standalone defaults, queue-control and service-settings presentation. Queue and Process PDF remain operational workspaces; per-job OCR still reads the saved default. Missing defaults keep the error visible and block queueing until defaults load or the user explicitly chooses OCR. Refresh cannot replace an edited per-job choice. The native image gate now saves through the configuration action/receipt and verifies persistence separately from the document UI.
+
+Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.

@@ -11,5 +11,6 @@ export function managerDestination(pathname: string, search = ""): string | null
   if (["", "/", "/overview", "/automations", "/automation-setup"].includes(route)) {
     return `/automations?${new URLSearchParams({ engine: instanceId })}`;
   }
-  return null;
+  if (route === "/api" || route.startsWith("/api/")) return null;
+  return `/automations?${new URLSearchParams({ engine: instanceId })}`;
 }

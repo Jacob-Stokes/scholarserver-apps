@@ -96,21 +96,21 @@ From this repository:
 ```sh
 node scripts/check-shared-ui.mjs --core-ui /path/to/academic-system/packages/ui
 npm run test:ui
-node --test apps/freshrss/ui/test/*.test.mjs
 npm test -w apps/docling/ui
 npm test
 ```
 
 For compiled browser checks, run the relevant UI builds first, then
-`node scripts/check-app-screens.mjs` and
-`node apps/freshrss/ui/test/loading-browser.mjs`. These scripts accept
+`node scripts/check-app-screens.mjs`. For manual in-app review, use
+`node scripts/app-workspace-preview.mjs`. The automated script accepts
 `SCHOLARSERVER_BROWSER_MODULES` for an external Playwright installation. They use
 synthetic APIs and isolated loopback/browser resources, not installed apps.
 Check the core development disk budget before builds. UI builds are not Docker
 builds and do not publish packages.
 
-The full `npm test` gate is currently blocked by the unrelated missing Paperless
-workspace. Do not silently remove that workspace or report a full suite pass.
+At the original checkpoint, the full `npm test` gate was blocked by the missing
+Paperless workspace. The 29 September cleanup passes the full suite with that
+workspace preserved; see [the current evidence](manager-workspace-cleanup-20260929.md).
 Keep source tests, compiled synthetic browser checks, native-image qualification,
 publication and Freelove acceptance separate in every checkpoint.
 

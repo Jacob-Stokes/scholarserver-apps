@@ -669,3 +669,9 @@ A subsequent parity review retained failure information previously visible only
 on the standalone screen: active sync/download errors and download progress in
 Obsidian, worker errors in FreshRSS, and linked-folder automation warnings in
 Zotero. The five added synthetic states also exercise these in Manager.
+
+## Standalone form removal — 29 September 2026
+
+Removed the retired standalone overview, setup forms and their credential/status readers. Installed bookmarks hand off to Manager before React mounts; an unprefixed development URL has only a Manager link. The controller, LiveSync services and consent-controlled official-client setup remain unchanged.
+
+Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.

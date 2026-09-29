@@ -2,20 +2,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = await readFile(new URL("../src/AutomationCatalog.tsx", import.meta.url), "utf8");
+const source = await readFile(new URL("../src/AutomationSetup.tsx", import.meta.url), "utf8");
 const install = await readFile(new URL("../src/InstallAutomation.tsx", import.meta.url), "utf8");
 const research = await readFile(new URL("../src/ResearchSettings.tsx", import.meta.url), "utf8");
 const reads = await readFile(new URL("../src/n8n-reads.ts", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/automations.css", import.meta.url), "utf8");
 
-test("embedded catalog uses a borderless selected form and leaves the template title to Manager", () => {
-  assert.match(source, /embedded\s*=\s*false/);
+test("embedded setup keeps one form and leaves catalog navigation and its title to Manager", () => {
   assert.match(source, /automation-setup-form-embedded ss-stack/);
-  assert.match(source, /!embedded \? <h2>\{selected\.template\.name\}<\/h2> : null/);
-  assert.match(
-    source,
-    /embedded\s*\? "automation-setup-form automation-setup-form-embedded ss-stack"\s*: "automation-setup-form ss-card ss-stack"/
-  );
+  assert.doesNotMatch(source, /<h2|CatalogToolbar|Back to catalog/);
 });
 
 test("setup pairs research selectors using intrinsic width and keeps the folder full width", () => {

@@ -15,6 +15,10 @@ for (const app of apps) {
 }
 
 for (const app of apps) {
+  test(`${app} retires unknown standalone pages without reintroducing configuration`, () => {
+    const expected = app === "n8n" ? "/automations?engine=second-copy" : "/applications/manage/second-copy";
+    assert.equal(routes.get(app)("/apps/second-copy/old-settings", "?managerSetup=1"), expected);
+  });
   test(`${app} sends bookmarked configuration to the same installed instance in Manager`, () => {
     const destination = routes.get(app);
     assert.equal(destination("/apps/second-copy/configuration"), "/applications/manage/second-copy/configuration");

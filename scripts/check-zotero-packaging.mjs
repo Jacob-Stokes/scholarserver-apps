@@ -240,8 +240,10 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const endpoint = await docker("port", controller, "8080/tcp");
-    await page.goto(`http://${endpoint}/`);
+    await page.goto(`http://${endpoint}/attachments`);
     await page.getByRole("heading", { name: "Zotero", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Check attachment access", exact: true }).waitFor();
+    assert.equal(await page.getByLabel("Password", { exact: true }).count(), 0);
     const output = path.resolve(process.env.SCHOLARSERVER_EVIDENCE ?? ".dev/zotero-packaging");
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: path.join(output, `zotero-native-${architecture}.png`), fullPage: true });

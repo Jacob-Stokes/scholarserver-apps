@@ -9,5 +9,6 @@ export function managerDestination(pathname: string): string | null {
   if (route === "/automations" || route.startsWith("/automations/"))
     return `${management}/configuration#configuration-automation`;
   if (["", "/", "/overview"].includes(route)) return management;
-  return null;
+  if (route === "/attachments" || route === "/api" || route.startsWith("/api/")) return null;
+  return management;
 }

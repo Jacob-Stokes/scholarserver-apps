@@ -131,23 +131,34 @@ try {
   page.setDefaultTimeout(15_000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${origin}/configuration`);
-  await page.getByRole("checkbox", { name: /Use OCR by default/ }).check();
-  await page.getByRole("button", { name: "Save defaults", exact: true }).click();
-  const toast = page.getByText("Docling defaults were saved.", { exact: true });
-  await expect(toast).toBeVisible();
-  const toastCard = page.locator("[data-sonner-toast]");
-  await expect(toastCard).toHaveCSS("opacity", "1");
-  const toastBounds = await toastCard.boundingBox();
-  assert.ok(toastBounds && toastBounds.y >= 0 && toastBounds.y + toastBounds.height <= 1000);
+  const defaults = await get("/api/configuration/defaults");
+  const save = await fetch(`${origin}/api/configuration/defaults/actions/save-defaults`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-requested-with": "ScholarServer" },
+    body: JSON.stringify({
+      requestId: "native-defaults-0001",
+      expectedRevision: defaults.revision,
+      values: { defaultOcr: true }
+    })
+  });
+  assert.equal(save.status, 200);
+  const receipt = await save.json();
+  assert.equal(receipt.status, "succeeded");
+  assert.deepEqual(await get("/api/configuration/defaults/operations/native-defaults-0001"), receipt);
+  await page.goto(`${origin}/process`);
+  await expect(page.getByRole("heading", { name: "Process one PDF", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /^Use OCR/ })).toBeChecked();
+  assert.equal(await page.getByRole("button", { name: "Save defaults", exact: true }).count(), 0);
   const output = path.resolve(process.env.SCHOLARSERVER_EVIDENCE ?? ".dev/docling-packaging");
   await mkdir(output, { recursive: true });
-  await page.screenshot({ path: path.join(output, `docling-toast-${architecture}.png`), fullPage: true });
-  await expect(toast).not.toBeVisible({ timeout: 12_000 });
+  await page.screenshot({ path: path.join(output, `docling-process-${architecture}.png`), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(output, `docling-mobile-${architecture}.png`), fullPage: true });
   assert.deepEqual(errors, []);
-  console.log("PASS: built UI saves defaults, toast expires and mobile screen renders");
+  console.log(
+    "PASS: native configuration action and receipt save defaults; document workspace reads them at desktop/mobile widths"
+  );
   assert.deepEqual(await get("/api/settings"), { defaultOcr: true });
   assert.equal(
     (
@@ -166,9 +177,8 @@ try {
     "saved defaults survive controller restart",
     async () => (await get("/api/settings")).defaultOcr === true
   );
-  console.log(
-    "PASS: built UI saves defaults, toast expires, invalid input is rejected and restart retains configuration"
-  );
+  assert.deepEqual(await get("/api/configuration/defaults/operations/native-defaults-0001"), receipt);
+  console.log("PASS: native defaults and operation receipt survive restart; invalid input is rejected");
 
   if (process.env.DOCLING_ENGINE_IMAGE) {
     const engineImage = process.env.DOCLING_ENGINE_IMAGE;

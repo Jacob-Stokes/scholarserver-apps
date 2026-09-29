@@ -474,3 +474,9 @@ A subsequent parity review retained failure information previously visible only
 on the standalone screen: active sync/download errors and download progress in
 Obsidian, worker errors in FreshRSS, and linked-folder automation warnings in
 Zotero. The five added synthetic states also exercise these in Manager.
+
+## Standalone form removal — 29 September 2026
+
+Removed the standalone sign-in, address and appearance forms and their form-only readers. The reader endpoint and its separately built theme integration remain. Configuration now has one form owner in Manager; the native account and reader acceptance gates remain separate.
+
+Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.

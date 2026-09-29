@@ -59,7 +59,16 @@ test("every existing app UI adopts shared reads rather than browser polling loop
       }
       visit(tree);
     }
-    if (!shared) violations.push(`${app.name}: no shared read consumer`);
+    // Redirect-only packages have no app-owned data reads after migration.
+    if (!shared && !["obsidian", "logseq", "freshrss"].includes(app.name))
+      violations.push(`${app.name}: no shared read consumer`);
+    if (!shared) {
+      for (const file of files) {
+        const source = await readFile(file, "utf8");
+        if (/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/.test(source))
+          violations.push(`${file}: redirect-only UI introduced network state`);
+      }
+    }
   }
   assert(checked.length >= 6, "Scan all shipped application UIs");
   assert.deepEqual(violations, []);

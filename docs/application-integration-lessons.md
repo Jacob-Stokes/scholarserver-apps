@@ -219,3 +219,14 @@ actual instance ID, preserve genuine document/attachment workspaces, and keep
 explicit embedded automation consumers working. Compare ready-state editing and
 recovery actions as well as first setup before redirecting a package's routes.
 See [the 29 September source pass](manager-configuration-20260929.md).
+
+## Retiring app-owned configuration screens
+
+Routing a bookmark to Manager does not retire the old form implementation. Trace
+all React entry points, imports, operational routes and explicit embeds before
+removing it. Keep app workspaces separate from settings: attachment diagnostics,
+document queues and embedded automation setup can still have real consumers.
+Update native acceptance scripts at the same time; a script that searches for a
+removed form no longer qualifies the image. Native configuration action/receipt
+checks, built workspace checks and actual Manager browser acceptance prove
+different boundaries and should be reported separately.

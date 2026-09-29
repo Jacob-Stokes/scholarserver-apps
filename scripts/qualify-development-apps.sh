@@ -100,9 +100,9 @@ export LOGSEQ_PROOF_BROWSER_EXECUTABLE=$SCHOLARSERVER_BROWSER_EXECUTABLE
 export LOGSEQ_PROOF_OUTPUT="$output/logseq-native"
 export SCHOLARSERVER_EVIDENCE=$output
 
-echo "Gate 1/3: Docling controller UI, validation and restart"
+echo "Gate 1/3: Docling configuration action, document workspace and restart"
 node "$script_dir/check-docling-packaging.mjs" 2>&1 | tee "$output/docling.log"
-echo "Gate 2/3: Logseq unsynced graph/MCP, restart and managed setup UI"
+echo "Gate 2/3: Logseq unsynced graph/MCP, restart and Manager handoff"
 node "$script_dir/check-logseq-packaging.mjs" 2>&1 | tee "$output/logseq.log"
 echo "Gate 3/3: Zotero disposable desktop, protected bridge, Manager processing settings, UI and restart"
 node "$script_dir/check-zotero-packaging.mjs" 2>&1 | tee "$output/zotero.log"
@@ -122,8 +122,8 @@ const summary = {
   format: 1, result: 'passed', kind: 'development-app-gates', revision, architecture,
   buildReceiptDigest: `sha256:${createHash('sha256').update(receipt).digest('hex')}`,
   completedAt: new Date().toISOString(),
-  scopes: ['Docling controller UI, validation and restart',
-    'Logseq unsynced graph/MCP, restart and managed setup UI',
+  scopes: ['Docling configuration action, document workspace and restart',
+    'Logseq unsynced graph/MCP, restart and Manager handoff',
     'Zotero disposable desktop, protected bridge, Manager processing settings, UI and restart'],
   limits: ['Not full installation or retained-host acceptance',
     'No account, encrypted sync, Gateway or real-library acceptance',

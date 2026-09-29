@@ -1,6 +1,6 @@
-import { ReadAccessRequired, type ReadResource, ReadScope } from "@scholarserver/ui/read-resource";
+import { ReadAccessRequired, ReadScope } from "@scholarserver/ui/read-resource";
 import { catalogAppIcons } from "./app-icons";
-import type { Application, Inventory, Run } from "./automation-types";
+import type { Application, Inventory } from "./automation-types";
 import type { ConnectionStatus } from "./ConnectionSetup";
 
 export function createN8nReads(base: string) {
@@ -62,23 +62,6 @@ export function createN8nReads(base: string) {
     60000,
     5000
   );
-  const runReaders = new Map<string, ReadResource<Run[]>>();
-  function runs(automationId: string) {
-    let reader = runReaders.get(automationId);
-    if (!reader) {
-      reader = scope.create(async (signal) => {
-        const result = await request<{ runs: Run[] }>(
-          `runs?automationId=${encodeURIComponent(automationId)}`,
-          undefined,
-          signal
-        );
-        if (!Array.isArray(result.runs)) throw new Error("Could not read recent runs.");
-        return result.runs;
-      }, 10000);
-      runReaders.set(automationId, reader);
-    }
-    return reader;
-  }
-  return { status, inventory, applications, icons, runs, request, json, accessSignal: scope.signal };
+  return { status, inventory, applications, icons, request, json, accessSignal: scope.signal };
 }
 export type N8nReads = ReturnType<typeof createN8nReads>;

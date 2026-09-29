@@ -2,7 +2,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import "@scholarserver/ui/styles.css";
 import "@scholarserver/ui/appearance";
-import "./styles.css";
 import { App } from "./App";
 import { managerDestination } from "./manager-navigation";
 

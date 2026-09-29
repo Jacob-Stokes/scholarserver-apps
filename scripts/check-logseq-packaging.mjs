@@ -345,19 +345,23 @@ async function screenshotManaged() {
     const response = await page.goto(`${origin}/configuration`, { waitUntil: "networkidle", timeout: 30_000 });
     assert.equal(response.status(), 200);
     await page.getByRole("heading", { name: "Logseq", exact: true }).waitFor();
-    await page.getByRole("heading", { name: "Private connection", exact: true }).waitFor();
-    await page.getByRole("button", { name: "Set up private connection", exact: true }).waitFor();
-    assert.equal((await page.locator(".ss-badge").textContent()).trim(), "Setup needed");
+    await page.getByRole("link", { name: "Open in Manager", exact: true }).waitFor();
+    assert.equal(await page.locator("form, input, select").count(), 0);
+    assert.equal(
+      await page.getByRole("link", { name: "Open in Manager", exact: true }).getAttribute("href"),
+      "/applications"
+    );
     assert.ok(responses.some((entry) => entry.path.endsWith(".js") && entry.status === 200));
     assert.ok(responses.some((entry) => entry.path.endsWith(".css") && entry.status === 200));
     assert.deepEqual(pageErrors, [], "Built UI must have no uncaught browser errors");
     assert.deepEqual(blocked, [], "The setup screen must not attempt external or mutating requests");
     const failures = responses.filter((entry) => entry.status >= 400);
-    assert.ok(failures.every((entry) => entry.path.endsWith("/endpoints/sync/access-options") && entry.status === 404));
+    assert.deepEqual(failures, []);
+    assert.equal(responses.filter((entry) => entry.path.includes("/api/")).length, 0);
     evidence.browser = { url: `${origin}/configuration`, pageErrors, blocked, managerRouteResponses: failures };
-    await passed("Built managed UI rendered its setup screen and JS/CSS at loopback; no account action occurred");
+    await passed("Built compatibility UI renders its Manager link and JS/CSS without account reads or writes");
     await record(
-      "LIMIT: Standalone Manager access-options route is unavailable; enrollment and encrypted/account sync are untested."
+      "LIMIT: This isolated app gate has no Manager. Native Manager forms, enrollment and encrypted/account sync require separate acceptance."
     );
   } finally {
     await page.screenshot({ path: `${output}.png`, fullPage: true });

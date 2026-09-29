@@ -1299,3 +1299,9 @@ source and synthetic-browser evidence, not publication, native container
 qualification or live deployment. See [the paired pass and remaining gates](../../docs/manager-configuration-20260929.md).
 
 Project-vault documentation update is pending this source checkpoint.
+
+## Standalone form removal — 29 September 2026
+
+Removed the standalone catalog, workflow-list and configuration presentation, their unused readers and catalog styles. Manager owns discovery and lifecycle presentation. The explicit automation-setup?managerSetup=1 embed retains connection recovery and a focused AutomationSetup form with one draft and request identity. Updated native browser gates use that embed, then check enable/disable through the integration API; they no longer claim Manager catalog/lifecycle browser acceptance.
+
+Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.

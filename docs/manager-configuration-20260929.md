@@ -1,5 +1,11 @@
 # Manager configuration source pass — 29 September 2026
 
+This is the chronological record of the first qualified development batch. The
+subsequent [standalone form cleanup](manager-workspace-cleanup-20260929.md) has
+source and synthetic UI evidence only; it needs replacement native images and
+new immutable package versions. The paired core rollout report owns the current
+installed inventory. Earlier source-only statements below describe those stages.
+
 This source candidate makes native Manager configuration the canonical setup
 route for the six packaged app UIs. It is not a package publication, installed
 version inventory, native-image qualification or fresh-install result.
@@ -10,8 +16,8 @@ version inventory, native-image qualification or fresh-install result.
   installation's Manager Configuration. Obsidian, Logseq, FreshRSS and Zotero
   overview bookmarks return to Manage. n8n's catalog and automation bookmarks
   retain their engine identity in Manager Automations; its explicit embedded
-  setup route remains available. Docling queue/process and Zotero attachment and
-  legacy automation workspaces retain their operational routes.
+  setup route remains available. Docling queue/process and Zotero attachment workspaces retain their operational
+  routes. Zotero automation bookmarks now open native PDF-processing settings.
 - Obsidian's pending first-device step now supports its existing non-destructive
   private-address repair. Only an explicit repair draft exposes the action;
   normal status carries the saved URL, never the URI or passphrase. Repair changes
@@ -58,10 +64,10 @@ Published manifest versions and image digests have not been rewritten. New
 immutable versions, source-lock records and native image qualification are needed
 before publication/deployment. Keep the final core/apps revisions together.
 
-The standalone setup code remains available to independent source previews and
-n8n's supported embedded setup. Remove obsolete panels deliberately once each
-remaining operational workspace and embedded consumer is accounted for; do not
-infer removal safety from the route tests alone. Zotero's separate scheduling form
+The subsequent standalone-form cleanup removes the obsolete forms after their
+remaining consumers were reviewed. n8n's explicit supported embed remains. Its
+new source checkpoint still needs native image/package qualification; do not
+infer that gate from route or synthetic UI checks. Zotero's separate scheduling form
 has now been retired in favour of native Manager PDF-processing settings and run
 history. Its existing worker-to-Manager authentication needs a separate repair
 before end-to-end processing can be qualified.

@@ -3,14 +3,7 @@ import { ReadAccessRequired } from "@scholarserver/ui/read-resource";
 import { SectionFeedback } from "@scholarserver/ui/section-feedback";
 import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  createDoclingReads,
-  type Job,
-  type JobState,
-  queuePollMilliseconds,
-  requestDocling,
-  type Settings
-} from "./docling-reads";
+import { createDoclingReads, type Job, type JobState, queuePollMilliseconds, requestDocling } from "./docling-reads";
 import { managerDestination } from "./manager-navigation";
 
 type Tab = "queue" | "process" | "configuration";
@@ -38,7 +31,7 @@ function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 function currentTab(): Tab {
   const value = window.location.pathname.split("/").filter(Boolean).at(-1);
-  return tabs.some((tab) => tab.id === value) ? (value as Tab) : "queue";
+  return value === "process" ? "process" : "queue";
 }
 
 function bytes(value: number): string {
@@ -58,7 +51,6 @@ function badge(state: JobState): string {
 export function App() {
   const [tab, setTab] = useState<Tab>(currentTab);
   const [reads, setReads] = useState(() => createDoclingReads(base));
-  const [settingsDraft, setSettingsDraft] = useState<Settings | null>(null);
   const ocrEdited = useRef(false);
   const [sourcePath, setSourcePath] = useState("");
   const [attachmentKey, setAttachmentKey] = useState("");
@@ -72,8 +64,8 @@ export function App() {
   const settingsRead = useReadResource(reads.settings);
   const status = statusRead.data ?? null;
   const files = filesRead.data ?? [];
-  const settings = settingsDraft ?? settingsRead.data ?? { defaultOcr: false };
   const settingsLoaded = settingsRead.data !== undefined;
+  const ocrReady = settingsLoaded || ocrEdited.current;
   const filesLoaded = filesRead.data !== undefined;
   const accessBlocked = statusRead.blocked;
 
@@ -87,7 +79,6 @@ export function App() {
     if (!accessBlocked) return;
     setSourcePath("");
     setAttachmentKey("");
-    setSettingsDraft(null);
     ocrEdited.current = false;
     setOcr(false);
     setNotice(null);
@@ -133,8 +124,8 @@ export function App() {
 
   const navigate = (next: Tab) => {
     const destination = managerDestination(`${base}/${next}`);
-    if (destination) {
-      window.location.assign(destination);
+    if (next === "configuration") {
+      window.location.assign(destination ?? "/applications");
       return;
     }
     window.history.pushState({}, "", `${base}/${next}`);
@@ -200,20 +191,7 @@ export function App() {
     }
   };
 
-  const saveDefaults = () =>
-    run(async () => {
-      const saved = await request<Settings>("settings", { method: "PUT", body: JSON.stringify(settings) });
-      if (reads.status.getSnapshot().blocked) return;
-      if (typeof saved.defaultOcr !== "boolean") {
-        throw new Error("Could not confirm saved conversion defaults. Refresh before saving again.");
-      }
-      reads.settings.seed(saved);
-      setSettingsDraft(null);
-    }, "Docling defaults were saved.");
-
   const selected = useMemo(() => files.find((file) => file.path === sourcePath), [files, sourcePath]);
-  let queueControlLabel = "Queue status not loaded";
-  if (status) queueControlLabel = status.state === "paused" ? "Resume queue" : "Pause queue";
 
   return (
     <ApplicationScreen
@@ -333,203 +311,146 @@ export function App() {
       ) : null}
 
       {tab === "process" && !accessBlocked ? (
-        <div className="ss-process-grid">
-          <section className="ss-card ss-stack">
-            <div className="ss-toolbar">
-              <div>
-                <h2>Process one PDF</h2>
-                <p className="ss-card-description">Choose a document from the attached research storage.</p>
-              </div>
-              <button
-                className="ss-button ss-button-ghost"
-                onClick={() => void discover()}
-                disabled={filesRead.pending}
-              >
-                Refresh files
-              </button>
-            </div>
-            <SectionFeedback
-              pending={filesRead.pending}
-              hasData={filesLoaded}
-              label="PDFs"
-              error={filesRead.error}
-              onRetry={() => void discover()}
-            />
-            {files.length ? (
-              <label className="ss-field">
-                PDF
-                <select className="ss-input" value={sourcePath} onChange={(event) => setSourcePath(event.target.value)}>
-                  {sourcePath && !selected ? <option value={sourcePath}>{sourcePath} — no longer listed</option> : null}
-                  {files.map((file) => (
-                    <option key={file.path} value={file.path}>
-                      {file.path} · {bytes(file.bytes)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {filesLoaded && files.length === 0 ? (
-              <div className="ss-empty">No PDFs were found in the attached storage.</div>
-            ) : null}
-            {!filesLoaded ? (
-              <label className="ss-field">
-                PDF
-                <select className="ss-input" disabled>
-                  <option>Not loaded</option>
-                </select>
-              </label>
-            ) : null}
-            <label className="ss-field">
-              Zotero attachment key{" "}
-              <span className="ss-field-help">
-                Optional. Add the eight-character key when this file belongs to a Zotero attachment.
-              </span>
-              <input
-                className="ss-input"
-                maxLength={8}
-                placeholder="ABCD1234"
-                value={attachmentKey}
-                onChange={(event) => setAttachmentKey(event.target.value.toUpperCase())}
-              />
-            </label>
-            <label className="ss-check">
-              <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
-              <span>
-                <strong>Use OCR</strong>
-                <small>Enable for scanned or image-only PDFs. It requires more processing time.</small>
-              </span>
-            </label>
-            <button
-              className="ss-button"
-              onClick={() => void queueOne()}
-              disabled={
-                busy ||
-                !!filesRead.error ||
-                filesRead.pending ||
-                !!statusRead.error ||
-                !selected ||
-                status?.engine !== "available" ||
-                (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))
-              }
-            >
-              {busy ? <span className="ss-spinner" /> : null}Queue this PDF
-            </button>
-          </section>
-          <section className="ss-card ss-stack">
-            <div>
-              <h2>Convert existing PDFs</h2>
-              <p className="ss-card-description">
-                Check the first documents in storage and skip anything already converted.
-              </p>
-            </div>
-            <label className="ss-field">
-              Maximum PDFs
-              <input
-                className="ss-input"
-                type="number"
-                min={1}
-                max={100}
-                value={limit}
-                onChange={(event) => setLimit(Math.max(1, Math.min(100, Number(event.target.value) || 1)))}
-              />
-            </label>
-            <label className="ss-check">
-              <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
-              <span>
-                <strong>Recognise text in scanned pages (OCR)</strong>
-                <small>Leave disabled for normal text-based academic PDFs.</small>
-              </span>
-            </label>
-            <button
-              className="ss-button ss-button-secondary"
-              onClick={() => void queueBackfill()}
-              disabled={
-                busy ||
-                filesRead.pending ||
-                !!filesRead.error ||
-                !!statusRead.error ||
-                files.length === 0 ||
-                status?.engine !== "available"
-              }
-            >
-              {busy ? <span className="ss-spinner" /> : null}
-              {filesLoaded ? `Queue first ${Math.min(limit, files.length)}` : "Queue PDFs"}
-            </button>
-          </section>
-        </div>
-      ) : null}
-
-      {tab === "configuration" && !accessBlocked ? (
         <div className="ss-stack">
-          <section className="ss-card ss-stack">
-            <div>
-              <h2>Conversion defaults</h2>
-              <p className="ss-card-description">
-                These defaults affect new jobs; existing queue entries remain unchanged.
-              </p>
-            </div>
-            <label className="ss-check">
-              <input
-                type="checkbox"
-                checked={settings.defaultOcr}
-                disabled={busy || !settingsLoaded}
-                onChange={(event) => setSettingsDraft({ defaultOcr: event.target.checked })}
-              />
-              <span>
-                <strong>Use OCR by default</strong>
-                <small>Recommended only when most of your library contains scanned pages.</small>
-              </span>
-            </label>
-            <SectionFeedback
-              pending={settingsRead.pending}
-              hasData={settingsLoaded}
-              label="conversion defaults"
-              error={settingsRead.error}
-              onRetry={() => void loadSettings()}
-            />
-            <div>
-              <button className="ss-button" disabled={busy || !settingsLoaded} onClick={() => void saveDefaults()}>
-                Save defaults
-              </button>
-            </div>
-          </section>
-          <section className="ss-card">
-            <div className="ss-toolbar">
-              <div>
-                <h2>Queue control</h2>
-                <p className="ss-card-description">Pause after the current conversion, or resume waiting work.</p>
+          <SectionFeedback
+            pending={settingsRead.pending}
+            hasData={settingsLoaded}
+            label="conversion defaults"
+            error={settingsRead.error}
+            onRetry={() => void loadSettings()}
+          />
+          <div className="ss-process-grid">
+            <section className="ss-card ss-stack">
+              <div className="ss-toolbar">
+                <div>
+                  <h2>Process one PDF</h2>
+                  <p className="ss-card-description">Choose a document from the attached research storage.</p>
+                </div>
+                <button
+                  className="ss-button ss-button-ghost"
+                  onClick={() => void discover()}
+                  disabled={filesRead.pending}
+                >
+                  Refresh files
+                </button>
               </div>
+              <SectionFeedback
+                pending={filesRead.pending}
+                hasData={filesLoaded}
+                label="PDFs"
+                error={filesRead.error}
+                onRetry={() => void discover()}
+              />
+              {files.length ? (
+                <label className="ss-field">
+                  PDF
+                  <select
+                    className="ss-input"
+                    value={sourcePath}
+                    onChange={(event) => setSourcePath(event.target.value)}
+                  >
+                    {sourcePath && !selected ? (
+                      <option value={sourcePath}>{sourcePath} — no longer listed</option>
+                    ) : null}
+                    {files.map((file) => (
+                      <option key={file.path} value={file.path}>
+                        {file.path} · {bytes(file.bytes)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {filesLoaded && files.length === 0 ? (
+                <div className="ss-empty">No PDFs were found in the attached storage.</div>
+              ) : null}
+              {!filesLoaded ? (
+                <label className="ss-field">
+                  PDF
+                  <select className="ss-input" disabled>
+                    <option>Not loaded</option>
+                  </select>
+                </label>
+              ) : null}
+              <label className="ss-field">
+                Zotero attachment key{" "}
+                <span className="ss-field-help">
+                  Optional. Add the eight-character key when this file belongs to a Zotero attachment.
+                </span>
+                <input
+                  className="ss-input"
+                  maxLength={8}
+                  placeholder="ABCD1234"
+                  value={attachmentKey}
+                  onChange={(event) => setAttachmentKey(event.target.value.toUpperCase())}
+                />
+              </label>
+              <label className="ss-check">
+                <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
+                <span>
+                  <strong>Use OCR</strong>
+                  <small>Enable for scanned or image-only PDFs. It requires more processing time.</small>
+                </span>
+              </label>
               <button
-                className="ss-button ss-button-secondary"
-                disabled={busy || !status || !!statusRead.error}
-                onClick={() =>
-                  void run(
-                    () => request(`queue/${status?.state === "paused" ? "resume" : "pause"}`, { method: "POST" }),
-                    status?.state === "paused"
-                      ? "The queue resumed."
-                      : "The queue will remain paused after the active job."
-                  )
+                className="ss-button"
+                onClick={() => void queueOne()}
+                disabled={
+                  busy ||
+                  !ocrReady ||
+                  !!filesRead.error ||
+                  filesRead.pending ||
+                  !!statusRead.error ||
+                  !selected ||
+                  status?.engine !== "available" ||
+                  (!!attachmentKey && !/^[A-Z0-9]{8}$/.test(attachmentKey))
                 }
               >
-                {queueControlLabel}
+                {busy ? <span className="ss-spinner" /> : null}Queue this PDF
               </button>
-            </div>
-          </section>
-          <section className="ss-card">
-            <h2>Service details</h2>
-            <dl className="ss-details">
-              <dt>Engine</dt>
-              <dd>{status?.engine ?? "—"}</dd>
-              <dt>Parallel jobs</dt>
-              <dd>{status?.workerConcurrency ?? "—"}</dd>
-              <dt>Markdown folder</dt>
-              <dd>
-                <code>{status?.outputFolder ?? "—"}</code>
-              </dd>
-              <dt>Last checked</dt>
-              <dd>{when(status?.updatedAt ?? null)}</dd>
-            </dl>
-          </section>
+            </section>
+            <section className="ss-card ss-stack">
+              <div>
+                <h2>Convert existing PDFs</h2>
+                <p className="ss-card-description">
+                  Check the first documents in storage and skip anything already converted.
+                </p>
+              </div>
+              <label className="ss-field">
+                Maximum PDFs
+                <input
+                  className="ss-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={limit}
+                  onChange={(event) => setLimit(Math.max(1, Math.min(100, Number(event.target.value) || 1)))}
+                />
+              </label>
+              <label className="ss-check">
+                <input type="checkbox" checked={ocr} onChange={(event) => editOcr(event.target.checked)} />
+                <span>
+                  <strong>Recognise text in scanned pages (OCR)</strong>
+                  <small>Leave disabled for normal text-based academic PDFs.</small>
+                </span>
+              </label>
+              <button
+                className="ss-button ss-button-secondary"
+                onClick={() => void queueBackfill()}
+                disabled={
+                  busy ||
+                  !ocrReady ||
+                  filesRead.pending ||
+                  !!filesRead.error ||
+                  !!statusRead.error ||
+                  files.length === 0 ||
+                  status?.engine !== "available"
+                }
+              >
+                {busy ? <span className="ss-spinner" /> : null}
+                {filesLoaded ? `Queue first ${Math.min(limit, files.length)}` : "Queue PDFs"}
+              </button>
+            </section>
+          </div>
         </div>
       ) : null}
     </ApplicationScreen>

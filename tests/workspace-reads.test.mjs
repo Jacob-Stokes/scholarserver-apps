@@ -17,12 +17,10 @@ async function sourceModule(url, replacements = {}) {
   return moduleUrl(source);
 }
 const shared = await sourceModule(new URL(import.meta.resolve("@scholarserver/ui/read-resource")));
-const model = await sourceModule(new URL("../apps/zotero/ui/src/setup-model.ts", import.meta.url));
 const icons = await sourceModule(new URL("../apps/n8n/ui/src/app-icons.ts", import.meta.url));
-const { createZoteroReads, statusPresentation, accountPresentation } = await import(
+const { createZoteroReads, statusPresentation } = await import(
   await sourceModule(new URL("../apps/zotero/ui/src/zotero-reads.ts", import.meta.url), {
-    "@scholarserver/ui/read-resource": shared,
-    "./setup-model": model
+    "@scholarserver/ui/read-resource": shared
   })
 );
 const { createN8nReads } = await import(
@@ -38,7 +36,7 @@ const status = {
 };
 const inventory = { templates: [], installations: {}, workflows: [], moreAvailable: false };
 
-test("Zotero informational status excludes credentials and validates account handoff separately", () => {
+test("Zotero attachment status excludes account credentials", () => {
   const snapshot = statusPresentation({
     ...status,
     apiKey: "synthetic-secret",
@@ -46,10 +44,6 @@ test("Zotero informational status excludes credentials and validates account han
     loginUrl: "synthetic-secret"
   });
   assert(!JSON.stringify(snapshot).includes("synthetic-secret"));
-  assert.throws(
-    () => accountPresentation({ state: "pending", loginUrl: "https://untrusted.example/login" }),
-    /unrecognized/
-  );
 });
 
 test("n8n inventory is independent of slow discovery and shares discovery across consumers", async (t) => {
@@ -75,16 +69,6 @@ test("n8n inventory is independent of slow discovery and shares discovery across
   assert.equal(discoveryCalls, 1);
 });
 
-test("Zotero keeps an account handoff URL out of its retained progress snapshot", async (t) => {
-  const link = "https://www.zotero.org/login?synthetic=handoff";
-  t.mock.method(globalThis, "fetch", async () => Response.json({ state: "pending", loginUrl: link }));
-  const links = [];
-  const reads = createZoteroReads("/apps/zotero", "zotero", (url) => links.push(url));
-  await reads.account.refresh();
-  assert.deepEqual(links, [link]);
-  assert.equal(reads.account.getSnapshot().data.loginUrl, undefined);
-});
-
 test("n8n research permission setup failure does not masquerade as expired browser sign-in", async (t) => {
   t.mock.method(globalThis, "fetch", async () =>
     Response.json({ code: "research_connection_required" }, { status: 409 })
@@ -95,46 +79,62 @@ test("n8n research permission setup failure does not masquerade as expired brows
   assert.equal(reads.accessSignal.aborted, false);
 });
 
-test("n8n recent runs remain visible after a transient error, without replaying any action", async (t) => {
+test("n8n inventory remains visible after a transient read error without replaying a write", async (t) => {
   const calls = [];
-  t.mock.method(globalThis, "fetch", async (url, init) => {
+  t.mock.method(globalThis, "fetch", async (_url, init) => {
     calls.push(init.method);
     if (calls.length === 2) throw new Error("offline");
-    return Response.json({ runs: [{ id: "synthetic", status: "success" }] });
+    return Response.json(inventory);
   });
-  const reads = createN8nReads("");
-  const run = reads.runs("one");
-  assert.equal(reads.runs("one"), run);
-  await run.refresh();
-  await run.refresh(true);
-  assert.equal(run.getSnapshot().data[0].id, "synthetic");
-  assert.match(run.getSnapshot().error, /offline/);
+  const reads = createN8nReads("/apps/test");
+  await reads.inventory.refresh();
+  await reads.inventory.refresh(true);
+  assert.deepEqual(reads.inventory.getSnapshot().data, inventory);
+  assert.match(reads.inventory.getSnapshot().error, /offline/);
   assert.deepEqual(calls, ["GET", "GET"]);
 });
 
-for (const app of ["zotero", "n8n"]) {
-  test(`${app} child access denial clears sibling data and blocks late successful reads`, async (t) => {
-    let release;
-    t.mock.method(globalThis, "fetch", async (url) => {
-      if (url.endsWith("status")) return Response.json(app === "zotero" ? status : { connected: true, phase: "ready" });
-      if (url.endsWith(app === "zotero" ? "account/session" : "automations"))
-        return new Promise((resolve) => {
-          release = () => resolve(Response.json(app === "zotero" ? { state: "idle" } : inventory));
-        });
-      return new Response("", { status: 401 });
-    });
-    const reads = app === "zotero" ? createZoteroReads("/apps/test", "test") : createN8nReads("/apps/test");
-    await reads.status.refresh();
-    const list = app === "zotero" ? reads.account : reads.inventory;
-    const pending = list.refresh();
-    const child = app === "zotero" ? reads.desktop : reads.applications;
-    await child.refresh();
-    release();
-    await pending;
-    assert.equal(reads.status.getSnapshot().data, undefined);
-    assert.equal(list.getSnapshot().data, undefined);
-    assert.equal(reads.accessSignal.aborted, true);
-    await reads.status.refresh(true);
-    assert.equal(reads.status.getSnapshot().blocked, true);
+test("Zotero denies a late attachment response after the shared session loses access", async (t) => {
+  let release;
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (url.endsWith("status")) return Response.json(status);
+    if (url.endsWith("attachments/resolve"))
+      return new Promise((resolve) => {
+        release = () => resolve(Response.json({ attachmentKey: "ABCD1234" }));
+      });
+    return new Response("", { status: 401 });
   });
-}
+  const reads = createZoteroReads("/apps/test");
+  await reads.status.refresh();
+  const pending = reads.request("attachments/resolve", { method: "POST" });
+  await assert.rejects(reads.request("attachments/match", { method: "POST" }), /sign in again/);
+  release();
+  await assert.rejects(pending);
+  assert.equal(reads.status.getSnapshot().data, undefined);
+  assert.equal(reads.accessSignal.aborted, true);
+  await reads.status.refresh(true);
+  assert.equal(reads.status.getSnapshot().blocked, true);
+});
+
+test("n8n child denial clears sibling data and blocks late successful reads", async (t) => {
+  let release;
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (url.endsWith("status")) return Response.json({ connected: true, phase: "ready" });
+    if (url.endsWith("automations"))
+      return new Promise((resolve) => {
+        release = () => resolve(Response.json(inventory));
+      });
+    return new Response("", { status: 401 });
+  });
+  const reads = createN8nReads("/apps/test");
+  await reads.status.refresh();
+  const pending = reads.inventory.refresh();
+  await reads.applications.refresh();
+  release();
+  await pending;
+  assert.equal(reads.status.getSnapshot().data, undefined);
+  assert.equal(reads.inventory.getSnapshot().data, undefined);
+  assert.equal(reads.accessSignal.aborted, true);
+  await reads.status.refresh(true);
+  assert.equal(reads.status.getSnapshot().blocked, true);
+});

@@ -428,3 +428,9 @@ Repair or retire this legacy integration before qualifying that workflow.
 
 The project-vault update remains pending explicit permission following automatic
 approval review's rejection. The repository report contains the prepared summary.
+
+## Standalone form removal — 29 September 2026
+
+Removed standalone account, storage and desktop-authorization forms, including the old setup model. Attachments remains an operational workspace and links Configuration to Manager. Its retained status contains only connection state, mode and error; access denial clears drafts/results and rejects a late attachment response. PDF-worker service authentication remains unfinished.
+
+Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.
