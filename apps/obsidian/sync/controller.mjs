@@ -26,6 +26,7 @@ import {
   repairDeviceOnboarding
 } from "./livesync-setup.mjs";
 import { approvedClient, createOfficialClient } from "./official-client.mjs";
+import { officialCommandFailure, unconfiguredVaultRejection } from "./official-failure.mjs";
 import { createResearchNote } from "./research-note.mjs";
 import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 import { createVaultBinding } from "./vault-binding.mjs";
@@ -153,14 +154,7 @@ async function runOb(args, { credentialKind = null } = {}) {
       if (timedOut) return reject(new Error("Obsidian took too long to respond. Check your connection and retry."));
       if (code === 0) return resolve(stdout.trim());
       const commandOutput = `${stderr}\n${stdout}`;
-      let detail = "Obsidian could not complete this operation. Check your connection and retry.";
-      if (credentialKind === "account") detail = "Obsidian account sign-in was not accepted";
-      if (credentialKind === "vault") {
-        detail = /wrong vault key|validate password/i.test(commandOutput)
-          ? "Vault encryption password was not accepted"
-          : "Obsidian could not open the selected vault";
-      }
-      reject(new Error(detail));
+      reject(officialCommandFailure(credentialKind, commandOutput));
     });
   });
 }
@@ -532,6 +526,37 @@ async function configurationAction(actionId, wireInput) {
   return attachCurrentSectionWhenAvailable(receipt, currentConfiguration);
 }
 
+async function configurationReceipt(requestId) {
+  const receipt = await configurationActions.read(requestId);
+  if (!receipt || receipt.status !== "unconfirmed" || receipt.actionId !== "connect-vault" || mutationRunning)
+    return receipt;
+  try {
+    return await configurationActions.reconcileRejected(requestId, async (current) => {
+      if (mutationRunning || syncProcess || state.profile !== "official" || state.state !== "vault-selection-required")
+        return null;
+      const local = JSON.parse(await runOb(["sync-list-local", "--json"]));
+      const enrolled = await stat(enrollmentPath)
+        .then(() => true)
+        .catch((error) => {
+          if (error.code === "ENOENT") return false;
+          throw error;
+        });
+      const vaultEntries = await readdir(vaultPath);
+      return unconfiguredVaultRejection({
+        receipt: current,
+        status: state,
+        busy: mutationRunning || Boolean(syncProcess),
+        enrolled: Boolean(enrolled),
+        vaultEntries,
+        localVaults: local.vaults
+      });
+    });
+  } catch {
+    // An unsuccessful observation cannot unlock an uncertain mutation.
+    return receipt;
+  }
+}
+
 async function action(request) {
   switch (request.action) {
     case "browse-folders":
@@ -754,7 +779,7 @@ async function handleHttp(request, response) {
         return json(response, 200, await currentConfiguration({ values }));
       }
       if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
-        const receipt = await configurationActions.read(parts[2]);
+        const receipt = await configurationReceipt(parts[2]);
         if (!receipt) return json(response, 404, { error: "Operation not found" });
         return json(response, 200, configurationActionResult(receipt));
       }

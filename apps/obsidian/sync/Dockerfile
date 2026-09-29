@@ -32,6 +32,7 @@ COPY --chown=1000:1000 apps/obsidian/sync/research-note.mjs /app/research-note.m
 COPY --chown=1000:1000 apps/obsidian/sync/vault-folders.mjs /app/vault-folders.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/vault-binding.mjs /app/vault-binding.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/official-client.mjs apps/obsidian/sync/official-command.mjs /app/
+COPY --chown=1000:1000 apps/obsidian/sync/official-failure.mjs /app/official-failure.mjs
 COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
 COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/couchdb-request.mjs /app/couchdb-request.mjs

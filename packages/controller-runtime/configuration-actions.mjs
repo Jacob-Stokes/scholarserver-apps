@@ -11,6 +11,10 @@ export class ConfigurationActionError extends Error {
   }
 }
 
+// Use only for a proven failure that permits a corrected request. The message
+// must be app-authored text, never raw upstream output or submitted values.
+export class ConfigurationActionRejected extends Error {}
+
 export function assertConfigurationActionRequest(input, actionId, sectionId) {
   if (!input || Array.isArray(input) || typeof input !== "object")
     throw new ConfigurationActionError(400, "Invalid configuration action request.");
@@ -92,7 +96,7 @@ export class ConfigurationActions {
   async read(requestId, sectionId = this.sectionId) {
     try {
       const receipt = JSON.parse(await readFile(this.receiptPath(requestId), "utf8"));
-      if (receipt.requestId !== requestId || !["succeeded", "unconfirmed"].includes(receipt.status))
+      if (receipt.requestId !== requestId || !["succeeded", "unconfirmed", "rejected"].includes(receipt.status))
         throw new Error("Invalid configuration receipt");
       if (sectionId && receipt.sectionId !== sectionId)
         throw new ConfigurationActionError(409, "Request identity belongs to another configuration section.");
@@ -117,6 +121,18 @@ export class ConfigurationActions {
       if (receipt.status === "unconfirmed") return true;
     }
     return false;
+  }
+
+  reconcileRejected(requestId, observe) {
+    return this.serialise(async () => {
+      const receipt = await this.read(requestId);
+      if (!receipt || receipt.status !== "unconfirmed") return receipt;
+      const rejection = await observe(receipt);
+      if (!(rejection instanceof ConfigurationActionRejected)) return receipt;
+      const reconciled = { ...receipt, status: "rejected", message: rejection.message.slice(0, 1000) };
+      await atomicJson(this.receiptPath(requestId), reconciled);
+      return reconciled;
+    });
   }
 
   run(input, prepare, apply, validate = null) {
@@ -162,7 +178,13 @@ export class ConfigurationActions {
         await apply(validated, section);
         receipt.status = "succeeded";
         await atomicJson(receiptPath, receipt);
-      } catch {
+      } catch (error) {
+        if (error instanceof ConfigurationActionRejected) {
+          receipt.status = "rejected";
+          receipt.message = error.message.slice(0, 1000);
+          await atomicJson(receiptPath, receipt);
+          return configurationActionResult(receipt);
+        }
         receipt.status = "unconfirmed";
       }
       return { requestId: receipt.requestId, actionId: receipt.actionId, status: receipt.status };
@@ -171,5 +193,10 @@ export class ConfigurationActions {
 }
 
 export function configurationActionResult(receipt) {
-  return { requestId: receipt.requestId, actionId: receipt.actionId, status: receipt.status };
+  return {
+    requestId: receipt.requestId,
+    actionId: receipt.actionId,
+    status: receipt.status,
+    ...(receipt.status === "rejected" && receipt.message ? { message: receipt.message } : {})
+  };
 }

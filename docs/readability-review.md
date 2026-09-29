@@ -114,3 +114,12 @@ This is not a completed review of all Zotero code. Deferred work:
   session rather than risking a second account-link mutation.
 - Initial sync, attachment-byte availability and Gateway activation are separate
   checks. Do not infer them from the controller's setup-state label.
+
+### Official Sync setup failures — 29 September
+
+A focused official-client failure classifier separates known password rejection
+from uncertain transport/operation errors. Shared receipt storage accepts only an
+explicit rejection type; arbitrary exception text remains private and uncertain.
+Old-vault reconciliation has an explicit no-data/no-local-connection/idle allowlist.
+The larger controller still owns several setup protocols; no whole-file simplicity
+claim is made, and general interrupted-pull recovery is not added by this pass.

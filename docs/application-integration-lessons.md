@@ -230,3 +230,12 @@ Update native acceptance scripts at the same time; a script that searches for a
 removed form no longer qualifies the image. Native configuration action/receipt
 checks, built workspace checks and actual Manager browser acceptance prove
 different boundaries and should be reported separately.
+
+### Credential failures need terminal receipts
+
+A wrong credential is not an indefinitely running mutation. Where upstream proves
+rejection before vault connection/data work, persist an app-authored terminal
+outcome so a corrected new request is possible after reload. Never promote a raw
+exception, timeout or generic validation transport failure into proof of rejection.
+Older receipts that lost the cause require specific read-only reconciliation;
+empty UI fields or a healthy container do not establish that no change happened.

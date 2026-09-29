@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   assertConfigurationActionRequest,
+  ConfigurationActionRejected,
   ConfigurationActions
 } from "../../../packages/controller-runtime/configuration-actions.mjs";
 import { obsidianConfigurationFixtures } from "./configuration.fixtures.mjs";
@@ -13,6 +14,7 @@ import {
   obsidianConfiguration,
   validateObsidianConfigurationAction
 } from "./configuration.mjs";
+import { officialCommandFailure, unconfiguredVaultRejection } from "./official-failure.mjs";
 
 test("LiveSync advances through preparation, explicit device output, joining and ready without echoing credentials", () => {
   const [setup, preparing, device, joining, ready] = obsidianConfigurationFixtures.slice(5, 10);
@@ -254,4 +256,122 @@ test("native setup retains worker/download failures and blocks a second in-progr
     failed.notices.some((notice) => notice.kind === "error" && notice.text === "Download verification failed."),
     true
   );
+});
+
+test("vault password rejection is retryable without exposing upstream output; transport and other failures remain uncertain", () => {
+  const error = officialCommandFailure("vault", "Failed to validate password. Wrong vault key. synthetic-secret");
+  assert.ok(error instanceof ConfigurationActionRejected);
+  assert.match(error.message, /encryption password was not accepted/);
+  assert.ok(!error.message.includes("synthetic-secret"));
+  assert.ok(officialCommandFailure("vault", "Password not provided.") instanceof ConfigurationActionRejected);
+  for (const output of ["Failed to validate password. Network unavailable", "Unexpected failure"]) {
+    assert.ok(!(officialCommandFailure("vault", output) instanceof ConfigurationActionRejected));
+  }
+});
+
+test("old uncertain vault setup is retryable only when idle with no replica, connection or enrollment", () => {
+  const observed = {
+    receipt: { sectionId: "setup", actionId: "connect-vault", status: "unconfirmed" },
+    status: { profile: "official", state: "vault-selection-required" },
+    busy: false,
+    enrolled: false,
+    vaultEntries: [],
+    localVaults: []
+  };
+  assert.ok(unconfiguredVaultRejection(observed) instanceof ConfigurationActionRejected);
+  for (const override of [
+    { busy: true },
+    { enrolled: true },
+    { vaultEntries: [".obsidian"] },
+    { localVaults: [{ id: "some-vault" }] },
+    { localVaults: undefined },
+    { status: { profile: "official", state: "initial-sync" } },
+    { status: { profile: "livesync", state: "vault-selection-required" } },
+    { receipt: { ...observed.receipt, actionId: "configure-livesync" } }
+  ])
+    assert.equal(unconfiguredVaultRejection({ ...observed, ...override }), null);
+});
+
+test("credential rejection persists across restart and allows a corrected request without replaying secrets", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "obsidian-rejected-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const actions = new ConfigurationActions(directory, "setup");
+  const section = obsidianConfigurationFixtures[3];
+  const request = {
+    requestId: "password-attempt-123",
+    expectedRevision: section.revision,
+    sectionId: "setup",
+    actionId: "connect-vault",
+    values: { vault: "remote-vault", scopePath: "/", encryptionPassword: "synthetic-secret" }
+  };
+  const result = await actions.run(
+    request,
+    () => section,
+    () => {
+      throw officialCommandFailure("vault", "Wrong vault key");
+    }
+  );
+  assert.equal(result.status, "rejected");
+  assert.ok(!JSON.stringify(await actions.read(request.requestId)).includes("synthetic-secret"));
+  const restarted = new ConfigurationActions(directory, "setup");
+  let applied = 0;
+  assert.equal(
+    (
+      await restarted.run(
+        request,
+        () => section,
+        () => {
+          applied++;
+        }
+      )
+    ).status,
+    "rejected"
+  );
+  assert.equal(applied, 0);
+  assert.equal(
+    (
+      await restarted.run(
+        { ...request, requestId: "password-corrected-123" },
+        () => section,
+        () => {
+          applied++;
+        }
+      )
+    ).status,
+    "succeeded"
+  );
+  assert.equal(applied, 1);
+});
+
+test("old incomplete connection reconciliation records a terminal receipt without replaying setup", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "obsidian-reconcile-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const actions = new ConfigurationActions(directory, "setup");
+  const section = obsidianConfigurationFixtures[3];
+  const request = {
+    requestId: "old-vault-attempt-123",
+    expectedRevision: section.revision,
+    sectionId: "setup",
+    actionId: "connect-vault",
+    values: { vault: "remote-vault", scopePath: "/" }
+  };
+  await actions.run(
+    request,
+    () => section,
+    () => {
+      throw new Error("Lost result");
+    }
+  );
+  await assert.rejects(
+    actions.reconcileRejected(request.requestId, () => {
+      throw new Error("Read unavailable");
+    })
+  );
+  assert.equal((await actions.read(request.requestId)).status, "unconfirmed");
+  const receipt = await actions.reconcileRejected(
+    request.requestId,
+    () => new ConfigurationActionRejected("No vault connection was created.")
+  );
+  assert.equal(receipt.status, "rejected");
+  assert.equal((await new ConfigurationActions(directory, "setup").read(request.requestId)).status, "rejected");
 });

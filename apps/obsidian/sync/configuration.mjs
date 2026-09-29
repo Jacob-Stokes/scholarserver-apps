@@ -129,7 +129,13 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
             .map((vault) => ({ value: vault.id ?? vault.vaultId, label: vault.name ?? vault.id ?? vault.vaultId }))
             .filter((option) => typeof option.value === "string" && typeof option.label === "string")
         },
-        { id: "encryptionPassword", label: "Vault encryption password, if used", type: "secret", autocomplete: "off" },
+        {
+          id: "encryptionPassword",
+          label: "Vault encryption password, if used",
+          type: "secret",
+          autocomplete: "off",
+          hint: "The encryption password you chose for this remote vault. This is separate from account sign-in."
+        },
         {
           id: "scopePath",
           label: "AI-accessible folder",
@@ -148,7 +154,13 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     section.fields = [
       { id: "email", label: "Account email", type: "email", required: true, autocomplete: "username" },
       { id: "password", label: "Password", type: "secret", required: true, autocomplete: "current-password" },
-      { id: "mfa", label: "MFA code, if required", type: "secret", autocomplete: "one-time-code" }
+      {
+        id: "mfa",
+        label: "Two-factor sign-in code, if enabled",
+        type: "secret",
+        autocomplete: "one-time-code",
+        hint: "Use the current code from your authenticator. The vault encryption password is entered after sign-in."
+      }
     ];
     section.actions = [submit("login", "Connect account", ["email", "password", "mfa"])];
     section.notices.push({

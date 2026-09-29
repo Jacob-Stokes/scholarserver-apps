@@ -675,3 +675,25 @@ Zotero. The five added synthetic states also exercise these in Manager.
 Removed the retired standalone overview, setup forms and their credential/status readers. Installed bookmarks hand off to Manager before React mounts; an unprefixed development URL has only a Manager link. The controller, LiveSync services and consent-controlled official-client setup remain unchanged.
 
 Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.
+
+## Official Sync password failure and recovery — 29 September 2026
+
+Manager-native setup previously converted every post-dispatch exception into an
+unconfirmed receipt and discarded the classified error. A recognised wrong or
+missing vault encryption password now persists a sanitised rejection that permits
+a corrected request. Generic client/transport failures remain uncertain. Account
+MFA copy explicitly separates the authenticator code from the later vault password.
+
+Legacy unconfirmed connect-vault requests can be reconciled using read-only local
+client inspection only while idle, with no enrollment, an empty replica and no
+configured local vault. The durable same-vault reservation remains unchanged.
+Incomplete pulls, existing configuration/data, failed observations and other sync
+methods cannot use this recovery. No secrets or raw client output enter receipts.
+
+Source tests cover password classification, unknown failure, restart, corrected
+request, duplicate identity and blocked reconciliation cases. Manager's synthetic
+browser test separately covers saved-step transitions and correction while retaining
+the vault/folder. Native replacement qualification and real paid-account completion
+remain required. The new rejected outcome requires the paired Manager update;
+no immutable package version/digest was changed in this pass. Project-vault update
+remains pending the previously requested external-write approval.
