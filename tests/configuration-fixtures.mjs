@@ -52,7 +52,8 @@ console.log(
       application: "zotero",
       cases: { ...namedStages(zoteroConfigurationFixtures), ...automationConfigurationFixtures },
       pages: {
-        "complete-desktop-setup": ["4-account", "processing-inactive"],
+        "complete-desktop-setup": ["4-account", "processing-unused"],
+        "complete-previous-processing": ["9-setup", "processing-inactive"],
         "complete-desktop-ready": ["9-setup", "processing-scheduled"],
         "complete-processing-edit": ["9-setup", "processing-edit"],
         "complete-online-library": ["3-setup", "processing-online-library"],

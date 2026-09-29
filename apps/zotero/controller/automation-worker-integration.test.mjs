@@ -91,11 +91,26 @@ test("native configuration saves through the real worker and retains settings an
   await start();
   const options = { directory: path.join(root, "receipts"), baseUrl: `${workerUrl}/v1` };
   let api = createAutomationConfiguration(options);
+  const fresh = await api.section({ editSettings: true });
+  assert.deepEqual(fresh.actions, []);
+  assert.match(fresh.description, /Automations/);
+  // Seed saved settings only in this disposable worker to exercise previous installations.
+  const seed = await fetch(`${workerUrl}/v1/automations/convert-zotero-pdfs`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      active: false,
+      enabled: false,
+      intervalMinutes: 60,
+      configuration: { folder: "Papers", limit: 3, ocr: false, attachMarkdown: true }
+    })
+  });
+  assert.equal(seed.status, 200);
   const initial = await api.section({ editSettings: true });
   const folderField = initial.fields.find((field) => field.id === "folder");
   assert.deepEqual(
     folderField.options.map((option) => option.value),
-    ["/", "Papers"]
+    ["Papers", "/"]
   );
   const saved = await api.run("save-automation", {
     requestId: "worker-save-processing-0001",

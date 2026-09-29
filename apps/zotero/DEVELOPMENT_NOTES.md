@@ -1,5 +1,29 @@
 # Zotero development notes
 
+## PDF workflow ownership — 30 September 2026
+
+Fresh unused processing state now directs new PDF workflows to Automations,
+without exposing another scheduler or a Docling connection prerequisite. Only
+the worker's exact untouched defaults qualify as unused. A saved timestamp,
+custom setting, active schedule or run history keeps previous processing
+controls, failures and recovery visible. This presentation change does not
+migrate settings, run jobs or erase worker history.
+
+The retained removed Zotero instance was checked through filtered state metadata:
+processing is off, settings are untouched and there is no run history. No worker
+handoff is needed for that instance; other saved installations retain their
+controls until a separately reviewed handoff. The obsolete worker's Manager
+authentication design remains a compatibility limitation, not a repaired path.
+
+Full apps source tests and lint pass. A disposable real-worker test preserves
+saved settings and one run across restart. The Codex in-app browser inspected
+fresh, previous-error and previous-edit snapshots, including 390 CSS pixels with
+no horizontal overflow. These are synthetic browser checks, not live library
+acceptance. Native image qualification and a new immutable package remain
+required. The native harness now rejects fresh setup attempts and separately
+seeds previous settings only in its disposable worker. The project-vault note
+and index update remain pending; no vault connector was used.
+
 ## Native Manager configuration source — 25 September 2026
 
 The existing controller now serves one native configuration section for both the

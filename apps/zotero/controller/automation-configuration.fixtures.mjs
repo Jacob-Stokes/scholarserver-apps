@@ -19,6 +19,19 @@ export const processingFolders = {
   folders: [{ name: "History", path: "Papers/History" }]
 };
 
+export const unusedProcessingView = {
+  ...processingView,
+  configuration: {
+    active: false,
+    enabled: false,
+    intervalMinutes: 60,
+    configuration: { folder: "", limit: 3, ocr: false, attachMarkdown: true },
+    updatedAt: "1970-01-01T00:00:00.000Z",
+    runs: []
+  },
+  readiness: { ready: false, message: "Install Docling before processing" }
+};
+
 const inactive = structuredClone(processingView);
 inactive.configuration.active = false;
 inactive.configuration.enabled = false;
@@ -38,6 +51,7 @@ const running = structuredClone(failed);
 running.configuration.runs[0] = { ...running.configuration.runs[0], state: "running", finishedAt: null, error: null };
 
 export const automationConfigurationFixtures = {
+  "processing-unused": automationConfiguration(unusedProcessingView, { editSettings: true }),
   "processing-inactive": automationConfiguration(inactive),
   "processing-scheduled": automationConfiguration(processingView),
   "processing-edit": automationConfiguration(

@@ -15,6 +15,19 @@ function savedValues(view) {
   return { active, enabled, intervalMinutes, ...configuration, folder: configuration.folder || "/" };
 }
 
+function hasPreviousProcessingConfiguration(view) {
+  const { active, enabled, intervalMinutes, configuration, updatedAt, runs } = view.configuration;
+  if (active !== false || enabled !== false || runs.length > 0) return true;
+  if (updatedAt !== "1970-01-01T00:00:00.000Z" || intervalMinutes !== 60) return true;
+  if (Object.keys(configuration).length !== 4) return true;
+  return (
+    configuration.folder !== "" ||
+    configuration.limit !== 3 ||
+    configuration.ocr !== false ||
+    configuration.attachMarkdown !== true
+  );
+}
+
 function boundedText(value, limit = 500) {
   return String(value ?? "")
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
@@ -25,8 +38,8 @@ export function automationConfiguration(view, draft = {}, { online = false, fold
   const section = {
     version: 1,
     id: "automation",
-    title: "PDF processing",
-    description: "Convert linked Zotero PDFs with Docling and optionally attach the Markdown to their Zotero items.",
+    title: "PDF workflows",
+    description: "Create PDF workflows in Automations. Docling converts the documents.",
     revision: "unavailable",
     pollAfterMs: 10_000,
     fields: [],
@@ -37,7 +50,8 @@ export function automationConfiguration(view, draft = {}, { online = false, fold
   };
   if (online) {
     section.pollAfterMs = null;
-    section.description = "Linked-folder PDF processing requires the Complete Zotero workspace.";
+    section.description =
+      "Create PDF workflows in Automations. Linked-folder conversion requires the Complete Zotero workspace.";
     return section;
   }
   const saved = savedValues(view);
@@ -46,6 +60,12 @@ export function automationConfiguration(view, draft = {}, { online = false, fold
   section.revision = createHash("sha256")
     .update(JSON.stringify([saved, view.configuration.updatedAt, runs[0]?.id, runs[0]?.state]))
     .digest("hex");
+  if (!hasPreviousProcessingConfiguration(view)) {
+    section.pollAfterMs = null;
+    return section;
+  }
+  section.title = "Previous PDF processing";
+  section.description = "Manage your saved processing settings here. Create new PDF workflows in Automations.";
   section.summary = [
     { label: "Processing", value: saved.active ? "Active" : "Off" },
     {
@@ -264,7 +284,7 @@ export function createAutomationConfiguration({ directory, baseUrl, online = fal
     if (online) return automationConfiguration(null, draft, { online });
     let folderListing;
     let folderError;
-    if (draft.editSettings === true && draft.enterFolderPath !== true) {
+    if (hasPreviousProcessingConfiguration(view) && draft.editSettings === true && draft.enterFolderPath !== true) {
       const folder = typeof draft.folder === "string" ? draft.folder : view.configuration.configuration.folder;
       try {
         folderListing = await request(`/folders?path=${encodeURIComponent(folder === "/" ? "" : folder)}`);

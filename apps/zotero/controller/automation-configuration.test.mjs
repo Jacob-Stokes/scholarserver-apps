@@ -6,7 +6,8 @@ import test from "node:test";
 import {
   automationConfigurationFixtures,
   processingFolders,
-  processingView
+  processingView,
+  unusedProcessingView
 } from "./automation-configuration.fixtures.mjs";
 import { automationConfiguration, createAutomationConfiguration } from "./automation-configuration.mjs";
 
@@ -54,6 +55,47 @@ function saveValues(section) {
   const ids = section.actions.find((action) => action.id === "save-automation").fieldIds;
   return Object.fromEntries(ids.map((id) => [id, section.values[id]]));
 }
+
+test("unused processing directs new workflows to Automations without setup controls or prerequisite errors", () => {
+  const before = structuredClone(unusedProcessingView);
+  const section = automationConfiguration(unusedProcessingView, { editSettings: true, showHistory: true });
+  assert.match(section.description, /Automations/);
+  assert.deepEqual(section.fields, []);
+  assert.deepEqual(section.actions, []);
+  assert.deepEqual(section.notices, []);
+  assert.equal(section.pollAfterMs, null);
+  assert.deepEqual(unusedProcessingView, before);
+});
+
+test("inactive customized settings, saved defaults and old failures retain their recovery controls", () => {
+  for (const change of [
+    { intervalMinutes: 90 },
+    { updatedAt: "2026-09-29T08:00:00Z" },
+    { configuration: { ...unusedProcessingView.configuration.configuration, ocr: true } },
+    { runs: [{ id: "previous-run", state: "failed", error: "Previous conversion failed" }] }
+  ]) {
+    const view = { ...unusedProcessingView, configuration: { ...unusedProcessingView.configuration, ...change } };
+    const section = automationConfiguration(view, { editSettings: true, showHistory: true });
+    assert.equal(section.title, "Previous PDF processing");
+    assert.ok(section.actions.some((action) => action.id === "save-automation"));
+    assert.ok(section.fields.some((field) => field.id === "showHistory"));
+    if (change.runs) assert.ok(section.notices.some((notice) => notice.kind === "error"));
+  }
+});
+
+test("forged processing setup on an unused installation is rejected without worker mutation", async (context) => {
+  const { api, view, mutations } = await fixture(context);
+  view.configuration = structuredClone(unusedProcessingView.configuration);
+  const section = await api.section({ editSettings: true });
+  const result = await api.run("save-automation", {
+    requestId: "unused-processing-forged-001",
+    expectedRevision: section.revision,
+    values: { editSettings: true, active: true }
+  });
+  assert.equal(result.status, "rejected-before-change");
+  assert.deepEqual(mutations, []);
+  assert.deepEqual(view.configuration, unusedProcessingView.configuration);
+});
 
 test("saved schedules and non-default settings remain visible without enabling processing", () => {
   const section = automationConfigurationFixtures["processing-scheduled"];

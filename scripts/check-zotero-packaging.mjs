@@ -197,9 +197,31 @@ try {
     assert.equal(response.status, 200);
     return response.json();
   };
+  const unusedProcessing = await configuration("/evaluate", { values: { editSettings: true } });
+  assert.deepEqual(unusedProcessing.actions, [], "Fresh installations use Automations for new workflows");
+  assert.deepEqual(unusedProcessing.fields, []);
+  assert.match(unusedProcessing.description, /Automations/);
+  const forbiddenSetup = await configuration("/actions/save-automation", {
+    requestId: "native-zotero-unused-processing-0001",
+    expectedRevision: unusedProcessing.revision,
+    values: { editSettings: true, active: true }
+  });
+  assert.equal(forbiddenSetup.status, "rejected-before-change");
+  // This worker and its state volume are disposable qualification fixtures.
+  await probe(
+    worker,
+    `
+    import assert from 'node:assert/strict';
+    const response=await fetch('http://127.0.0.1:8081/v1/automations/convert-zotero-pdfs', {
+      method:'PUT', headers:{'content-type':'application/json'},
+      body:JSON.stringify({active:false,enabled:false,intervalMinutes:60,configuration:{folder:'',limit:3,ocr:false,attachMarkdown:true}})
+    });
+    assert.equal(response.status,200);
+  `
+  );
   const processing = await configuration("/evaluate", { values: { editSettings: true } });
   assert.equal(processing.id, "automation");
-  assert.equal(processing.values.active, false, "Fresh processing must remain off");
+  assert.equal(processing.values.active, false, "Saved processing must remain off");
   const savedProcessing = await configuration("/actions/save-automation", {
     requestId: "native-zotero-processing-0001",
     expectedRevision: processing.revision,
@@ -214,7 +236,9 @@ try {
     }
   });
   assert.equal(savedProcessing.status, "succeeded");
-  console.log("PASS: native Manager configuration saves processing settings through the worker without activating it");
+  console.log(
+    "PASS: fresh configuration uses Automations; previous settings remain editable without activating processing"
+  );
   await probe(
     bridge,
     `
