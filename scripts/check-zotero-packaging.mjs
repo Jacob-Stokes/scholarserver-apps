@@ -182,6 +182,39 @@ try {
   await waitFor("real Zotero desktop plugin responds to controller health", () => healthy(controller, 8080));
   await waitFor("automation worker starts", () => healthy(worker, 8081));
   await waitFor("MCP starts", () => healthy(mcp, 7012));
+  let controllerOrigin = `http://${await docker("port", controller, "8080/tcp")}`;
+  const configuration = async (route = "", input) => {
+    const response = await fetch(
+      `${controllerOrigin}/api/configuration/automation${route}`,
+      input
+        ? {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(input)
+          }
+        : {}
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const processing = await configuration("/evaluate", { values: { editSettings: true } });
+  assert.equal(processing.id, "automation");
+  assert.equal(processing.values.active, false, "Fresh processing must remain off");
+  const savedProcessing = await configuration("/actions/save-automation", {
+    requestId: "native-zotero-processing-0001",
+    expectedRevision: processing.revision,
+    values: {
+      editSettings: true,
+      active: false,
+      enabled: false,
+      folder: "/",
+      limit: 2,
+      ocr: false,
+      attachMarkdown: true
+    }
+  });
+  assert.equal(savedProcessing.status, "succeeded");
+  console.log("PASS: native Manager configuration saves processing settings through the worker without activating it");
   await probe(
     bridge,
     `
@@ -221,6 +254,10 @@ try {
   await docker("restart", bridge, controller, worker, mcp);
   await waitFor("controller recovers after restart", () => healthy(controller, 8080));
   await waitFor("bridge recovers after restart", () => healthy(bridge, 8082));
+  controllerOrigin = `http://${await docker("port", controller, "8080/tcp")}`;
+  const resumedProcessing = await configuration("/evaluate", { values: { editSettings: true } });
+  assert.equal(resumedProcessing.values.active, false);
+  assert.equal(resumedProcessing.values.limit, 2);
   const after = await probe(
     bridge,
     "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; console.log(createHash('sha256').update(await readFile('/runtime/local-api-bridge-token')).digest('hex'));"

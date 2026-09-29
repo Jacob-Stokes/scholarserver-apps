@@ -61,9 +61,10 @@ before publication/deployment. Keep the final core/apps revisions together.
 The standalone setup code remains available to independent source previews and
 n8n's supported embedded setup. Remove obsolete panels deliberately once each
 remaining operational workspace and embedded consumer is accounted for; do not
-infer removal safety from the route tests alone. Zotero's legacy automation
-workspace still has its own scheduling forms and needs a separate integration
-review before claiming every automation workflow lives in Manager.
+infer removal safety from the route tests alone. Zotero's separate scheduling form
+has now been retired in favour of native Manager PDF-processing settings and run
+history. Its existing worker-to-Manager authentication needs a separate repair
+before end-to-end processing can be qualified.
 
 Files uses Manager's existing folder and AI controls; its runtime acceptance is
 still to do. Paperless is an unreleased draft without an installable package.
@@ -90,3 +91,19 @@ and Docling 0.3.7. Obsidian declares the official terms link origin required by
 the native form contract. Existing image references are still pending replacement
 and source-lock qualification; these candidates must not be installed or published
 until that gate passes. Previously published package versions remain immutable.
+
+## PDF processing and complete-page follow-up
+
+Zotero's PDF-processing settings, folder browsing and run history now use the
+native configuration contract and existing worker. The standalone scheduling form
+was removed. Seven new descriptor states cover inactive/scheduled/editing/running,
+failure history, missing dependencies and the online-library variant. A real-worker
+test with a synthetic Manager and empty discovery proves settings/history survive
+restart and a repeated request does not run twice. It does not prove authenticated
+Manager/Docling/Zotero conversion. The legacy worker currently uses browser APIs
+without a scoped service credential; this remains an explicit acceptance gap.
+
+Complete-page fixtures group coherent states for every app with multiple sections.
+The paired preview now checks these layouts alongside individual sections, with
+all mutation requests blocked. Desktop and phone reviews preserve the pending
+setup, disabled action, selected advanced option and failure information.

@@ -14,6 +14,7 @@ WORKDIR /app
 RUN apk add --no-cache tini
 COPY --chown=10001:10001 apps/zotero/controller/controller.mjs ./controller.mjs
 COPY --chown=10001:10001 apps/zotero/controller/configuration.mjs ./configuration.mjs
+COPY --chown=10001:10001 apps/zotero/controller/automation-configuration.mjs ./automation-configuration.mjs
 COPY --chown=10001:10001 apps/zotero/controller/status-model.mjs ./status-model.mjs
 COPY --chown=10001:10001 apps/zotero/controller/research-items.mjs ./research-items.mjs
 COPY --chown=10001:10001 apps/zotero/controller/account-link.mjs ./account-link.mjs

@@ -117,15 +117,15 @@ for (const app of ["zotero", "n8n"]) {
     let release;
     t.mock.method(globalThis, "fetch", async (url) => {
       if (url.endsWith("status")) return Response.json(app === "zotero" ? status : { connected: true, phase: "ready" });
-      if (url.endsWith("automations"))
+      if (url.endsWith(app === "zotero" ? "account/session" : "automations"))
         return new Promise((resolve) => {
-          release = () => resolve(Response.json(app === "zotero" ? { automations: [] } : inventory));
+          release = () => resolve(Response.json(app === "zotero" ? { state: "idle" } : inventory));
         });
       return new Response("", { status: 401 });
     });
     const reads = app === "zotero" ? createZoteroReads("/apps/test", "test") : createN8nReads("/apps/test");
     await reads.status.refresh();
-    const list = app === "zotero" ? reads.automations : reads.inventory;
+    const list = app === "zotero" ? reads.account : reads.inventory;
     const pending = list.refresh();
     const child = app === "zotero" ? reads.desktop : reads.applications;
     await child.refresh();

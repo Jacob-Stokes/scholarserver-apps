@@ -1,5 +1,4 @@
 import { ReadAccessRequired, ReadScope } from "@scholarserver/ui/read-resource";
-import type { AutomationView } from "./AutomationsTab";
 import type { AccountSession, DesktopAccessResponse, Status } from "./setup-model";
 import { approvedLoginUrl } from "./setup-model";
 
@@ -96,12 +95,7 @@ export function createZoteroReads(
       const result = accountPresentation(await request<AccountSession>("account/session", { signal }));
       onAccountLink(result.loginUrl ?? null);
       return { state: result.state, error: result.error };
-    }, 0),
-    automations: scope.create(async (signal) => {
-      const result = await request<{ automations: AutomationView[] }>("automations", { signal });
-      if (!Array.isArray(result.automations)) throw new Error("Could not read Zotero automations.");
-      return result.automations;
-    }, 5000)
+    }, 0)
   };
 }
 export type ZoteroReads = ReturnType<typeof createZoteroReads>;

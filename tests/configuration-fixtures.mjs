@@ -6,6 +6,7 @@ import { configurationFixtureCases as freshRssCases } from "../apps/freshrss/int
 import { logseqConfigurationFixtures } from "../apps/logseq/helper/configuration.fixtures.mjs";
 import { configurationFixtureCases as n8nCases } from "../apps/n8n/integration/manager-configuration-fixtures.mjs";
 import { obsidianConfigurationFixtures } from "../apps/obsidian/sync/configuration.fixtures.mjs";
+import { automationConfigurationFixtures } from "../apps/zotero/controller/automation-configuration.fixtures.mjs";
 import { zoteroConfigurationFixtures } from "../apps/zotero/controller/configuration.fixtures.mjs";
 
 const run = promisify(execFile);
@@ -23,11 +24,40 @@ function namedStages(sections) {
 
 console.log(
   JSON.stringify([
-    { application: "docling", cases: JSON.parse(stdout) },
-    { application: "freshrss", cases: await freshRssCases() },
-    { application: "n8n", cases: await n8nCases() },
+    {
+      application: "docling",
+      cases: JSON.parse(stdout),
+      pages: { "complete-page": ["docling-defaults", "docling-queue", "docling-service"] }
+    },
+    {
+      application: "freshrss",
+      cases: await freshRssCases(),
+      pages: {
+        "complete-ready": ["freshrss-linked", "freshrss-appearance"],
+        "complete-worker-error": ["freshrss-worker-error", "freshrss-appearance-unavailable"]
+      }
+    },
+    {
+      application: "n8n",
+      cases: await n8nCases(),
+      pages: {
+        "complete-first-setup": ["n8n-new-owner", "n8n-settings-first-setup"],
+        "complete-ready": ["n8n-ready", "n8n-settings"],
+        "complete-recovery": ["n8n-recovery", "n8n-settings-recovery"]
+      }
+    },
     { application: "obsidian", cases: namedStages(obsidianConfigurationFixtures) },
     { application: "logseq", cases: namedStages(logseqConfigurationFixtures) },
-    { application: "zotero", cases: namedStages(zoteroConfigurationFixtures) }
+    {
+      application: "zotero",
+      cases: { ...namedStages(zoteroConfigurationFixtures), ...automationConfigurationFixtures },
+      pages: {
+        "complete-desktop-setup": ["4-account", "processing-inactive"],
+        "complete-desktop-ready": ["9-setup", "processing-scheduled"],
+        "complete-processing-edit": ["9-setup", "processing-edit"],
+        "complete-online-library": ["3-setup", "processing-online-library"],
+        "complete-processing-error": ["9-setup", "processing-history-error"]
+      }
+    }
   ])
 );

@@ -399,3 +399,32 @@ A subsequent parity review retained failure information previously visible only
 on the standalone screen: active sync/download errors and download progress in
 Obsidian, worker errors in FreshRSS, and linked-folder automation warnings in
 Zotero. The five added synthetic states also exercise these in Manager.
+## Manager PDF processing configuration — 29 September 2026
+
+The unpublished Manager candidate now includes PDF-processing settings and its
+last 50 worker runs in native Configuration. The existing worker continues to own
+saved activation, interval, folder, OCR, attachment settings and execution. Reading
+or editing a draft does not activate it. Folder selection uses the worker's bounded
+shared-folder listing, with manual relative paths for larger lists. Account-only
+installs show a concise unavailable explanation without contacting the worker.
+
+The old scheduling component and its unused browser reader were removed. Old
+automation URLs now lead to the native processing section. Existing worker HTTP
+routes remain available for compatibility. App-side operation receipts guard
+stale settings, duplicate requests and lost responses across restarts.
+
+Source tests exercise the real worker with disposable storage and a synthetic
+Manager/empty Docling discovery: save, run, restart, settings/history preservation
+and same-request deduplication passed. This is not authenticated conversion or
+attachment acceptance. The native image gate now checks native processing settings
+and worker/controller restart; it has not yet run for this candidate.
+
+Further inspection found a pre-existing integration gap: the PDF worker still
+calls the browser-facing Manager overview/action APIs without a scoped service
+credential. Current Manager requires private browser ingress there; apps should
+use authenticated `/api/v1/service/*` operations with reviewed target grants.
+Do not claim end-to-end PDF automation acceptance from the empty-discovery fixture.
+Repair or retire this legacy integration before qualifying that workflow.
+
+The project-vault update remains pending explicit permission following automatic
+approval review's rejection. The repository report contains the prepared summary.

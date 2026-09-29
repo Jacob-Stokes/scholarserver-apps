@@ -25,6 +25,10 @@ export async function configurationFixtureCases() {
     "n8n-resume-mfa": await managerConfigurationSection("connection", resume, inventory),
     "n8n-recovery": await managerConfigurationSection("connection", recovery, inventory),
     "n8n-ready": await managerConfigurationSection("connection", ready, inventory),
-    "n8n-settings": await managerConfigurationSection("settings", ready, inventory)
+    "n8n-settings": await managerConfigurationSection("settings", ready, inventory),
+    "n8n-settings-recovery": await managerConfigurationSection("settings", recovery, inventory),
+    "n8n-settings-first-setup": await managerConfigurationSection("settings", fresh, {
+      read: async () => ({ installations: {} })
+    })
   };
 }

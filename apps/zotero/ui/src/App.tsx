@@ -6,7 +6,6 @@ import { useReadResource } from "@scholarserver/ui/use-read-resource";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountStep } from "./AccountStep";
 import { AuthorizationStep } from "./AuthorizationStep";
-import { AutomationsTab } from "./AutomationsTab";
 import { managerDestination } from "./manager-navigation";
 import { StorageStep } from "./StorageStep";
 import {
@@ -597,7 +596,18 @@ function ZoteroSession({ onAccessRetry }: { onAccessRetry: () => void }) {
       ) : null}
 
       {status?.features.automations && tab === "automations" ? (
-        <AutomationsTab base={base} reads={reads} setNotice={setNotice} setError={setError} />
+        <section className="ss-card">
+          <h2>PDF processing</h2>
+          <p className="ss-card-description">Manage processing settings and recent runs in Manager Configuration.</p>
+          {instanceId ? (
+            <a
+              className="ss-button"
+              href={`/applications/manage/${encodeURIComponent(instanceId)}/configuration#configuration-automation`}
+            >
+              Open configuration
+            </a>
+          ) : null}
+        </section>
       ) : null}
 
       {status && tab === "configuration" ? (

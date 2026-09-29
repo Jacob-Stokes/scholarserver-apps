@@ -11,6 +11,7 @@ import {
 } from "@scholarserver/controller-runtime/configuration-actions";
 import { atomicJson, atomicWrite } from "@scholarserver/controller-runtime/files";
 import { createAccountLink } from "./account-link.mjs";
+import { createAutomationConfiguration } from "./automation-configuration.mjs";
 import { attachCurrentSectionWhenAvailable, zoteroConfiguration } from "./configuration.mjs";
 import { createLibraryActions } from "./library-actions.mjs";
 import { researchItems } from "./research-items.mjs";
@@ -41,6 +42,11 @@ const onlineLibrary = variant === "online-library";
 const zoteroBaseUrl = process.env.ZOTERO_LOCAL_BASE_URL ?? "http://desktop:8082/api";
 const connectorPingUrl = process.env.ZOTERO_CONNECTOR_PING_URL ?? "http://desktop:8082/connector/ping";
 const automationsBaseUrl = process.env.ZOTERO_AUTOMATIONS_URL ?? "http://automations:8081/v1";
+const automationConfiguration = createAutomationConfiguration({
+  directory: path.join(runtimePath, "configuration-receipts"),
+  baseUrl: automationsBaseUrl,
+  online: onlineLibrary
+});
 const zoteroWebApiUrl = "https://api.zotero.org";
 const uiPath = "/app/ui";
 let onlineAccountCache = { expiresAt: 0, value: null };
@@ -678,6 +684,23 @@ export async function handleHttp(request, response, { staticRoot = uiPath } = {}
     if (request.method === "GET" && url.pathname === "/api/status") return json(response, 200, await currentStatus());
     if (url.pathname.startsWith("/api/configuration/")) {
       const parts = url.pathname.split("/").slice(3);
+      if (parts[0] === "automation" && parts.length <= 3) {
+        if (request.method === "GET" && parts.length === 1)
+          return json(response, 200, await automationConfiguration.section());
+        if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2)
+          return json(response, 200, await automationConfiguration.section(validateEvaluation(await body(request))));
+        if (request.method === "GET" && parts[1] === "operations" && parts.length === 3) {
+          const receipt = await automationConfiguration.read(parts[2]);
+          return receipt
+            ? json(response, 200, configurationActionResult(receipt))
+            : json(response, 404, { error: "Operation not found" });
+        }
+        if (request.method === "POST" && parts[1] === "actions" && parts.length === 3) {
+          const outcome = await automationConfiguration.run(parts[2], await body(request));
+          return json(response, outcome.status === "rejected-before-change" ? 400 : 200, outcome);
+        }
+        return json(response, 404, { error: "Not found" });
+      }
       if (parts[0] !== "setup" || parts.length > 3) return json(response, 404, { error: "Not found" });
       if (request.method === "GET" && parts.length === 1) return json(response, 200, await currentConfiguration());
       if (request.method === "POST" && parts[1] === "evaluate" && parts.length === 2)

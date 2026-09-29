@@ -41,8 +41,12 @@ for (const app of ["obsidian", "logseq", "freshrss", "zotero"]) {
 test("document and attachment workspaces keep their app-owned routes", () => {
   for (const suffix of ["", "/queue", "/process"])
     assert.equal(routes.get("docling")(`/apps/documents${suffix}`), null);
-  for (const suffix of ["/attachments", "/automations"])
-    assert.equal(routes.get("zotero")(`/apps/references${suffix}`), null);
+  assert.equal(routes.get("zotero")("/apps/references/attachments"), null);
+  for (const suffix of ["/automations", "/automations/convert-zotero-pdfs"])
+    assert.equal(
+      routes.get("zotero")(`/apps/references${suffix}`),
+      "/applications/manage/references/configuration#configuration-automation"
+    );
 });
 
 test("n8n keeps only the explicit embedded setup route and carries engine identity into Manager", () => {

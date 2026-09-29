@@ -104,7 +104,7 @@ echo "Gate 1/3: Docling controller UI, validation and restart"
 node "$script_dir/check-docling-packaging.mjs" 2>&1 | tee "$output/docling.log"
 echo "Gate 2/3: Logseq unsynced graph/MCP, restart and managed setup UI"
 node "$script_dir/check-logseq-packaging.mjs" 2>&1 | tee "$output/logseq.log"
-echo "Gate 3/3: Zotero disposable desktop, protected bridge, UI and restart"
+echo "Gate 3/3: Zotero disposable desktop, protected bridge, Manager processing settings, UI and restart"
 node "$script_dir/check-zotero-packaging.mjs" 2>&1 | tee "$output/zotero.log"
 
 [[ $(node "$script_dir/native-image-receipt.mjs" verify-receipt "${receipt_arguments[@]}") == "$records" ]] ||
@@ -124,7 +124,7 @@ const summary = {
   completedAt: new Date().toISOString(),
   scopes: ['Docling controller UI, validation and restart',
     'Logseq unsynced graph/MCP, restart and managed setup UI',
-    'Zotero disposable desktop, protected bridge, UI and restart'],
+    'Zotero disposable desktop, protected bridge, Manager processing settings, UI and restart'],
   limits: ['Not full installation or retained-host acceptance',
     'No account, encrypted sync, Gateway or real-library acceptance',
     'Does not qualify the Logseq sync adapter or upstream browser editor',

@@ -382,6 +382,7 @@
         "apps/zotero/controller/Dockerfile",
         "apps/zotero/controller/controller.mjs",
         "apps/zotero/controller/configuration.mjs",
+        "apps/zotero/controller/automation-configuration.mjs",
         "apps/zotero/controller/account-link.mjs",
         "apps/zotero/controller/library-actions.mjs",
         "apps/zotero/controller/research-items.mjs",

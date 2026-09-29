@@ -160,6 +160,7 @@ ui:
     version: 1
     sections:
       - { id: setup, title: Library connection }
+      - { id: automation, title: PDF processing }
 presentation:
   editorialIcon:
     path: assets/icons/zotero-editorial.png

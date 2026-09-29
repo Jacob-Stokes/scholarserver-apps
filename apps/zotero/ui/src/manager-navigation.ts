@@ -6,6 +6,8 @@ export function managerDestination(pathname: string): string | null {
   const route = (match[2] ?? "").replace(/\/$/, "");
   const management = `/applications/manage/${encodeURIComponent(instanceId)}`;
   if (route === "/configuration") return `${management}/configuration`;
+  if (route === "/automations" || route.startsWith("/automations/"))
+    return `${management}/configuration#configuration-automation`;
   if (["", "/", "/overview"].includes(route)) return management;
   return null;
 }
