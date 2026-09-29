@@ -1,6 +1,6 @@
 services:
   sync:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:c7c52f75a26eb9c30bb7176433eba0a37ded63dd1fbccb854bcf57c6cf99f772
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:c1d28c8fa427e65e1648a318027226637b5d88173d1ba7ae679d1097623f0870
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -26,7 +26,7 @@ services:
       start_period: 10s
       retries: 12
   api:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:12330a66d2437035343e1985fe3e6e6b138806905a67b7312b8716a22f39d619
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:09ef94121f7bead9c87018e3527b87b1f6a1c775dce61d1c093fba637afa299e
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -45,7 +45,7 @@ services:
       start_period: 10s
       retries: 12
   mcp:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:b4abae1329bd1f2de666fcc08733c701fe7eff17c88aa1ae0444d1cc1eb21290
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:83717170f355340a79b644acd90de7cb34ef747caf85cb79a9943f4985a1a5e7
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -65,7 +65,7 @@ services:
       start_period: 30s
       retries: 12
   livesync-couchdb:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:6e25b3b43b9be946237d1aa9ab75fcef2df1f34c0c852f1185706145630a68cb
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:b33c10728ab970734af7116d7219ec862400a7595e4bc1cfe360bff762d182f8
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -87,7 +87,7 @@ services:
       start_period: 30s
       retries: 18
   livesync-worker:
-    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:ff20b292ebff60e6cb05f26c6abd2fa475dc1aa94d230b9571a8ec0315259b28
+    image: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:7725158d64ae37da17e952c2335c3cf1354a564e6a754f70b7330dc31c083801
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

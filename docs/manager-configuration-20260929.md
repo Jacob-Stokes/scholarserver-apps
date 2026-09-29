@@ -107,3 +107,50 @@ Complete-page fixtures group coherent states for every app with multiple section
 The paired preview now checks these layouts alongside individual sections, with
 all mutation requests blocked. Desktop and phone reviews preserve the pending
 setup, disabled action, selected advanced option and failure information.
+
+## Native image publication and coherent package records
+
+Run [36557464955](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36557464955)
+completed successfully on native AMD64 and ARM64 from
+`f881ada53a14cf706b237484a4165c9635a9d377`. Both publication jobs and all 17 manifest
+jobs passed, producing 19 immutable indexes including the two LiveSync subimages.
+The branch build did not move `edge`.
+
+Downloaded build and named-gate receipts were verified with
+`native-image-receipt.mjs verify-qualification` against the clean source commit.
+Each development-gate summary matched the SHA-256 of its architecture's build
+receipt. Every published index was then inspected by immutable digest: both
+platform config digests and layer counts matched its tested native receipt.
+The 19 verified references now appear consistently in all seven package manifests,
+Compose files and `catalog/image-source-lock.json`; the complete source-lock gate
+passes. Files receives new immutable candidate `0.1.1-manager.20260929.1` for its
+newly qualified image. Obsidian and n8n again declare both architectures, now
+that both native candidate images have passed their named gates.
+
+These are new development package candidates. No published old package was
+modified, and no retained instance has been updated in this pass. The matching
+core source still needs its final apps pin, native build and guarded deployment.
+
+What the native gates establish:
+
+- Files container operations and restart.
+- Obsidian startup, consent-controlled client download and independent two-peer
+  LiveSync, including the existing native note/API checks.
+- FreshRSS setup, MCP operations, restart and restore.
+- n8n password setup and controller restart.
+- Docling controller UI, validation and restart.
+- Logseq unsynced graph/MCP, restart and managed setup UI.
+- Zotero disposable desktop, protected bridge, Manager processing settings,
+  UI and controller/worker restart.
+
+Limits remain: this is not authenticated retained-host or full fresh-install
+acceptance; it does not establish real account/library access, Logseq encrypted
+sync, the Docling conversion engine, or Zotero's worker-to-Manager service
+connection. The latter remains a known pre-existing repair. Original Obsidian
+first-device setup is still a separate live task. Official catalog release gates
+and minimum-platform compatibility are not waived by these image receipts.
+
+Local evidence: `.dev/manager-configuration-20260929/verified-registry.json`,
+`registry-verification.log`, `native-run-36557464955.log` and each architecture's
+native receipt, qualification and development-summary directory. GitHub artifacts
+expire after 14 days; the downloaded copies retain the reviewed evidence.
