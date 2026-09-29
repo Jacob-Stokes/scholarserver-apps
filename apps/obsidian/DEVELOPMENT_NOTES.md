@@ -697,3 +697,12 @@ the vault/folder. Native replacement qualification and real paid-account complet
 remain required. The new rejected outcome requires the paired Manager update;
 no immutable package version/digest was changed in this pass. Project-vault update
 remains pending the previously requested external-write approval.
+
+
+## Primary-purpose catalog tag — 29 September 2026
+
+Reduced catalog tags to `Notes`. Feature and implementation labels belong
+in the description, not catalog filters. Reserved a new `.20260929.2` source
+package identity; published packages and installed instances remain unchanged.
+Replacement image qualification and package publication remain separate gates.
+Project-vault documentation remains pending the existing external-write approval.

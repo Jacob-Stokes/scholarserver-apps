@@ -275,3 +275,12 @@ Project-vault documentation update is pending this source checkpoint.
 Removed standalone defaults, queue-control and service-settings presentation. Queue and Process PDF remain operational workspaces; per-job OCR still reads the saved default. Missing defaults keep the error visible and block queueing until defaults load or the user explicitly chooses OCR. Refresh cannot replace an edited per-job choice. The native image gate now saves through the configuration action/receipt and verifies persistence separately from the document UI.
 
 Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.
+
+
+## Primary-purpose catalog tag — 29 September 2026
+
+Reduced catalog tags to `Documents`. Feature and implementation labels belong
+in the description, not catalog filters. Reserved a new `.20260929.2` source
+package identity; published packages and installed instances remain unchanged.
+Replacement image qualification and package publication remain separate gates.
+Project-vault documentation remains pending the existing external-write approval.

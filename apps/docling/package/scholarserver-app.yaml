@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.docling
 name: Docling
-packageVersion: 0.3.7-manager.20260929.1
+packageVersion: 0.3.7-manager.20260929.2
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -91,7 +91,7 @@ presentation:
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
     description: Convert PDFs into Markdown for your research.
-    tags: [Documents, PDF conversion]
+    tags: [Documents]
   icon:
     path: assets/icons/docling.webp
     mediaType: image/webp

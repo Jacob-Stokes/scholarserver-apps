@@ -10,19 +10,8 @@ import { parse } from "yaml";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const applicationsRoot = path.join(repositoryRoot, "apps");
 const iconLock = JSON.parse(await readFile(path.join(repositoryRoot, "icons.lock.json"), "utf8"));
-const catalogTagVocabulary = new Set([
-  "Automation",
-  "Documents",
-  "Files",
-  "Knowledge graphs",
-  "News & feeds",
-  "Notes",
-  "PDF conversion",
-  "References",
-  "Sync",
-  "Vaults"
-]);
-const maximumCatalogTags = 6;
+const catalogTagVocabulary = new Set(["Automation", "Documents", "Files", "News & feeds", "Notes", "References"]);
+const maximumCatalogTags = 1;
 const maximumCatalogTagLength = 32;
 
 async function packages(root = applicationsRoot) {

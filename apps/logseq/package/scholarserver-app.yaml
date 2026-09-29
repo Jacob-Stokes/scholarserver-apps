@@ -12,7 +12,7 @@ presentation:
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
     description: An outliner for connected notes and knowledge.
-    tags: [Notes, Knowledge graphs, Sync]
+    tags: [Notes]
     links:
       - { label: Logseq account sign-in, kind: website, url: https://logseq-prod.auth.us-east-1.amazoncognito.com/oauth2/authorize }
   icon:
@@ -23,7 +23,7 @@ presentation:
       url: https://selfh.st/icons/
       license: CC-BY-4.0
       licenseUrl: https://github.com/selfhst/icons/blob/main/LICENSE
-packageVersion: 0.1.2-manager.20260929.1
+packageVersion: 0.1.2-manager.20260929.2
 compatibility:
   platform: ">=0.1.0"
   schema: 1

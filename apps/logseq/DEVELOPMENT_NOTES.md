@@ -618,3 +618,12 @@ Project-vault documentation update is pending this source checkpoint.
 Removed the standalone account, private-address and notebook setup forms and their form-only readers. Native editor/sync endpoints and helper APIs remain. The isolated image UI gate now checks the Manager handoff and loaded assets rather than a removed setup form; account and encrypted sync acceptance remain separate.
 
 Full source tests, lint and all local builds passed. The in-app browser checked configuration handoffs and retained workspace success/failure states using synthetic data. See [the cleanup scope and evidence](../../docs/manager-workspace-cleanup-20260929.md). Native replacement images and new immutable package versions are still required; this pass did not update installed packages. The project-vault note remains pending the existing external-write approval.
+
+
+## Primary-purpose catalog tag — 29 September 2026
+
+Reduced catalog tags to `Notes`. Feature and implementation labels belong
+in the description, not catalog filters. Reserved a new `.20260929.2` source
+package identity; published packages and installed instances remain unchanged.
+Replacement image qualification and package publication remain separate gates.
+Project-vault documentation remains pending the existing external-write approval.

@@ -1,64 +1,33 @@
 # Catalog tags
 
-The catalog tags are application-owned metadata in each package manifest under
-`presentation.details.tags`. They are short, task-oriented labels for filtering
-the Applications and Catalog views. Tags do not change an app's capabilities,
-permissions, setup requirements or runtime configuration.
+Use one tag for an app's primary purpose. These app-owned package labels filter
+Applications and Catalog; they do not describe every capability. Keep features
+such as sync, PDF conversion and graph structure in app descriptions.
 
-## Controlled vocabulary
-
-| Tag | Use when the app helps a researcher… |
+| App | Tag |
 | --- | --- |
-| Automation | configure or run repeatable workflows |
-| Documents | convert or work with document content |
-| Files | read, write or move general files |
-| Knowledge graphs | work with structured Logseq database graphs |
-| News & feeds | subscribe to or read feed content |
-| Notes | create, search or manage notes |
-| PDF conversion | turn PDF files into Markdown derivatives |
-| References | manage citations, collections or a reference library |
-| Sync | keep app data aligned across devices or services |
-| Vaults | manage an Obsidian vault |
-
-The current package mapping is deliberately small:
-
-| App | Tags |
-| --- | --- |
-| Docling | Documents, PDF conversion |
+| Docling | Documents |
 | Files | Files |
 | FreshRSS | News & feeds |
-| Logseq | Notes, Knowledge graphs, Sync |
+| Logseq | Notes |
 | n8n | Automation |
-| Obsidian | Notes, Vaults, Sync |
-| Zotero | References, Notes, Documents, Files |
+| Obsidian | Notes |
+| Zotero | References |
 
-Generic deployment or audience labels such as `Self-hosted`, `Research`,
-`Beta` and `AI` are intentionally not part of this vocabulary. The tags
-describe usable tasks supported by the app rather than packaging status,
-hosting, or broad audience claims.
+The first-party vocabulary is Automation, Documents, Files, News & feeds, Notes
+and References. Reuse these categories; introduce another only for a genuinely
+different primary purpose. Package contract checks require one category per app.
+Do not add implementation, deployment or audience labels such as Vaults, Sync,
+Knowledge graphs, AI, Self-hosted or Research.
 
-## Metadata release inputs
+## Source checkpoint — 29 September 2026
 
-Adding catalog metadata changes the package archive, so the source candidates
-use new immutable prerelease identities rather than changing a published
-package in place:
+Obsidian, Logseq, Zotero and Docling reserve new `manager.20260929.2` package
+versions for this metadata change. Files, FreshRSS and n8n already use one primary
+category and retain their package identities. Published package versions are
+immutable. This source pass does not change installed tags or publish packages;
+the pending qualified-image/package batch must carry the updated metadata.
 
-| App | Previous source version | New source version |
-| --- | --- | --- |
-| Docling | `0.3.5-beta.1` | `0.3.5-beta.2` |
-| Files | `0.1.0-beta.2` | `0.1.0-beta.3` |
-| FreshRSS | `0.1.0-beta.4` | `0.1.0-beta.5` |
-| Logseq | `0.1.0-beta.1` | `0.1.0-beta.2` |
-| n8n | `0.1.0-beta.4` | `0.1.0-beta.5` |
-| Obsidian | `0.5.0-beta.1` | `0.5.0-beta.2` |
-| Zotero | `0.5.10-beta.1` | `0.5.10-beta.2` |
-
-These are unreleased source inputs. No catalog index, package archive, image,
-release signing material, installation or deployment was changed. The existing
-image digests and compatibility requirement remain unchanged. A future release
-must publish and validate each new package version through the normal release
-gates before the tags appear in a published catalog.
-
-The corresponding Obsidian project-vault notes were updated through Jacob
-Gateway on 11 September 2026. The repository development notes record the
-same source-only status; no vault data is stored here.
+Paperless is an unpackaged draft and has no catalog tag to change yet. Its primary
+category should be Documents when it becomes installable. The 11 September
+multi-tag taxonomy is superseded by this primary-purpose rule.
