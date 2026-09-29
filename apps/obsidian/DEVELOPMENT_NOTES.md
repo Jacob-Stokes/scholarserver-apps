@@ -725,5 +725,23 @@ vault. The retry path still checks the saved binding before another vault can be
 selected. It does not replay the uncertain command or modify paid Sync data.
 
 Source tests cover the account-step acceptance and the existing refusal cases.
-This source change requires a newly qualified immutable sync image and package;
-there is no live acceptance or paid Sync completion yet.
+The source fingerprint now includes `official-failure.mjs`, which the sync image
+copies at runtime. Full source tests, lint and fixed-inventory validation passed
+at `52c41d7`. Native run 36606496329 passed both architecture and development
+gates, then published the multi-architecture sync index
+`sha256:51a56d0a17739d5cedecf78c1305ccf2c408a0587c0acf7dce40630d9eb76a7b`.
+Its AMD64 and ARM64 configuration digests, root filesystems, source revision and
+source fingerprint match the native receipts. The `.3` package and Compose now
+select this immutable image; all 19 current source-lock records pass. Full app
+tests, lint and core catalog validation passed after the pin. Publication and
+package-source qualification do not establish an installed update.
+
+The retained `.2` instance recovered without this new image: a later supported
+remote-vault read succeeded, and status returned to `vault-selection-required`.
+Manager's existing Check request action then rejected the old uncertain receipt
+without replaying the connection. The authenticated in-app browser showed
+editable vault, encryption-password and folder fields. The user is completing
+paid-account setup on that instance, so no package update should interrupt it.
+This proves form recovery, not the cause of the earlier listing failure or paid
+Sync completion. Project-vault documentation remains pending the existing
+external-write approval.

@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.2-manager.20260929.2
+packageVersion: 0.5.2-manager.20260929.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -67,7 +67,7 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:ddbd0f3ba98905ef25c50bb6ca6d4cb48ebd23d4354b37e8915820d8452c9ac4
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:51a56d0a17739d5cedecf78c1305ccf2c408a0587c0acf7dce40630d9eb76a7b
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:7d383fbbe5b3db3d443f0956d80d042e1af349a4daf1e46600ce6e0602d4ca7d
   - service: mcp
