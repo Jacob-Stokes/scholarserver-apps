@@ -770,3 +770,16 @@ paid-account setup on that instance, so no package update should interrupt it.
 This proves form recovery, not the cause of the earlier listing failure or paid
 Sync completion. Project-vault documentation remains pending the existing
 external-write approval.
+
+## Qualified account-step restart correction — 30 September 2026
+
+Native run 36649032006 at `d87c657a9533e5f05cb464ceb94e28c1319fbaea`
+passed both architecture gates, including synthetic saved-account restart and
+failed-read draft preservation. Registry config digests, root filesystem IDs,
+source labels and fingerprints match the tested receipts for both platforms.
+The new `.20260929.4` package pins the immutable sync index
+`sha256:bb1bd5a90068bde583e13a18acc070d3495e59132cfbe611d8e2722b7edbeeef`.
+Its guide names Install official client and states LiveSync's private Tailscale
+requirement. This is development package source and native qualification;
+retained update, encrypted paid Sync and fresh-install acceptance are separate.
+The project-vault update remains pending the existing external-write approval.

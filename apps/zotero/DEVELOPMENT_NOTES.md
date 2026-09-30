@@ -483,3 +483,18 @@ controller returned HTTP 400 with `rejected-before-change`, as its contract
 requires. The harness now expects that refusal explicitly before seeding its
 disposable previous-settings fixture. The images were not published. A new
 qualification run is required; this correction does not change runtime code.
+
+## Qualified PDF workflow handoff — 30 September 2026
+
+The corrected native run 36649032006 at
+`d87c657a9533e5f05cb464ceb94e28c1319fbaea` passed both architectures,
+including fresh processing refusal and preserved previous settings/history
+through controller/worker restarts. Registry config digests, root filesystem IDs,
+source labels and fingerprints match the tested receipts. The new
+`.20260929.3` package pins controller index
+`sha256:9f6f4be3e13f7817de0dd0fe604f54b37ce430f886bdeb1a6c4e25c6540cdaaf`.
+Package copy now directs new PDF workflows to Automations and retains the
+previous worker's controls and authentication limitation explicitly. These
+checks use disposable libraries, not a real account or authenticated conversion.
+Catalog import and retained runtime acceptance remain separate.
+The project-vault update remains pending the existing external-write approval.

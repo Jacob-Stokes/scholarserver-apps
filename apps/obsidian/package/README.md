@@ -6,7 +6,7 @@ user chooses through ScholarServer's authenticated MCP Gateway.
 Choose one sync method:
 
 1. **Obsidian Sync** uses the official paid service through Obsidian Headless.
-   Choose **Install and connect** to download the approved client directly from
+   Choose **Install official client** to download the approved client directly from
    npm to your server. Requires your own Sync subscription; Obsidian's terms
    apply. The client is not bundled in new ScholarServer images.
    The first server sync is download-only before two-way sync begins.

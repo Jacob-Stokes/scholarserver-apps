@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.2-manager.20260929.3
+packageVersion: 0.5.2-manager.20260929.4
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -34,9 +34,10 @@ variants:
     highlights:
       - No Obsidian Sync subscription required
       - Keeps an always-available server copy of the vault
-      - Works privately through Tailscale or through public HTTPS
+      - Connects privately through Tailscale
     limitations:
       - Requires the Self-hosted LiveSync plugin on each Obsidian device
+      - Requires Tailscale on every connected device
       - Other vault sync methods must remain turned off
   - id: obsidian-sync
     name: Obsidian Sync
@@ -67,7 +68,7 @@ hardening:
   dropCapabilities: [ALL]
 images:
   - service: sync
-    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:51a56d0a17739d5cedecf78c1305ccf2c408a0587c0acf7dce40630d9eb76a7b
+    reference: ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:bb1bd5a90068bde583e13a18acc070d3495e59132cfbe611d8e2722b7edbeeef
   - service: api
     reference: ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:7d383fbbe5b3db3d443f0956d80d042e1af349a4daf1e46600ce6e0602d4ca7d
   - service: mcp
@@ -193,7 +194,7 @@ onboarding:
   readyWhen: compose-health
   checklist:
     - Connect the selected sync method
-    - Choose private Tailscale or public HTTPS for Self-hosted LiveSync
+    - Choose the private Tailscale address when using Self-hosted LiveSync
     - Keep other vault sync methods turned off when using LiveSync
     - Choose the folder exposed through MCP
   actions:

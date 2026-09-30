@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.zotero
 name: Zotero
-packageVersion: 0.5.12-manager.20260929.2
+packageVersion: 0.5.12-manager.20260929.3
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -24,7 +24,7 @@ capabilities:
 variants:
   - id: complete-workspace
     name: Complete Zotero workspace
-    description: Run Zotero privately on this server, with its browser desktop, plugins, attachment choices, AI tools, and optional automations.
+    description: Run Zotero privately on this server, with its browser desktop, plugins, attachment choices, and AI tools.
     recommended: true
     services: [desktop, local-api-bridge, controller, automations, mcp]
     data: [desktop-config, library, runtime, linked-files, automation-state, cloud-cache]
@@ -34,7 +34,7 @@ variants:
     highlights:
       - Full Zotero desktop available privately in your browser
       - Supports Zotero Storage, WebDAV, and shared linked folders
-      - Includes AI access and optional PDF-processing automations
+      - Includes AI access and attachment choices
     limitations: []
   - id: online-library
     name: Online library only
@@ -68,7 +68,7 @@ images:
   - service: desktop
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-desktop@sha256:6b062ae18c2df722ee626b8b2ac983e0a78b371fb192a8e4ff187d85ca2daa8f
   - service: controller
-    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:5ce6c3fd7c25301159d36a494731332796a2accaba92d3b423defc17c640d240
+    reference: ghcr.io/jacob-stokes/scholarserver-zotero-controller@sha256:9f6f4be3e13f7817de0dd0fe604f54b37ce430f886bdeb1a6c4e25c6540cdaaf
   - service: local-api-bridge
     reference: ghcr.io/jacob-stokes/scholarserver-zotero-local-api-bridge@sha256:64ffcc36b8d85ec7b3b749d52dd8eebdbde3a24c7e93af37aea8aad9b254f92c
   - service: automations
@@ -160,7 +160,7 @@ ui:
     version: 1
     sections:
       - { id: setup, title: Library connection }
-      - { id: automation, title: PDF processing }
+      - { id: automation, title: PDF workflows }
 presentation:
   editorialIcon:
     path: assets/icons/zotero-editorial.png
@@ -193,7 +193,7 @@ onboarding:
     - Connect a Zotero account
     - Choose how ScholarServer may access attachments
     - Complete desktop authorization when using the complete workspace
-    - Configure optional automations after setup
+    - Create optional PDF workflows in Automations after setup
   actions:
     - id: research-items
       data: runtime

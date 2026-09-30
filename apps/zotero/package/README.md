@@ -54,20 +54,18 @@ The `resolve-attachment` diagnostic action asks Zotero for a supported local fil
 then verifies that the canonical file remains below `/data` or `/linked`. It never reads
 `zotero.sqlite` and never accepts an arbitrary filesystem path.
 
-The controller serves package-owned Overview, Attachments, Automations and
-Configuration tabs on port 8080. The
-Automations tab is a searchable catalogue of cards rather than one expanded
-workflow form. Each card can be activated independently and opens a stable
-detail route for configuration, scheduling, manual runs and history. Activation
-does not silently enable scheduling. Only the generic Manager proxy can reach
-that interface through the restricted `scholarserver-edge` network; neither it
-nor Zotero's local API has a published host port. Online library only omits the
-desktop-specific Automations tab and presents Web API permissions instead.
+Configure this installation in **Applications → Manage → Configuration**.
+The app-owned attachment workspace remains available separately. Only the
+generic Manager proxy can reach its interface through the restricted
+`scholarserver-edge` network; neither it nor Zotero's local API has a published
+host port. Online library only presents its applicable Web API permissions.
 
-The Zotero stack also owns a small, unprivileged automation worker. Its first
-curated action discovers Zotero PDFs in the selected shared-storage folder,
-asks an installed Docling application to convert them, and can attach the
-resulting Markdown to the matching Zotero item. The worker stores its settings,
-schedule and recent run history in a dedicated persistent data slot. It has no
-host port, no Docker socket and no arbitrary script or YAML execution surface.
-Stopping Zotero stops the worker with the rest of the application stack.
+Create new PDF workflows in **Automations**, using Docling for conversion.
+Fresh Zotero configuration does not offer another PDF scheduler or connection
+setup. Existing saved processing settings, schedules, failures and recent runs
+remain under **Previous PDF processing** in Configuration. They are not silently
+migrated or deleted. The previous unprivileged worker and its persistent state
+remain for those installations; stopping Zotero also stops that worker. It has
+no host port, Docker socket or arbitrary script/YAML execution surface. Its
+older Manager authentication route remains a compatibility limitation; keeping
+its controls does not establish that a live conversion still succeeds.
