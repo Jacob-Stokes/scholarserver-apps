@@ -163,9 +163,9 @@ presentation:
 lifecycle:
   supportsDisable: true
   removeDataDefault: false
-  # Existing roots and the excluded client cache remain at their original paths.
-  # Consolidating older installations requires the checkpointed migration gate.
-  rollback: reversible
+  # The executor snapshots and journals legacy data before activating the registry.
+  # The excluded client cache stays excluded and receives a local recovery copy.
+  rollback: backup-required
 onboarding:
   readyWhen: compose-health
   checklist:

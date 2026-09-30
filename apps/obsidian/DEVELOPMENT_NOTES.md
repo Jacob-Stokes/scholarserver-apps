@@ -859,3 +859,75 @@ Its guide names Install official client and states LiveSync's private Tailscale
 requirement. This is development package source and native qualification;
 retained update, encrypted paid Sync and fresh-install acceptance are separate.
 The project-vault update remains pending the existing external-write approval.
+
+### Paired Gateway protocol checkpoint — 30 September 2026
+
+`check-obsidian-gateway.mjs` runs the actual paired Gateway, app MCP transport and
+app API on local sockets with two disposable synthetic ready connections. The
+Gateway advertises one twenty-tool Obsidian inventory and retains required
+`vault_id` in every content tool schema. Through Gateway it reads same-path notes,
+creates separate same-path notes, roundtrips non-UTF8 binary attachments, refuses
+missing selection/outside-scope access and immediately enforces AI revocation.
+The API/MCP bearer boundary rejects an unauthenticated request. All owned local
+processes/files are closed and removed at the end.
+
+The test uses a loopback-only fixture bridge to inject a disposable app token;
+it does not prove the container's Gateway credential-file mount. Ready metadata
+is synthetic: it does not prove any account authentication or sync. The native
+mixed-stack harness separately now checks binary attachment delivery through
+encrypted LiveSync and byte preservation after restart; that extension must pass
+before being recorded as runtime acceptance.
+
+Run from the paired core after `npm test` has built the app MCP:
+
+```sh
+pnpm exec tsx /path/to/scholarserver-apps/scripts/check-obsidian-gateway.mjs /path/to/scholarserver
+```
+
+Source protocol receipt: `/private/tmp/obsidian-multivault-gateway-source.log`.
+Core source is `b087dba`; apps runtime source is `ba67946` (the new protocol harness
+and attachment gate are recorded in the next source checkpoint). No retained
+server, vault or Gateway registry was accessed by this test.
+
+
+### Retained cutover method
+
+[The cutover gate](MULTI_VAULT_MIGRATION.md) preserves the original LiveSync
+installation, its legacy paths, database/member credentials and device URL.
+The official vault will be connected as a new managed replica using supported
+upstream sign-in/setup/download. The old official installation and enrollment
+remain preserved for rollback. This avoids copying or editing upstream SQLite
+state and avoids relocating an enrolled official vault. The owner will need to
+enter account/encryption credentials when the new Configuration flow is ready;
+that input is a later, concrete user-action gate. Verify no unacknowledged source
+changes before stopping the old official worker, then compare private inventories
+and digests before accepting its new replica. Source-only files stop acceptance.
+
+The native harness now simulates an owned legacy LiveSync layout, then starts the
+production supervisors to adopt it while preserving enrollment, binding, admin
+credentials and service token. It checks continued encrypted-peer delivery and
+adds an official connection alongside it. This extension still needs runtime
+qualification and is not a claim that retained data was migrated.
+
+### Native shared-stack milestone and cutover recovery
+
+Qualification-only run [36759275148](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36759275148)
+at `ba679464fd39a2c34efd262c513be80fabc8d5a6` passed both native architectures.
+The production shared stack ran four connection slots, reused the explicitly
+consented verified official client, replicated notes through two independent
+real encrypted LiveSync peers, routed one explicit-vault MCP inventory, enforced
+per-vault scope/revocation and retained state after restart. Both official slots
+remain unsigned-in. Registry publication and the manifest job were skipped.
+The later binary attachment and legacy-adoption extensions are not covered by
+this earlier success; qualify the final checkpoint separately.
+
+The source package now declares `backup-required`. Its new authoritative vault
+root must start absent and be journaled; it is not reproducible data. An excluded
+client directory declared by an inactive previous variant may already exist.
+The paired executor must verify the identical declaration in the full trusted
+old package, retain a local copy and preserve export exclusion. Changed or new
+exclusions and unknown pre-existing authoritative roots remain refused. Explicit
+`variant: null` is required to clear the old installed setup choice. This requires
+the new paired core, not the retained executor currently running on Freelove.
+No retained vault was updated by this source pass. The required project-vault
+note/index update remains pending external vault access/approval.

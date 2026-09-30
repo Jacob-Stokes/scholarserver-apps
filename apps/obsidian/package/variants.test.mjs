@@ -37,6 +37,10 @@ test("the new layout preserves every older data root and keeps authoritative reg
   }
 });
 
+test("multi-vault adoption requires executor data recovery", () => {
+  assert.equal(manifest.lifecycle.rollback, "backup-required");
+});
+
 test("all volumes are declared and the excluded official client cache retains its previous contract", () => {
   const dataByPlaceholder = new Map(
     manifest.data.map((data) => [`\${SCHOLARSERVER_DATA_${data.id.replaceAll("-", "_").toUpperCase()}}`, data])

@@ -9,7 +9,9 @@ receipt-qualified multi-architecture indexes from the exact final source.
 
 The paired core must include workspace installation limits and selected-context
 configuration evaluation/output validation. Exact core/package qualification is
-required; the broad compatibility range is not an old-core guarantee. Existing
+required; the broad compatibility range is not an old-core guarantee. The core
+also needs guarded authoritative dataset addition, identical inactive-exclusion
+activation and explicit no-variant planning for the backup-required cutover. Existing
 installed variants need an explicit reviewed transition to no variant, preserving
 every installed dataset and excluded client directory. Two retained installations
 must be consolidated only through a checkpointed, runtime-qualified migration.

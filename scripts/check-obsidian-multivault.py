@@ -168,6 +168,11 @@ def main():
               assert(!read.isError); assert(JSON.stringify(read).includes('Synthetic device note '+index));
               const written=await client.callTool({{name:'obsidian_write_note',arguments:{{vault_id,path:'Research/Server.md',content:'Synthetic server note '+index,mode:'create'}}}});
               assert(!written.isError);
+              const bytes=Buffer.from([0,1,index,127,128,255]);
+              const attachment=await client.callTool({{name:'obsidian_attachments',arguments:{{vault_id,action:'write',path:'Research/Server.bin',content_base64:bytes.toString('base64')}}}});
+              assert(!attachment.isError);
+              const readAttachment=await client.callTool({{name:'obsidian_attachments',arguments:{{vault_id,action:'read',path:'Research/Server.bin'}}}});
+              assert(!readAttachment.isError); assert(JSON.stringify(readAttachment).includes(bytes.toString('base64')));
             }}
             const denied=await client.callTool({{name:'obsidian_get_note',arguments:{{vault_id:'missing',path:'Same.md'}}}}); assert(denied.isError);
             console.log('One tool inventory selects and isolates both native vaults');
@@ -178,9 +183,11 @@ def main():
             def uploaded():
                 peer_cli("sync")
                 peer_cli("mirror", "/vault")
-                return (root / (peer_name + "-vault") / "Research/Server.md").exists()
+                peer_root = root / (peer_name + "-vault")
+                return (peer_root / "Research/Server.md").exists() and (peer_root / "Research/Server.bin").exists()
             wait_for("Server MCP note replicates to its own independent peer", uploaded, 120)
             assert (root / (peer_name + "-vault") / "Research/Server.md").read_text() == f"Synthetic server note {index}"
+            assert (root / (peer_name + "-vault") / "Research/Server.bin").read_bytes() == bytes([0, 1, index, 127, 128, 255])
 
         save("setup", "save-scope", {"vaultId": live_ids[0], "scopePath": "Research"})
         save("access", "save-access", {"vaultId": live_ids[1], "label": "Live notes", "aiEnabled": False})
@@ -202,8 +209,48 @@ def main():
         assert (root / "runtime/service-token").read_bytes() == token
         assert (root / "client/installed/receipt.json").read_bytes() == receipt
         assert all((root / "vaults" / vault / "Same.md").exists() for vault in live_ids)
+        for index, vault in enumerate(live_ids):
+            assert (root / "vaults" / vault / "Research/Server.bin").read_bytes() == bytes([0, 1, index, 127, 128, 255])
         assert len([name for name in containers if name.endswith("-sync")]) == 1
-        print("PASS: one native stack, four connection slots, shared verified client, two encrypted LiveSync peers, one explicit MCP inventory, same-path isolation, per-vault revocation/scope and restart", flush=True)
+
+        # Simulate the old single-vault layout only inside this owned fixture.
+        # No retained installation is migrated by this test. The production entry
+        # points must adopt an existing encrypted replica without re-enrollment.
+        docker("stop", controller)
+        docker("stop", worker)
+        adopted = live_ids[0]
+        def copy_owned_fixture(source, destination):
+            shutil.copytree(source, destination, dirs_exist_ok=True)
+            for directory, names, files in os.walk(destination):
+                os.chown(directory, 1000, 1000)
+                for name in names + files:
+                    os.chown(Path(directory) / name, 1000, 1000)
+        copy_owned_fixture(root / "vaults" / adopted, root / "vault")
+        copy_owned_fixture(root / "runtime/vaults" / adopted, root / "runtime")
+        copy_owned_fixture(root / "live/vaults" / adopted, root / "live")
+        copy_owned_fixture(root / "database/vaults" / adopted, root / "database")
+        admin_before = (root / "live/livesync-couchdb.env").read_bytes()
+        enrollment_before = (root / "runtime/enrollment.json").read_bytes()
+        binding_before = (root / "runtime/vault-binding.json").read_bytes()
+        (root / "runtime/vaults.json").unlink()
+        docker("start", controller)
+        docker("start", worker)
+        wait_for("Production entry points adopt the preserved legacy LiveSync connection", lambda: any(item["label"] == "Server sync" and item["value"] == "Running" for item in official_step("existing").get("summary", [])), 120)
+        adopted_registry = json.loads((root / "runtime/vaults.json").read_text())
+        assert [(vault["id"], vault["source"], vault["layout"]) for vault in adopted_registry["vaults"]] == [("existing", "livesync", "legacy")]
+        assert (root / "live/livesync-couchdb.env").read_bytes() == admin_before
+        assert (root / "runtime/enrollment.json").read_bytes() == enrollment_before
+        assert (root / "runtime/vault-binding.json").read_bytes() == binding_before
+        assert (root / "runtime/service-token").read_bytes() == token
+        assert (root / "vault/Research/Server.bin").read_bytes() == bytes([0, 1, 0, 127, 128, 255])
+        added_official = add("New official connection", "official")
+        wait_for("Official connection can be added alongside the adopted LiveSync replica", lambda: official_step(added_official).get("stage", {}).get("id") == "account")
+        peers[0][0]("put", "Research/After-adoption.md", input="Synthetic peer note after legacy adoption")
+        peers[0][0]("sync")
+        wait_for("Preserved encrypted peer still reaches the adopted legacy vault", lambda: (root / "vault/Research/After-adoption.md").exists(), 120)
+        assert (root / "vault/Research/After-adoption.md").read_text() == "Synthetic peer note after legacy adoption"
+        print("PASS: production legacy adoption preserves enrollment, binding, database administrator, service token and encrypted peer connectivity; a managed official connection can be added alongside", flush=True)
+        print("PASS: one native stack, four connection slots, shared verified client, two encrypted LiveSync peers, one explicit MCP inventory, same-path isolation, encrypted binary attachment delivery, per-vault revocation/scope and restart", flush=True)
         print("LIMIT: official slots are not signed in; paid-account/device acceptance and retained migration are separate gates", flush=True)
     finally:
         cleanup_failures = []

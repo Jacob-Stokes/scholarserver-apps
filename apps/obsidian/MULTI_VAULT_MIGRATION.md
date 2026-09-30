@@ -1,50 +1,56 @@
 # Retained multi-vault consolidation gate
 
-This is the development migration design, not an implemented or qualified
-operator procedure. Do not apply the source candidate to retained data yet.
-Fresh multi-vault qualification and retained consolidation are separate gates.
+This is the development cutover design, not a qualified operator procedure.
+Do not apply the source candidate to retained data until the final package and
+paired core are qualified. Fresh shared-stack tests are separate from cutover.
 
-The retained target must keep the original LiveSync installation identity,
-private endpoint, CouchDB data, administrator record and each existing database
-member account. Existing devices must continue to use the same URL and database;
-a new database, recreated member credentials or repaired device link is not a
-substitute for preservation.
+Keep the original LiveSync installation as the target. Its legacy `/vault`,
+CouchDB data, administrator record, database member account and private endpoint
+remain in place. The new supervisor adopts that existing connection. Devices
+continue using their existing URL and database; do not reset or replace either.
 
-The official Sync connection must keep its enrolled `/vault` path and its HOME
-configuration paths. Upstream's documented `--path` selects an enrolled path;
-it does not establish that a stored enrollment can be relocated. Do not edit its
-SQLite database or run `sync-setup` over the enrolled copy to force relocation.
+Add the official Sync vault as a new managed connection in Configuration using
+upstream's supported sign-in/setup/download flow. Its new empty directory gets
+its own HOME and enrollment. Do not relocate the old official enrollment, edit
+its SQLite database or run `sync-setup` over existing local vault data. The owner
+must enter their account and encryption password in the new connection when
+required. This is an explicit credential step, not an automatic transfer.
 Reference: [official Headless commands](https://github.com/obsidianmd/obsidian-headless).
 
-Required app-owned handoff:
+Required cutover sequence:
 
-1. Obtain executor-created encrypted backups and exact package/service/data
-   checkpoints for both installations, plus a reviewed disk budget for original,
-   staging and recovery copies. Guard both installed revisions before changes.
-2. Qualify a migration intent journal, worker quiescence and bounded authenticated
-   transfer between explicitly selected source and target instances. Manager
-   may broker declared app requests; host file mutations remain behind executor
-   operations. A manual SSH copy into an app dataset is not an implementation.
-3. Preserve the target's legacy LiveSync replica and local worker database in a
-   managed connection directory. Prove stopped-worker cache/path relocation
-   against an independent encrypted peer, without resetting the database or
-   importing a fresh empty replica. Keep the original files until verified.
-4. Import the stopped official replica and sign-in/configuration state into the
-   preserved legacy paths. Verify file inventories and digests before promoting
-   registry records or starting a worker. Do not expose transferred credentials
-   in logs, browser storage, MCP responses or public artifacts.
-5. Commit one authoritative registry only after all referenced data exists and
-   all digests match. Persist phase/outcome before side effects; reconcile lost
-   responses and restart without blindly repeating transfer or sync enrollment.
-6. Resume both connections, verify exact synthetic test-note hashes in each
-   direction, attachments and restart, and call the real Gateway's single tool
-   inventory with explicit vault IDs. Prove same-path isolation, saved scope and
-   per-vault AI revocation. Account data alone does not qualify another device.
-7. Disable and unregister the redundant stack only after target acceptance;
-   preserve source data and rollback checkpoints. A failure must stop promotion,
-   leave recoverable data in place and report the last proven migration phase.
+1. Guard both installed revisions, exact services/images and all data paths.
+   Obtain executor-created encrypted application backups and package/Compose
+   checkpoints. Check projected peak space for the retained copies and new
+   download; preserve excluded official-client directories and protected images.
+2. Verify the old official replica has no unacknowledged local changes using
+   upstream status and narrowly scoped state checks. Stop if this is unknown.
+   Stop that redundant installation through Manager/executor, preserving all
+   data and credentials. Its original enrollment remains available for rollback.
+3. Update the original LiveSync installation through the reviewed executor package
+   update, explicitly replacing its installation-wide variant with no variant.
+   Use the backup-required transaction. Verify all older data paths remain,
+   the new authoritative root starts absent and the full old package declares
+   the identical excluded client directory, including an inactive variant.
+   The executor retains a local working/original copy without exporting it. No manual SSH copy or host database edits form part of this flow.
+4. Prove legacy LiveSync adoption, unchanged endpoint/database/member identities,
+   encrypted note delivery in both directions and restart. Then add and connect
+   the official vault inside Configuration, with immediate progress and safe
+   retry/reconciliation behavior. Never replay an uncertain setup request.
+5. Compare the new official replica's private inventory and file digests with the
+   stopped source. Confirm the preserved synthetic test note, attachment bytes,
+   upstream upload acknowledgement, reverse delivery and restart. If source-only
+   files or unacknowledged changes exist, stop acceptance and restore the old
+   installation; do not silently omit them from consolidation.
+6. Call the retained Gateway's single tool inventory with explicit vault IDs for
+   both vaults. Prove same-path isolation, saved folder scope and per-vault AI
+   revocation. Do not equate private API calls with Gateway acceptance.
+7. Keep the redundant instance disabled and its data/checkpoints retained until
+   the owner accepts the cutover. Do not remove its data merely to meet the
+   single-install rule. Existing copies remain manageable; new copies are refused.
 
-Still missing: the app-owned transfer/quiescence/promotion implementation and its
-crash/restart tests. No retained files, credentials or endpoints have been changed
-by the source checkpoint that adds this document. The ordinary package updater
-preserves each installation; it does not itself consolidate two vaults.
+Still open: final image/package qualification, guarded retained cutover, owner
+sign-in/encryption input and real Gateway/sync/device acceptance. No retained
+files, credentials or endpoints were changed by the source checkpoint adding
+this design. The package updater preserves an installation; it does not merge
+vault data or transfer account credentials automatically.
