@@ -38,12 +38,39 @@ official slots, shared-client consent/reuse, one tool inventory, same-path notes
 per-vault database authorization, scope/revocation and restart. It must pass on
 both native architectures before selecting replacement image pins.
 
-Package manifest/Compose are still the previous immutable `.20260929.4` candidate:
-they do not yet declare the shared registry/mixed-stack storage or configuration
-sections. Do not deploy the new entry points using that old data selection. New
-immutable package identity, all mounts/backup policies, compatibility, app-owned
-configuration snapshots, native receipts, checkpointed retained migration and real
-Gateway calls remain required. Existing data, device endpoints, credentials and
+The new source candidate `0.6.0-multivault.20260930.1` declares one installation,
+all five shared services, the additional `/vaults` dataset and vaults/setup/access
+native sections. Existing roots and the excluded official-client declaration stay
+unchanged. Registry and LiveSync runtime now participate in filesystem-consistent
+backup because they contain authoritative connection metadata and credentials.
+The image pins are still the prior candidate's pins: this source package is blocked
+from import/publication/deployment until final-image receipts replace them.
+
+Paired-source descriptor checks accept 69 app-generated sections. Complete mixed,
+empty and storage-error pages were inspected in Codex's in-app browser. Narrow
+presentation preserved saved AI-off and scope values and showed genuine recovery
+errors; a Manager header wrapping bug was found and fixed in core. The requested
+390px viewport was observed as 487 CSS pixels, with no horizontal overflow after
+the fix. This is synthetic snapshot acceptance, not real enrollment.
+
+Native qualification-only run 36757107957 at `fce38ec` built both architectures
+and passed the existing child-engine qualification (including encrypted two-peer
+LiveSync/restart), then failed the new shared-stack harness on both architectures.
+The harness read the official client receipt immediately after starting its
+background download. It now waits for persisted installation completion. No
+registry publication ran. Final production-entry qualification must be rerun at
+the next source checkpoint; this earlier failure does not qualify the new layout.
+
+A separate forwarding bug is fixed: only an exact matched child receipt proving
+pre-change refusal is converted into a persisted rejected operation. This lets
+Manager unlock the form after a proven refusal. Missing/mismatched receipts and
+server errors remain uncertain. The real local supervisor test rejects missing
+client consent and observes the rejection after restart without replaying it.
+Full apps source tests and paired core checks pass after these changes; native
+mixed-stack qualification, immutable image/package publication, paired deployment,
+checkpointed retained migration and real Gateway calls remain required.
+
+Existing data, device endpoints, credentials and
 paid-account test note have not been changed. Project-vault note/index update is
 pending the existing external-write approval/access and must target the project
 vault explicitly once multi-vault discovery is available.

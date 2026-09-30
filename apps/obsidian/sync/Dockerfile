@@ -22,11 +22,12 @@ RUN apk add --no-cache --virtual .native-build python3 make g++ \
     && rm -rf /root/.npm /root/.cache
 RUN addgroup -g 1000 obsidian \
     && adduser -u 1000 -G obsidian -h /home/obsidian -s /bin/sh -D obsidian \
-    && mkdir -p /vault /runtime /official-client /livesync-runtime /home/obsidian/.config \
-    && chown -R 1000:1000 /vault /runtime /official-client /livesync-runtime /home/obsidian
+    && mkdir -p /vault /vaults /runtime /official-client /livesync-runtime /home/obsidian/.config \
+    && chown -R 1000:1000 /vault /vaults /runtime /official-client /livesync-runtime /home/obsidian
 
 COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/sync/controller.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/configuration.mjs /app/sync/configuration.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/vault-configuration.mjs /app/sync/vault-configuration.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/status-presentation.mjs /app/sync/status-presentation.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/research-note.mjs /app/sync/research-note.mjs
 COPY --chown=1000:1000 apps/obsidian/sync/vault-folders.mjs /app/sync/vault-folders.mjs

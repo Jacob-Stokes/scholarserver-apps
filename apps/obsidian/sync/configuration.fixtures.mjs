@@ -1,4 +1,5 @@
 import { obsidianConfiguration } from "./configuration.mjs";
+import { selectedVaultConfiguration, vaultAccessConfiguration, vaultsConfiguration } from "./vault-configuration.mjs";
 
 function status(profile, state, extra = {}) {
   return {
@@ -51,3 +52,45 @@ export const obsidianConfigurationFixtures = [
     })
   )
 ];
+
+const emptyRegistry = { schemaVersion: 1, revision: 1, vaults: [] };
+const registry = {
+  schemaVersion: 1,
+  revision: 3,
+  vaults: [
+    { id: "research", label: "Research", source: "official", layout: "managed", aiEnabled: true },
+    { id: "notes", label: "Notes", source: "livesync", layout: "managed", aiEnabled: false }
+  ]
+};
+
+export const obsidianMultiVaultFixtures = {
+  "vaults-empty": vaultsConfiguration(emptyRegistry),
+  "setup-empty": selectedVaultConfiguration(emptyRegistry, null, "empty"),
+  "access-empty": vaultAccessConfiguration(emptyRegistry, null, "empty"),
+  "vaults-added": vaultsConfiguration(registry),
+  "setup-official-ready": selectedVaultConfiguration(registry, registry.vaults[0], "mixed", {
+    childSection: obsidianConfiguration(
+      status("official", "ready", {
+        remoteVault: "Research",
+        scopePath: "Research",
+        workerRunning: true
+      })
+    )
+  }),
+  "setup-livesync-ready": selectedVaultConfiguration(registry, registry.vaults[1], "mixed", {
+    childSection: obsidianConfiguration(
+      status("livesync", "ready", {
+        remoteVault: "Self-hosted LiveSync",
+        liveSyncWorker: { running: true }
+      })
+    )
+  }),
+  "setup-livesync-device": selectedVaultConfiguration(registry, registry.vaults[1], "device", {
+    childSection: obsidianConfiguration(status("livesync", "livesync-device-setup"))
+  }),
+  "setup-storage-error": selectedVaultConfiguration(registry, registry.vaults[1], "damaged", {
+    workerError: "This vault's storage needs recovery."
+  }),
+  "access-research": vaultAccessConfiguration(registry, registry.vaults[0], "mixed"),
+  "access-notes-disabled": vaultAccessConfiguration(registry, registry.vaults[1], "mixed")
+};

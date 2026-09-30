@@ -21,6 +21,25 @@ function ensureStorage(directory, root) {
   }
 }
 
+export function confirmedControllerRejection(value, status, expected) {
+  if (
+    !expected ||
+    ![400, 409, 422].includes(status) ||
+    !value ||
+    value.status !== "rejected-before-change" ||
+    value.requestId !== expected.requestId ||
+    value.actionId !== expected.actionId ||
+    Object.keys(value).some((key) => !["requestId", "actionId", "status"].includes(key))
+  )
+    return null;
+  return {
+    requestId: expected.requestId,
+    actionId: expected.actionId,
+    status: "rejected",
+    message: "This change was not applied. Check the fields and try again."
+  };
+}
+
 export class VaultWorkers {
   constructor({
     runtime = process.env.OBSIDIAN_RUNTIME_PATH || "/runtime",
@@ -109,7 +128,7 @@ export class VaultWorkers {
     }
   }
 
-  async request(id, requestPath, { method = "GET", body, timeoutMs = 20_000 } = {}) {
+  async request(id, requestPath, { method = "GET", body, timeoutMs = 20_000, expectedAction = null } = {}) {
     const worker = this.workers.get(id);
     if (!worker?.child || this.stopping)
       throw new Error("This vault's sync controller is unavailable. Other connections are unchanged.");
@@ -121,7 +140,11 @@ export class VaultWorkers {
     const text = await response.text();
     if (text.length > 1024 * 1024) throw new Error("The vault controller returned too much data.");
     const value = JSON.parse(text);
-    if (!response.ok) throw new Error(typeof value.error === "string" ? value.error : "This vault operation failed.");
+    if (!response.ok) {
+      const rejection = confirmedControllerRejection(value, response.status, expectedAction);
+      if (rejection) return rejection;
+      throw new Error(typeof value.error === "string" ? value.error : "This vault operation failed.");
+    }
     return value;
   }
 

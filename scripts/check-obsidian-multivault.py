@@ -61,8 +61,8 @@ def main():
                     mount += ",readonly"
                 args += ["--mount", mount]
             args += list(extra) + [image or images[role]] + list(command)
-            docker(*args)
             containers.append(name)
+            docker(*args)
             return name
 
         controller = start("sync", [("vault", "/vault"), ("vaults", "/vaults"), ("runtime", "/runtime"),
@@ -95,6 +95,9 @@ def main():
         wait_for("Both official connections wait for consent", lambda: all(official_step(vault).get("stage", {}).get("id") == "client" for vault in [official_one, official_two]))
         assert not (root / "client/installed").exists()
         save("setup", "install-client", {"vaultId": official_one, "confirmed": True})
+        # The action confirms that the consented background download was started.
+        # Completion belongs to persisted client state, not the request receipt.
+        wait_for("Shared official client download and integrity checks finish", lambda: official_step(official_one).get("stage", {}).get("id") == "account", 180)
         receipt = (root / "client/installed/receipt.json").read_bytes()
         wait_for("Second official connection reuses the verified shared client", lambda: official_step(official_two).get("stage", {}).get("id") == "account")
         assert (root / "client/installed/receipt.json").read_bytes() == receipt
@@ -203,10 +206,19 @@ def main():
         print("PASS: one native stack, four connection slots, shared verified client, two encrypted LiveSync peers, one explicit MCP inventory, same-path isolation, per-vault revocation/scope and restart", flush=True)
         print("LIMIT: official slots are not signed in; paid-account/device acceptance and retained migration are separate gates", flush=True)
     finally:
+        cleanup_failures = []
         for name in reversed(containers):
             subprocess.run(["docker", "rm", "-fv", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            remaining = subprocess.run(["docker", "inspect", "--type", "container", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if remaining.returncode == 0:
+                cleanup_failures.append(name)
         if network_created:
             subprocess.run(["docker", "network", "rm", prefix], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            remaining = subprocess.run(["docker", "network", "inspect", prefix], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if remaining.returncode == 0:
+                cleanup_failures.append(prefix)
+        if cleanup_failures:
+            raise RuntimeError("Owned disposable test resources remain: " + ", ".join(cleanup_failures))
         shutil.rmtree(root)
 
 

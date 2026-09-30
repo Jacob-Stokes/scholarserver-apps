@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.5.2-manager.20260929.4
+packageVersion: 0.6.0-multivault.20260930.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -17,44 +17,11 @@ delivery:
   management: managed
 tenancy:
   mode: per-workspace
+  maxInstancesPerWorkspace: 1
 capabilities:
   provides: [notes.vault, notes.sync, mcp.obsidian]
   requires: [gateway.mcp]
   conflicts: []
-variants:
-  - id: self-hosted-livesync
-    name: Self-hosted LiveSync
-    description: Sync your vault through ScholarServer using the free Self-hosted LiveSync plugin.
-    recommended: true
-    services: [sync, api, mcp, livesync-couchdb, livesync-worker]
-    data: [vault, headless-config, runtime, livesync-db, livesync-runtime, livesync-couchdb]
-    resources:
-      minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
-      recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
-    highlights:
-      - No Obsidian Sync subscription required
-      - Keeps an always-available server copy of the vault
-      - Connects privately through Tailscale
-    limitations:
-      - Requires the Self-hosted LiveSync plugin on each Obsidian device
-      - Requires Tailscale on every connected device
-      - Other vault sync methods must remain turned off
-  - id: obsidian-sync
-    name: Obsidian Sync
-    description: Use your existing paid Obsidian Sync account to keep the ScholarServer copy up to date.
-    recommended: false
-    services: [sync, api, mcp]
-    data: [vault, headless-config, runtime, official-client, livesync-runtime]
-    resources:
-      minimum: { cpu: 0.5, memory: 512MiB, disk: 1GiB }
-      recommended: { cpu: 0.75, memory: 1GiB, disk: 10GiB }
-    highlights:
-      - Uses Obsidian's official sync service
-      - No community plugin or separate sync database
-      - Keeps the same server-side notes and AI tools
-    limitations:
-      - Requires a paid Obsidian Sync account
-      - Downloads the official client only after your confirmation; Obsidian terms apply
 resources:
   minimum: { cpu: 0.75, memory: 768MiB, disk: 1GiB }
   recommended: { cpu: 1, memory: 1536MiB, disk: 10GiB }
@@ -91,6 +58,13 @@ data:
     backup: filesystem-consistent
     retention: preserve
     exportFormat: Obsidian vault
+  - id: vaults
+    mountPath: /vaults
+    owner: obsidian
+    filesystem: { uid: 1000, gid: 1000, mode: "0700" }
+    backup: filesystem-consistent
+    retention: preserve
+    exportFormat: Obsidian vaults
   - id: headless-config
     mountPath: /home/obsidian/.config
     owner: obsidian
@@ -101,7 +75,7 @@ data:
     mountPath: /runtime
     owner: obsidian
     filesystem: { uid: 1000, gid: 1000, mode: "0700" }
-    backup: reproducible
+    backup: filesystem-consistent
     retention: preserve
   - id: livesync-db
     mountPath: /livesync-db
@@ -113,7 +87,7 @@ data:
     mountPath: /livesync-runtime
     owner: obsidian
     filesystem: { uid: 1000, gid: 1000, mode: "0755" }
-    backup: reproducible
+    backup: filesystem-consistent
     retention: preserve
   - id: livesync-couchdb
     mountPath: /opt/couchdb/data
@@ -161,7 +135,9 @@ ui:
   configuration:
     version: 1
     sections:
+      - { id: vaults, title: Vaults }
       - { id: setup, title: Vault connection }
+      - { id: access, title: Vault settings }
 presentation:
   editorialIcon:
     path: assets/icons/obsidian-editorial.png
@@ -172,7 +148,7 @@ presentation:
       license: CC-BY-4.0
       licenseUrl: https://creativecommons.org/licenses/by/4.0/
   details:
-    description: Connect your notes in a Markdown vault.
+    description: Connect Markdown vaults using Obsidian Sync or Self-hosted LiveSync.
     tags: [Notes]
     links:
       - { label: Obsidian terms, kind: website, url: https://obsidian.md/terms }
@@ -187,71 +163,34 @@ presentation:
 lifecycle:
   supportsDisable: true
   removeDataDefault: false
-  # Vault/enrollment formats remain unchanged. A restored official installation
-  # asks before downloading its client again.
+  # Existing roots and the excluded client cache remain at their original paths.
+  # Consolidating older installations requires the checkpointed migration gate.
   rollback: reversible
 onboarding:
   readyWhen: compose-health
   checklist:
-    - Connect the selected sync method
-    - Choose the private Tailscale address when using Self-hosted LiveSync
-    - Keep other vault sync methods turned off when using LiveSync
-    - Choose the folder exposed through MCP
+    - Add each vault in Configuration and finish its connection
+    - Use a paid Obsidian Sync account or the Self-hosted LiveSync plugin
+    - Keep other sync methods off for each LiveSync vault
+    - Choose each vault's AI-accessible folder
   actions:
     - id: browse-folders
       data: runtime
-      timeoutSeconds: 10
+      timeoutSeconds: 30
       requireInstanceApproval: true
       fields:
+        - { id: vaultId, type: string, secret: false, required: true }
         - { id: path, type: string, secret: false, required: false }
     - id: create-research-note
       data: runtime
       timeoutSeconds: 30
       fields:
+        - { id: vaultId, type: string, secret: false, required: true }
         - { id: folder, type: string, secret: false, required: true }
         - { id: filename, type: string, secret: false, required: true }
         - { id: content, type: string, secret: true, required: true }
-    - id: install-client
-      data: runtime
-      timeoutSeconds: 10
-      fields:
-        - { id: confirmed, type: boolean, secret: false, required: true }
     - id: status
       data: runtime
-      timeoutSeconds: 10
-      fields: []
-    - id: select-profile
-      data: runtime
-      timeoutSeconds: 10
+      timeoutSeconds: 30
       fields:
-        - { id: profile, type: string, secret: false, required: true }
-    - id: login
-      data: runtime
-      timeoutSeconds: 60
-      fields:
-        - { id: email, type: string, secret: false, required: true }
-        - { id: password, type: string, secret: true, required: true }
-        - { id: mfa, type: string, secret: true, required: false }
-    - id: connect-vault
-      data: runtime
-      timeoutSeconds: 900
-      activateGateway: true
-      fields:
-        - { id: vault, type: string, secret: false, required: true }
-        - { id: encryptionPassword, type: string, secret: true, required: false }
-        - { id: scopePath, type: string, secret: false, required: true }
-    - id: configure-livesync
-      data: runtime
-      timeoutSeconds: 180
-      activateGateway: true
-      fields:
-        - { id: accessMethod, type: string, secret: false, required: true }
-        - { id: connectionUrl, type: string, secret: false, required: true }
-        - { id: vaultPassphrase, type: string, secret: true, required: true }
-        - { id: scopePath, type: string, secret: false, required: true }
-        - { id: confirmedNoOtherSync, type: boolean, secret: false, required: true }
-    - id: complete-livesync
-      data: runtime
-      timeoutSeconds: 10
-      fields:
-        - { id: confirmedPluginConnected, type: boolean, secret: false, required: true }
+        - { id: vaultId, type: string, secret: false, required: true }

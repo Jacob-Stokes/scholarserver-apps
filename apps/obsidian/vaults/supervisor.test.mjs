@@ -118,6 +118,25 @@ test("two official vault controllers share the installation, keep separate sign-
   }).then((response) => response.json());
   assert.equal(evaluated.values.vaultId, registry.vaults[1].id);
   assert.equal(evaluated.fields.find((field) => field.id === "vaultId").selectsContext, true);
+  const awaitingConsent = await until(
+    () => section("setup"),
+    (result) => result.stage?.id === "client"
+  );
+  const rejectedRequest = {
+    requestId: randomUUID(),
+    expectedRevision: awaitingConsent.revision,
+    values: { vaultId: registry.vaults[0].id, confirmed: false }
+  };
+  const rejected = await fetch(`${base}/api/configuration/setup/actions/install-client`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(rejectedRequest)
+  }).then((response) => response.json());
+  assert.equal(rejected.status, "rejected", "a proven child pre-change refusal must not leave the form locked");
+  const rejectionReceipt = await fetch(`${base}/api/configuration/setup/operations/${rejectedRequest.requestId}`).then(
+    (response) => response.json()
+  );
+  assert.deepEqual(rejectionReceipt, rejected);
   const duplicate = await add("research");
   assert.equal(duplicate.result.status, "rejected-before-change");
   assert.equal(readRegistry(roots.runtime).vaults.length, 2);
@@ -153,6 +172,14 @@ test("two official vault controllers share the installation, keep separate sign-
   await until(
     () => section("setup"),
     (result) => result.fields?.some((field) => field.id === "vaultId")
+  );
+  const persistedRejection = await fetch(
+    `${base}/api/configuration/setup/operations/${rejectedRequest.requestId}`
+  ).then((response) => response.json());
+  assert.deepEqual(
+    persistedRejection,
+    rejected,
+    "restart must preserve the proven refusal without replaying the install"
   );
   assert.deepEqual(readRegistry(roots.runtime), afterAccess);
   assert.equal(fs.readFileSync(path.join(roots.runtime, "service-token"), "utf8"), token);

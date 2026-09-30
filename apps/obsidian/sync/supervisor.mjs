@@ -19,6 +19,7 @@ import {
   vaultPaths
 } from "../vaults/registry.mjs";
 import { VaultWorkers } from "../vaults/workers.mjs";
+import { selectedVaultConfiguration, vaultAccessConfiguration, vaultsConfiguration } from "./vault-configuration.mjs";
 
 const runtime = process.env.OBSIDIAN_RUNTIME_PATH || "/runtime";
 const sharedLiveSync = process.env.OBSIDIAN_SHARED_LIVESYNC_PATH || "/livesync-runtime";
@@ -57,146 +58,28 @@ function connection(values = {}) {
 }
 
 function vaultSection() {
-  const registry = readRegistry(runtime);
-  return {
-    version: 1,
-    id: "vaults",
-    revision: String(registry.revision),
-    title: "Vaults",
-    description: "Add vault connections here. Each vault has separate files, sign-in and sync state.",
-    notices: [],
-    fields: [
-      { id: "label", label: "Vault name", type: "text", required: true, maxLength: 120 },
-      {
-        id: "source",
-        label: "Sync method",
-        type: "select",
-        required: true,
-        options: [
-          { value: "official", label: "Obsidian Sync (subscription required)" },
-          { value: "livesync", label: "Self-hosted LiveSync" }
-        ]
-      }
-    ],
-    values: {},
-    summary: registry.vaults.map((vault) => ({
-      label: vault.label,
-      value: vault.source === "official" ? "Obsidian Sync" : "Self-hosted LiveSync"
-    })),
-    actions: [
-      { id: "add-vault", label: "Add vault", kind: "submit", fieldIds: ["label", "source"], target: { kind: "app" } }
-    ]
-  };
+  return vaultsConfiguration(readRegistry(runtime));
 }
 
 async function setupSection(values = {}) {
   const registry = readRegistry(runtime);
-  if (registry.vaults.length === 0)
-    return {
-      version: 1,
-      id: "setup",
-      revision: savedRevision(),
-      title: "Vault connection",
-      notices: [{ kind: "info", text: "Add a vault above, then finish its connection here." }],
-      fields: [],
-      values: {},
-      summary: [],
-      actions: []
-    };
+  const revision = savedRevision();
+  if (registry.vaults.length === 0) return selectedVaultConfiguration(registry, null, revision);
   const selected = connection(values);
-  let section;
+  let childSection = null;
+  let workerError = null;
   try {
-    section = await workers.request(selected.id, "/api/configuration/setup");
+    childSection = await workers.request(selected.id, "/api/configuration/setup");
   } catch {
-    const worker = workers.workers.get(selected.id);
-    section = {
-      version: 1,
-      id: "setup",
-      title: "Vault connection",
-      fields: [],
-      values: {},
-      summary: [],
-      actions: [],
-      notices: [
-        { kind: worker?.error ? "error" : "info", text: worker?.error || "Starting this vault's sync controller…" }
-      ]
-    };
+    workerError = workers.workers.get(selected.id)?.error || null;
   }
-  section.revision = savedRevision();
-  section.title = "Vault connection";
-  section.description = "Configure the selected vault. Other vault connections keep running.";
-  section.fields.unshift({
-    id: "vaultId",
-    label: "Vault connection",
-    type: "select",
-    required: true,
-    selectsContext: true,
-    options: registry.vaults.map((vault) => ({ value: vault.id, label: vault.label }))
-  });
-  section.values.vaultId = selected.id;
-  section.actions = section.actions.map((action) => ({
-    ...action,
-    ...(action.kind === "submit" ? { fieldIds: ["vaultId", ...(action.fieldIds || [])] } : {})
-  }));
-  section.pollAfterMs = section.pollAfterMs || 3000;
-  if (section.outputs)
-    section.outputs = section.outputs.map((output) => ({ ...output, id: `${output.id}-${selected.id}` }));
-  return section;
+  return selectedVaultConfiguration(registry, selected, savedRevision(), { childSection, workerError });
 }
 
 function accessSection(values = {}) {
   const registry = readRegistry(runtime);
-  if (registry.vaults.length === 0)
-    return {
-      version: 1,
-      id: "access",
-      revision: savedRevision(),
-      title: "Vault settings",
-      fields: [],
-      values: {},
-      summary: [],
-      actions: [],
-      notices: [{ kind: "info", text: "Add a vault before choosing its AI access." }]
-    };
-  const selected = connection(values);
-  return {
-    version: 1,
-    id: "access",
-    revision: savedRevision(),
-    title: "Vault settings",
-    pollAfterMs: 3000,
-    description:
-      "Names and AI access belong to each vault connection. Sync keeps running when AI access is turned off.",
-    notices: [
-      {
-        kind: "warning",
-        text: "AI access exposes the connected vault's selected folder through ScholarServer's tools. It does not change device sync or vault encryption."
-      }
-    ],
-    fields: [
-      {
-        id: "vaultId",
-        label: "Vault connection",
-        type: "select",
-        selectsContext: true,
-        required: true,
-        options: registry.vaults.map((vault) => ({ value: vault.id, label: vault.label }))
-      },
-      { id: "label", label: "Vault name", type: "text", required: true, maxLength: 120 },
-      { id: "aiEnabled", label: "Allow AI tools to access this vault", type: "boolean", required: true }
-    ],
-    values: { vaultId: selected.id, label: selected.label, aiEnabled: selected.aiEnabled },
-    summary: [],
-    actions: [
-      {
-        id: "save-access",
-        label: "Save vault settings",
-        kind: "submit",
-        fieldIds: ["vaultId", "label", "aiEnabled"],
-        target: { kind: "app" }
-      }
-    ]
-  };
+  const selected = registry.vaults.length > 0 ? connection(values) : null;
+  return vaultAccessConfiguration(registry, selected, savedRevision());
 }
 
 async function currentSection(sectionId, values = {}) {
@@ -212,6 +95,13 @@ async function targetReceipt(requestId, expectedSectionId = null) {
   if (!/^[a-z][a-z0-9-]{0,62}$/.test(target.vaultId || "") || !["vaults", "access", "setup"].includes(target.sectionId))
     throw new Error("The saved configuration request needs recovery.");
   if (target.status === "succeeded") return { requestId, actionId: target.actionId, status: "succeeded" };
+  if (target.status === "rejected")
+    return {
+      requestId,
+      actionId: target.actionId,
+      status: "rejected",
+      message: "This change was not applied. Check the fields and try again."
+    };
   if (target.sectionId === "vaults" || target.sectionId === "access") {
     const registry = readRegistry(runtime);
     const selected = registry.vaults.find((vault) => vault.id === target.vaultId);
@@ -300,12 +190,18 @@ async function nativeAction(sectionId, actionId, wire) {
     }
     const childSection = await workers.request(selected.id, "/api/configuration/setup");
     const { vaultId: ignored, ...values } = input.values;
-    await atomicJson(path.join(targets, `${input.requestId}.json`), { sectionId, actionId, vaultId: selected.id });
-    return workers.request(selected.id, `/api/configuration/setup/actions/${actionId}`, {
+    const target = { sectionId, actionId, vaultId: selected.id };
+    await atomicJson(path.join(targets, `${input.requestId}.json`), target);
+    const result = await workers.request(selected.id, `/api/configuration/setup/actions/${actionId}`, {
       method: "POST",
       body: { requestId: input.requestId, expectedRevision: childSection.revision, values },
-      timeoutMs: 16 * 60_000
+      timeoutMs: 16 * 60_000,
+      expectedAction: { requestId: input.requestId, actionId }
     });
+    if (result.status === "rejected") {
+      await atomicJson(path.join(targets, `${input.requestId}.json`), { ...target, status: "rejected" });
+    }
+    return result;
   });
 }
 

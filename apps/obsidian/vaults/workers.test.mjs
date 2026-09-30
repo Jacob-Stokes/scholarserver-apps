@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { addVault, initializeRegistry } from "./registry.mjs";
-import { VaultWorkers } from "./workers.mjs";
+import { confirmedControllerRejection, VaultWorkers } from "./workers.mjs";
 
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "obsidian-workers-"));
@@ -73,4 +73,19 @@ test("unknown existing legacy data is never initialized as an empty registry", (
   assert.throws(() => initializeRegistry({ runtime, legacyVault }), /identified sync method/);
   assert.equal(fs.existsSync(path.join(runtime, "vaults.json")), false);
   assert.equal(fs.readFileSync(path.join(legacyVault, "Preserve.md"), "utf8"), "synthetic");
+});
+
+test("only a matching pre-change rejection unlocks a forwarded configuration request", () => {
+  const expected = { requestId: "test-request-identity", actionId: "save-scope" };
+  const rejected = { ...expected, status: "rejected-before-change" };
+  assert.equal(confirmedControllerRejection(rejected, 400, expected).status, "rejected");
+  assert.equal(confirmedControllerRejection(rejected, 503, expected), null);
+  assert.equal(confirmedControllerRejection({ ...rejected, actionId: "connect-vault" }, 400, expected), null);
+  assert.equal(
+    confirmedControllerRejection({ ...rejected, requestId: "another-request-identity" }, 400, expected),
+    null
+  );
+  assert.equal(confirmedControllerRejection({ ...rejected, error: "untrusted details" }, 400, expected), null);
+  assert.equal(confirmedControllerRejection({ ...expected, status: "unconfirmed" }, 400, expected), null);
+  assert.equal(confirmedControllerRejection(rejected, 400, null), null);
 });

@@ -53,11 +53,25 @@ test("official client data is excluded, while vaults, credentials and version me
   const manifest = parse(await readFile("apps/obsidian/package/scholarserver-app.yaml", "utf8"));
   const data = new Map(manifest.data.map((item) => [item.id, item]));
   assert.equal(data.get("official-client").backup, "excluded");
-  for (const id of ["vault", "headless-config", "runtime", "livesync-db", "livesync-runtime", "livesync-couchdb"])
+  for (const id of [
+    "vault",
+    "vaults",
+    "headless-config",
+    "runtime",
+    "livesync-db",
+    "livesync-runtime",
+    "livesync-couchdb"
+  ])
     assert.notEqual(data.get(id).backup, "excluded");
   const compose = parse(await readFile("apps/obsidian/package/compose.yaml", "utf8"));
   assert.ok(compose.services.sync.volumes.includes("${SCHOLARSERVER_DATA_OFFICIAL_CLIENT}:/official-client"));
-  assert.ok(manifest.onboarding.actions.some((item) => item.id === "install-client"));
+  // Consent is now a native per-vault app action, not a legacy instance mailbox action.
+  const { obsidianConfigurationFixtures } = await import("../apps/obsidian/sync/configuration.fixtures.mjs");
+  const install = obsidianConfigurationFixtures[1];
+  assert.equal(install.actions[0].id, "install-client");
+  assert.equal(install.actions[0].target.kind, "app");
+  assert.equal(install.fields[0].id, "confirmed");
+  assert.equal(install.fields[0].required, true);
 });
 
 test("runtime launcher is delivered and image publication is separated from build checks", async () => {

@@ -1,3 +1,27 @@
+# Multi-vault source candidate — 30 September 2026
+
+Package `0.6.0-multivault.20260930.1` is **not installable or publishable yet**.
+Its new registry, five-service layout and additional vault dataset require the
+new native images. The manifest and Compose deliberately retain the previous
+image pins while qualification is pending; those pins do not implement this
+candidate. Do not import or deploy this package until they are replaced with
+receipt-qualified multi-architecture indexes from the exact final source.
+
+The paired core must include workspace installation limits and selected-context
+configuration evaluation/output validation. Exact core/package qualification is
+required; the broad compatibility range is not an old-core guarantee. Existing
+installed variants need an explicit reviewed transition to no variant, preserving
+every installed dataset and excluded client directory. Two retained installations
+must be consolidated only through a checkpointed, runtime-qualified migration.
+Do not remove either installation, replace its data, edit upstream SQLite state,
+or reset a LiveSync database to satisfy the new model.
+
+Source/API/MCP tests and synthetic Manager acceptance are separate from native
+container qualification, image publication, package publication, retained migration,
+real Gateway calls and authenticated sync/device acceptance. See
+[development notes](DEVELOPMENT_NOTES.md) for the current evidence and open gates.
+The previous dated candidate records below are historical.
+
 # Current Manager development candidate — 29 September 2026
 
 Package `0.5.2-manager.20260929.1` now selects receipt-verified native AMD64/ARM64 images

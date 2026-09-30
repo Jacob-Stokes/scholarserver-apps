@@ -5,7 +5,10 @@ import { promisify } from "node:util";
 import { configurationFixtureCases as freshRssCases } from "../apps/freshrss/integration/configuration-fixtures.mjs";
 import { logseqConfigurationFixtures } from "../apps/logseq/helper/configuration.fixtures.mjs";
 import { configurationFixtureCases as n8nCases } from "../apps/n8n/integration/manager-configuration-fixtures.mjs";
-import { obsidianConfigurationFixtures } from "../apps/obsidian/sync/configuration.fixtures.mjs";
+import {
+  obsidianConfigurationFixtures,
+  obsidianMultiVaultFixtures
+} from "../apps/obsidian/sync/configuration.fixtures.mjs";
 import { automationConfigurationFixtures } from "../apps/zotero/controller/automation-configuration.fixtures.mjs";
 import { zoteroConfigurationFixtures } from "../apps/zotero/controller/configuration.fixtures.mjs";
 
@@ -46,7 +49,17 @@ console.log(
         "complete-recovery": ["n8n-recovery", "n8n-settings-recovery"]
       }
     },
-    { application: "obsidian", cases: namedStages(obsidianConfigurationFixtures) },
+    {
+      application: "obsidian",
+      cases: { ...namedStages(obsidianConfigurationFixtures), ...obsidianMultiVaultFixtures },
+      pages: {
+        "complete-empty": ["vaults-empty", "setup-empty", "access-empty"],
+        "complete-official-ready": ["vaults-added", "setup-official-ready", "access-research"],
+        "complete-livesync-ready": ["vaults-added", "setup-livesync-ready", "access-notes-disabled"],
+        "complete-livesync-device": ["vaults-added", "setup-livesync-device", "access-notes-disabled"],
+        "complete-storage-error": ["vaults-added", "setup-storage-error", "access-notes-disabled"]
+      }
+    },
     { application: "logseq", cases: namedStages(logseqConfigurationFixtures) },
     {
       application: "zotero",
