@@ -3,9 +3,9 @@ import { open, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const recoveryMessage =
-  "The saved vault connection needs recovery. Do not repeat setup or replace its files. Restore this installation's connection records, or add a separate Obsidian installation for another vault.";
+  "The saved vault connection needs recovery. Do not repeat setup or replace its files. Restore this vault's connection records, or add another vault in Configuration.";
 const replacementMessage =
-  "This installation is already assigned to a vault. Use Configuration to check it. To connect a different vault, add a separate Obsidian installation with its own permissions.";
+  "This connection is already assigned to a vault. Use Configuration to check it. To connect a different vault, add another vault connection with its own folder access.";
 
 async function readRecord(file) {
   let handle;

@@ -5,9 +5,9 @@ import path from "node:path";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
 import { configuredWorkerFile, daemonStateFromOutput } from "./worker-state.mjs";
 
-const runtime = "/livesync-runtime";
-const database = "/livesync-db";
-const vault = "/vault";
+const runtime = process.env.OBSIDIAN_LIVESYNC_PATH || "/livesync-runtime";
+const database = process.env.OBSIDIAN_DATABASE_PATH || "/livesync-db";
+const vault = process.env.OBSIDIAN_VAULT_PATH || "/vault";
 const configPath = path.join(runtime, "livesync-worker.json");
 const statusPath = path.join(runtime, "livesync-worker-status.json");
 const settingsPath = path.join(database, ".livesync", "settings.json");
@@ -123,13 +123,17 @@ async function reconcile() {
   }
 }
 
-createServer((_request, response) => {
-  response.setHeader("Content-Type", "application/json");
-  response.end(JSON.stringify(status));
-}).listen(8081, "0.0.0.0");
+if (process.env.OBSIDIAN_WORKER_CHILD !== "1")
+  createServer((_request, response) => {
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify(status));
+  }).listen(8081, "0.0.0.0");
 
 await mkdir(database, { recursive: true });
 await update({});
+process.once("SIGTERM", () => {
+  void stop().finally(() => process.exit(0));
+});
 for (;;) {
   await reconcile();
   await new Promise((resolve) => setTimeout(resolve, 2_000));

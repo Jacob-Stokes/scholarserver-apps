@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   assertConfigurationActionRequest,
   ConfigurationActionError,
@@ -10,6 +11,7 @@ import {
   configurationActionResult
 } from "@scholarserver/controller-runtime/configuration-actions";
 import { atomicJson } from "@scholarserver/controller-runtime/files";
+import { ensureCouchDbSecrets } from "../vaults/couchdb-secrets.mjs";
 import {
   attachCurrentSectionWhenAvailable,
   obsidianConfiguration,
@@ -36,9 +38,10 @@ import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 import { createVaultBinding } from "./vault-binding.mjs";
 import { browseVaultFolders } from "./vault-folders.mjs";
 
-const vaultPath = "/vault";
-const runtimePath = "/runtime";
-const liveSyncRuntimePath = "/livesync-runtime";
+const vaultPath = process.env.OBSIDIAN_VAULT_PATH || "/vault";
+const runtimePath = process.env.OBSIDIAN_RUNTIME_PATH || "/runtime";
+const liveSyncRuntimePath = process.env.OBSIDIAN_LIVESYNC_PATH || "/livesync-runtime";
+const homePath = process.env.OBSIDIAN_HOME_PATH || "/home/obsidian";
 const requestsPath = path.join(runtimePath, "requests");
 const responsesPath = path.join(runtimePath, "responses");
 const statusPath = path.join(runtimePath, "status.json");
@@ -46,7 +49,10 @@ const configurationActions = new ConfigurationActions(path.join(runtimePath, "co
 const tokenPath = path.join(runtimePath, "service-token");
 const enrollmentPath = path.join(runtimePath, "enrollment.json");
 const scopePath = path.join(runtimePath, "scope-path");
-const couchDbSecretsPath = path.join(liveSyncRuntimePath, "livesync-couchdb.env");
+const couchDbSecretsPath = path.join(
+  process.env.OBSIDIAN_SHARED_LIVESYNC_PATH || liveSyncRuntimePath,
+  "livesync-couchdb.env"
+);
 const liveSyncWorkerPath = path.join(liveSyncRuntimePath, "livesync-worker.json");
 const liveSyncWorkerStatusPath = path.join(liveSyncRuntimePath, "livesync-worker-status.json");
 const liveSyncOnboardingPath = path.join(liveSyncRuntimePath, "livesync-onboarding.json");
@@ -85,26 +91,8 @@ async function readJson(file, fallback = null) {
   }
 }
 
-async function ensureLiveSyncSecrets() {
-  try {
-    const content = await readFile(couchDbSecretsPath, "utf8");
-    const username = content.match(/^COUCHDB_USER=(.+)$/m)?.[1];
-    const password = content.match(/^COUCHDB_PASSWORD=(.+)$/m)?.[1];
-    if (username && password) return { username, password };
-  } catch {}
-  const username = "scholarserver";
-  const password = generateSecret(32);
-  const file = await open(couchDbSecretsPath, "wx", 0o644).catch(() => null);
-  if (file) {
-    try {
-      await file.writeFile(`COUCHDB_USER=${username}\nCOUCHDB_PASSWORD=${password}\n`);
-      await file.sync();
-    } finally {
-      await file.close();
-    }
-    return { username, password };
-  }
-  return ensureLiveSyncSecrets();
+function ensureLiveSyncSecrets() {
+  return ensureCouchDbSecrets(path.dirname(couchDbSecretsPath));
 }
 
 async function ensureServiceToken() {
@@ -130,9 +118,9 @@ async function runOb(args, { credentialKind = null, timeoutMs } = {}) {
     commandTimeout = credentialKind === "account" ? 55_000 : 15 * 60_000;
   }
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["/app/official-command.mjs"], {
+    const child = spawn(process.execPath, [fileURLToPath(new URL("./official-command.mjs", import.meta.url))], {
       cwd: vaultPath,
-      env: { HOME: "/home/obsidian", PATH: process.env.PATH },
+      env: { HOME: homePath, PATH: process.env.PATH },
       stdio: ["pipe", "pipe", "pipe"]
     });
     child.stdin.on("error", () => {});
@@ -230,9 +218,9 @@ async function startContinuousSync() {
   if (syncProcess || stoppingSync || installingClient || state.profile !== "official") return;
   const entrypoint = await officialClient.entrypoint();
   if (syncProcess || stoppingSync || installingClient) return;
-  const child = spawn(process.execPath, ["/app/official-command.mjs"], {
+  const child = spawn(process.execPath, [fileURLToPath(new URL("./official-command.mjs", import.meta.url))], {
     cwd: vaultPath,
-    env: { HOME: "/home/obsidian", PATH: process.env.PATH },
+    env: { HOME: homePath, PATH: process.env.PATH },
     stdio: ["pipe", "ignore", "ignore"]
   });
   syncProcess = child;
@@ -315,9 +303,34 @@ async function selectProfile(input) {
 
 function normalizeScope(value) {
   const candidate = typeof value === "string" && value.trim() ? value.trim() : "/";
-  if (candidate.includes("..") || candidate.includes("\\") || candidate.startsWith("~"))
+  if (
+    candidate.length > 1024 ||
+    /[\x00-\x1f\x7f]/.test(candidate) ||
+    candidate.includes("..") ||
+    candidate.includes("\\") ||
+    candidate.startsWith("~")
+  )
     throw new Error("Choose a folder inside the vault");
   return candidate;
+}
+
+async function saveScope(input) {
+  if (state.state !== "ready") throw new Error("Connect this vault before changing its folder access.");
+  const enrollment = await vaultBinding.restore();
+  if (!enrollment) throw new Error("This vault's connection records need recovery.");
+  const scope = normalizeScope(input.scopePath);
+  if (
+    scope !== "/" &&
+    scope
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .some((part) => !part || part.startsWith("."))
+  )
+    throw new Error("Choose a visible folder inside the vault.");
+  await atomicJson(enrollmentPath, { ...enrollment, scopePath: scope });
+  await writeFile(scopePath, `${scope}\n`, { mode: 0o600 });
+  await updateStatus({ scopePath: scope });
+  return { ...state };
 }
 
 async function configureLiveSync(input) {
@@ -610,6 +623,8 @@ async function action(request) {
       return repairLiveSyncConnection(request.input ?? {});
     case "complete-livesync":
       return completeLiveSync(request.input ?? {});
+    case "save-scope":
+      return saveScope(request.input ?? {});
     default:
       throw new Error("Unsupported onboarding action");
   }
@@ -816,6 +831,16 @@ async function handleHttp(request, response) {
       }
       return json(response, 404, { error: "Not found" });
     }
+    if (
+      process.env.OBSIDIAN_CONTROLLER_CHILD === "1" &&
+      request.method === "POST" &&
+      url.pathname.startsWith("/api/onboarding/")
+    ) {
+      const actionId = url.pathname.slice("/api/onboarding/".length);
+      if (!["browse-folders", "create-research-note", "status"].includes(actionId))
+        return json(response, 404, { error: "Action not found" });
+      return json(response, 200, await dispatch({ action: actionId, input: await body(request) }));
+    }
     const actions = {
       "/api/profile/select": "select-profile",
       "/api/client/install": "install-client",
@@ -839,6 +864,7 @@ async function handleHttp(request, response) {
 }
 
 await mkdir(vaultPath, { recursive: true });
+await mkdir(path.join(homePath, ".config"), { recursive: true, mode: 0o700 });
 await mkdir(liveSyncRuntimePath, { recursive: true });
 await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
@@ -857,10 +883,17 @@ setInterval(() => {
 }, 3000).unref();
 createServer((request, response) => {
   void handleHttp(request, response);
-}).listen(8080, "0.0.0.0");
+}).listen(
+  Number(process.env.OBSIDIAN_CONTROLLER_PORT || "8080"),
+  process.env.OBSIDIAN_CONTROLLER_CHILD === "1" ? "127.0.0.1" : "0.0.0.0"
+);
 
-for (;;) {
+while (process.env.OBSIDIAN_CONTROLLER_CHILD !== "1") {
   const files = (await readdir(requestsPath)).filter((name) => /^[a-z0-9-]+\.json$/.test(name)).sort();
   for (const file of files) await processRequest(file);
   await new Promise((resolve) => setTimeout(resolve, 250));
 }
+
+process.once("SIGTERM", () => {
+  void stopOfficialSync().finally(() => process.exit(0));
+});

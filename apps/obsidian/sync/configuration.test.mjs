@@ -402,3 +402,16 @@ test("old incomplete connection reconciliation records a terminal receipt withou
   assert.equal(receipt.status, "rejected");
   assert.equal((await new ConfigurationActions(directory, "setup").read(request.requestId)).status, "rejected");
 });
+
+test("ready connections retain their saved folder and expose an explicit folder-access action", () => {
+  for (const profile of ["official", "livesync"]) {
+    const section = obsidianConfiguration({ profile, state: "ready", scopePath: "Research", remoteVault: "synthetic" });
+    assert.equal(section.values.scopePath, "Research");
+    assert.equal(section.fields.find((field) => field.id === "scopePath").required, true);
+    assert.deepEqual(section.actions.find((action) => action.id === "save-scope").fieldIds, ["scopePath"]);
+    assert.throws(
+      () => validateObsidianConfigurationAction("save-scope", { scopePath: "../other" }),
+      /inside the vault/
+    );
+  }
+});

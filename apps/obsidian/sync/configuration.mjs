@@ -22,7 +22,7 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     id: "setup",
     revision: revisionFor(status, deviceConnectionUrl),
     title: "Vault connection",
-    description: "Connect one vault to this installation. Another vault needs a separate installation.",
+    description: "Connect this vault and choose the folder available to AI tools.",
     stage: { id: "sync-method", label: "Sync method", index: 1, total: 6 },
     pollAfterMs: null,
     notices: [],
@@ -59,7 +59,20 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     ];
     if (status.profile === "livesync")
       section.notices.push({ kind: "warning", text: "Keep other vault sync methods turned off to avoid conflicts." });
-    section.actions = [{ id: "check-connection", label: "Check connection", kind: "read", target }];
+    section.fields = [
+      {
+        id: "scopePath",
+        label: "AI-accessible folder",
+        type: "text",
+        required: true,
+        hint: "Use / for the whole vault, or a folder inside it. Changing this does not move notes or change device sync."
+      }
+    ];
+    section.values = { scopePath: status.scopePath || "/" };
+    section.actions = [
+      submit("save-scope", "Save folder access", ["scopePath"]),
+      { id: "check-connection", label: "Check connection", kind: "read", target }
+    ];
     return section;
   }
   if (status.profile === "none") {
@@ -329,7 +342,7 @@ export function validateObsidianConfigurationAction(actionId, values) {
       throw new Error("Choose to change the device address before updating the setup link.");
   }
   if (
-    ["configure-livesync", "connect-vault"].includes(actionId) &&
+    ["configure-livesync", "connect-vault", "save-scope"].includes(actionId) &&
     (values.scopePath.includes("..") || values.scopePath.includes("\\") || values.scopePath.startsWith("~"))
   ) {
     throw new Error("Choose a folder inside the vault.");

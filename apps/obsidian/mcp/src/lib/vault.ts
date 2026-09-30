@@ -33,10 +33,19 @@ function configuredPrefixes(name: string): string[] | null {
 }
 
 export class VaultPolicy {
+  constructor(private readonly connectionScope?: string) {}
+
+  private scopedPrefixes(): string[] | null {
+    if (this.connectionScope === "/") return null;
+    return [normalizeVaultPath(this.connectionScope!)];
+  }
+
   private readPrefixes() {
+    if (this.connectionScope !== undefined) return this.scopedPrefixes();
     return configuredPrefixes("OBSIDIAN_READ_PATHS");
   }
   private writePrefixes() {
+    if (this.connectionScope !== undefined) return this.scopedPrefixes();
     return configuredPrefixes("OBSIDIAN_WRITE_PATHS");
   }
 

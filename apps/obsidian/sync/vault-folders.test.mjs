@@ -150,5 +150,5 @@ test("the sync image includes the folder reader and the action stays on the exis
   assert.match(controller, /return browseVaultFolders\(vaultPath, request.input \?\? \{\}\)/);
   assert.match(controller, /if \(request\?\.action !== "browse-folders"\)/);
   assert.doesNotMatch(controller, /"\/api\/[^"\n]+": "browse-folders"/);
-  assert.match(dockerfile, /COPY[^\n]+sync\/vault-folders\.mjs \/app\/vault-folders\.mjs/);
+  assert.match(dockerfile, /COPY[^\n]+sync\/vault-folders\.mjs \/app\/sync\/vault-folders\.mjs/);
 });

@@ -327,7 +327,7 @@ test("Obsidian credential filtering participates in the shipped image fingerprin
   const helper = "apps/obsidian/sync/status-presentation.mjs";
   assert.ok(fingerprint.files.includes(helper), "status filtering must invalidate an old image receipt");
   const dockerfile = await readFile(recipe.dockerfile, "utf8");
-  assert.ok(dockerfile.includes(`${helper} /app/status-presentation.mjs`), "the qualified helper must ship");
+  assert.ok(dockerfile.includes(`${helper} /app/sync/status-presentation.mjs`), "the qualified helper must ship");
 });
 
 test("fingerprints ignore generated, cache and test-output files", async () => {

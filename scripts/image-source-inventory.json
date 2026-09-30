@@ -246,7 +246,7 @@
     {
       "name": "obsidian-api",
       "dockerfile": "apps/obsidian/api/Dockerfile",
-      "context": "apps/obsidian/api",
+      "context": ".",
       "repository": "scholarserver-obsidian-api",
       "manifest": "apps/obsidian/package/compose.yaml",
       "service": "api",
@@ -257,7 +257,8 @@
         "apps/obsidian/api/package.json",
         "apps/obsidian/api/package-lock.json",
         "apps/obsidian/api/src/frontmatter.mjs",
-        "apps/obsidian/api/src/server.mjs"
+        "apps/obsidian/api/src/server.mjs",
+        "apps/obsidian/vaults"
       ]
     },
     {
@@ -291,7 +292,9 @@
         "apps/obsidian/livesync-worker/worker-state.mjs",
         "apps/obsidian/livesync-worker/worker.mjs",
         "packages/controller-runtime/files.mjs",
-        "packages/controller-runtime/package.json"
+        "packages/controller-runtime/package.json",
+        "apps/obsidian/livesync-worker/supervisor.mjs",
+        "apps/obsidian/vaults"
       ]
     },
     {
@@ -351,7 +354,9 @@
         "packages/controller-runtime/configuration-actions.mjs",
         "packages/controller-runtime/files.mjs",
         "packages/controller-runtime/package.json",
-        "vendor/scholarserver-ui"
+        "vendor/scholarserver-ui",
+        "apps/obsidian/sync/supervisor.mjs",
+        "apps/obsidian/vaults"
       ]
     },
     {

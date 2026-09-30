@@ -78,14 +78,14 @@ def main():
 
         controller = start("sync", [("vault", "/vault"), ("runtime", "/runtime"), ("live", "/livesync-runtime"),
                                     ("client", "/official-client"), ("config", "/home/obsidian/.config")],
-                           ["-e", "SCHOLARSERVER_VARIANT=obsidian-sync"])
+                           ["-e", "SCHOLARSERVER_VARIANT=obsidian-sync"], command=["node", "/app/sync/controller.mjs"])
         wait_for("Fresh official install waits for consent", lambda: status(controller)["state"] == "client-install-required")
         assert not (root / "client/installed").exists()
         assert docker("exec", controller, "id", "-u") == "1000"
         assert probe(controller, "console.log((await fetch('http://127.0.0.1:8080/api/client/install',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status)") == "400"
         assert probe(controller, "console.log((await fetch('http://127.0.0.1:8080/api/client/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmed:true})})).status)") == "200"
         wait_for("Real npm download verified and activated without root", lambda: status(controller)["officialClient"]["phase"] == "installed", 150)
-        output = docker("exec", "-i", controller, "node", "/app/official-command.mjs", input=json.dumps({
+        output = docker("exec", "-i", controller, "node", "/app/sync/official-command.mjs", input=json.dumps({
             "entrypoint": "/official-client/installed/package/cli.js", "args": ["--version"]
         }))
         assert output == "0.0.14", output
@@ -131,7 +131,17 @@ def main():
         wait_for("Restart keeps the legacy vault binding", lambda: status(controller)["state"] == "client-install-required")
         assert (root / "runtime/vault-binding.json").read_bytes() == binding
 
-        # API and MCP exercise the same vault with no dependency on sync binaries.
+        # API and MCP use explicitly synthetic ready records after stopping the
+        # sync engine. This qualifies file/tool packaging, not paid-account sync.
+        docker("stop", controller)
+        (root / "runtime/vaults.json").write_text(json.dumps({
+            "schemaVersion": 1, "revision": 1, "vaults": [
+                {"id": "existing", "label": "Synthetic legacy vault", "source": "official", "layout": "legacy", "aiEnabled": True}
+            ]
+        }))
+        (root / "runtime/status.json").write_text(json.dumps({"state": "ready"}))
+        for filename in ["vaults.json", "status.json"]:
+            os.chown(root / "runtime" / filename, 1000, 1000)
         api = start("api", [("vault", "/vault"), ("runtime", "/runtime")], ["--network-alias", "api"])
         mcp = start("mcp", [("runtime", "/runtime")])
         wait_for("Vault API healthy", lambda: probe(api, "console.log((await fetch('http://127.0.0.1:3000/health')).status)") == "200")
@@ -151,11 +161,11 @@ def main():
           const tools=await client.listTools();
           assert(tools.tools.length>0);
           assert(tools.tools.some(t=>t.name==='obsidian_write_note'));
-          const written=await client.callTool({name:'obsidian_write_note',arguments:{path:'MCP-proof.md',content:'# Synthetic MCP note',mode:'create'}});
+          const written=await client.callTool({name:'obsidian_write_note',arguments:{vault_id:'existing',path:'MCP-proof.md',content:'# Synthetic MCP note',mode:'create'}});
           assert(!written.isError, JSON.stringify(written));
-          const edited=await client.callTool({name:'obsidian_append_to_note',arguments:{path:'MCP-proof.md',content:'Edited through MCP'}});
+          const edited=await client.callTool({name:'obsidian_append_to_note',arguments:{vault_id:'existing',path:'MCP-proof.md',content:'Edited through MCP'}});
           assert(!edited.isError, JSON.stringify(edited));
-          const read=await client.callTool({name:'obsidian_get_note',arguments:{path:'MCP-proof.md'}});
+          const read=await client.callTool({name:'obsidian_get_note',arguments:{vault_id:'existing',path:'MCP-proof.md'}});
           assert(!read.isError);
           assert(JSON.stringify(read).includes('Edited through MCP'));
           console.log('MCP write, edit and read passed');
@@ -183,9 +193,9 @@ def main():
               image=images["couchdb"])
         controller = start("sync", [("live-vault", "/vault"), ("live-runtime", "/runtime"), ("live", "/livesync-runtime"),
                                     ("live-client", "/official-client"), ("live-config", "/home/obsidian/.config")],
-                           ["-e", "SCHOLARSERVER_VARIANT=self-hosted-livesync"])
+                           ["-e", "SCHOLARSERVER_VARIANT=self-hosted-livesync"], command=["node", "/app/sync/controller.mjs"])
         worker = start("worker", [("live-vault", "/vault"), ("server-db", "/livesync-db"), ("live", "/livesync-runtime")],
-                       image=images["worker"])
+                       extra=["--entrypoint", "node"], image=images["worker"], command=["/app/livesync-worker/worker.mjs"])
         wait_for("LiveSync controller starts with Headless absent", lambda: status(controller)["profile"] == "livesync")
         assert status(controller)["officialClient"] is None
         probe(controller, """
@@ -266,7 +276,7 @@ def main():
           assert.equal((await response.json()).onboarding,null);
         """)
         probe(controller, """
-          import {createResearchNote} from '/app/research-note.mjs';
+          import {createResearchNote} from '/app/sync/research-note.mjs';
           await createResearchNote('/vault',{folder:'Research',filename:'zotero-ABCD1234.md',content:'Synthetic server research note'});
         """)
         def research_note_arrived():

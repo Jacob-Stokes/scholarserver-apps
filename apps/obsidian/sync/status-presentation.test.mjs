@@ -95,5 +95,7 @@ test("controller wires a separate no-store browser read and packages its helper"
   assert(!summary.includes("liveSyncOnboarding"));
   assert(controller.includes('url.pathname === "/api/livesync/onboarding"'));
   assert(controller.includes('response.setHeader("Cache-Control", "no-store")'));
-  assert((await readFile(new URL("./Dockerfile", import.meta.url), "utf8")).includes("/app/status-presentation.mjs"));
+  assert(
+    (await readFile(new URL("./Dockerfile", import.meta.url), "utf8")).includes("/app/sync/status-presentation.mjs")
+  );
 });

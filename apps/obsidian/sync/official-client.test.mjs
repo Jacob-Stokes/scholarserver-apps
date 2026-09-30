@@ -73,7 +73,8 @@ test("verified install is single-flight and survives restart without another dow
   const restored = createOfficialClient({ ...setup, fetcher });
   assert.equal((await restored.status()).phase, "installed");
   assert.match(await restored.entrypoint(), /installed\/package\/cli.js$/);
-  assert.equal(requests, 1);
+  await restored.begin({ profile: "official", confirmed: true });
+  assert.equal(requests, 1, "another controller reuses the verified shared client");
 });
 
 test("interrupted download and bad integrity remain retryable without an executable", async (t) => {

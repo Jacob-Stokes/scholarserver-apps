@@ -1,5 +1,54 @@
 # Obsidian development notes
 
+## Multi-vault source checkpoint — 30 September 2026
+
+Approved target: one Obsidian installation per workspace, multiple connections
+inside Manager and one MCP inventory with explicit `vault_id`. This source pass
+has an atomic, bounded registry, per-connection files/runtime/HOME, controller
+supervision and a shared LiveSync worker supervisor. Per-database LiveSync member
+credentials remain separate; the original global CouchDB administrator record is
+preserved. Only the supervisor writes the registry. Missing/corrupt connection
+records do not grant access or trigger initialization over existing unknown data.
+
+The API discovers ready, AI-enabled, bound connections and enforces explicit
+selection and current saved folder scope. MCP advertises `obsidian_list_vaults`
+and nineteen content tools with required vault selection. Source tests exercise
+same-path isolation, missing IDs, revocation, scope changes, private paths and
+symlinks. Registry changes have app-owned routing receipts; replay observes the
+original outcome instead of adding another connection. Native selected-context
+setup/output routing and separate name/AI-access settings stay in this app.
+Ready connections have an explicit folder-access save that does not move notes
+or restart sync. Shared verified official-client bytes are reused, while each
+connection's sign-in directory is distinct.
+
+Full apps source tests passed before the final native-harness update; the final
+source/lint gates are recorded alongside their commit. A local Node process test
+adds two unconnected official connections, changes one connection's AI access,
+and preserves registry/token through restart. Independent process failure and
+symlinked-storage tests preserve the other connection. This does not establish
+two signed-in official accounts. Paired core `dec187b` supplies generic form
+context selection and output validation; `7a32b60` supplies installation limits.
+Its in-app browser checks use synthetic form data and are not app enrollment.
+
+The native image entry points now run supervisors. The retained legacy engine
+qualification is explicit about exercising the per-vault child entry point; its
+API/MCP records are synthetic and are not paid Sync. A separate production-entry
+native harness covers two encrypted LiveSync peers in one stack, two unconnected
+official slots, shared-client consent/reuse, one tool inventory, same-path notes,
+per-vault database authorization, scope/revocation and restart. It must pass on
+both native architectures before selecting replacement image pins.
+
+Package manifest/Compose are still the previous immutable `.20260929.4` candidate:
+they do not yet declare the shared registry/mixed-stack storage or configuration
+sections. Do not deploy the new entry points using that old data selection. New
+immutable package identity, all mounts/backup policies, compatibility, app-owned
+configuration snapshots, native receipts, checkpointed retained migration and real
+Gateway calls remain required. Existing data, device endpoints, credentials and
+paid-account test note have not been changed. Project-vault note/index update is
+pending the existing external-write approval/access and must target the project
+vault explicitly once multi-vault discovery is available.
+
+
 ## Paid Sync account progress after restart — 30 September 2026
 
 Updating the retained paid Sync instance reproduced a return to Account even

@@ -1,17 +1,12 @@
-// HTTP wrapper around the obsidian-landing API (the public proxy in front of
-// the backend obsidian-api). All tool handlers go through this — one place
-// for auth, timeout, error shaping, path encoding.
-//
-// Note: we talk to obsidian-LANDING (port 3099), NOT obsidian-api directly.
-// Landing validates per-client OBSIDIAN_API_KEY values and swaps to the
-// backend admin key internally. Agents never need the backend admin key.
+// Authenticated private app API client. Vault selection is explicit per context.
 
 const TIMEOUT_MS = 10_000;
 
 export class ObsidianClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly apiKey: string
+    private readonly apiKey: string,
+    private readonly vault?: { id: string; scopePath: string }
   ) {}
 
   async call(method: string, path: string, body?: unknown, contentType = "application/json"): Promise<any> {
@@ -25,7 +20,8 @@ export class ObsidianClient {
         method,
         headers: {
           "X-API-Key": this.apiKey,
-          "Content-Type": contentType
+          "Content-Type": contentType,
+          ...(this.vault ? { "X-Obsidian-Vault-Id": this.vault.id, "X-Obsidian-Scope": this.vault.scopePath } : {})
         },
         body: body !== undefined ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined,
         signal: controller.signal

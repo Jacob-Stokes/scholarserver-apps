@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -15,18 +15,20 @@ test("the image's copied API files boot and serve an authenticated synthetic vau
   const temporary = await mkdtemp(path.join(packageRoot, ".startup-test-"));
   try {
     const dockerfile = await readFile(path.join(packageRoot, "Dockerfile"), "utf8");
-    const copies = [...dockerfile.matchAll(/^COPY (src\/\S+) \.\/(\S+)$/gm)];
-    assert.ok(copies.length > 0, "the image explicitly copies its runtime source files");
-    for (const [, source, destination] of copies) {
-      await copyFile(path.join(packageRoot, source), path.join(temporary, destination));
-    }
+    assert.match(dockerfile, /COPY apps\/obsidian\/api\/src \.\/api\/src|COPY apps\/obsidian\/api\/src \./);
+    assert.match(dockerfile, /COPY apps\/obsidian\/vaults \.\/vaults|COPY apps\/obsidian\/vaults \./);
+    await cp(path.join(packageRoot, "src"), path.join(temporary, "api", "src"), { recursive: true });
+    await cp(path.join(packageRoot, "..", "vaults"), path.join(temporary, "vaults"), { recursive: true });
     const vault = path.join(temporary, "vault");
     await mkdir(vault);
     await writeFile(path.join(vault, "Proof.md"), "---\nkind: test\n---\nSynthetic note\n");
     const probe = `
       import assert from 'node:assert/strict';
       import { once } from 'node:events';
-      const { server } = await import(process.argv[1]);
+      const { createApi } = await import(process.argv[1]);
+      const { serve } = await import('@hono/node-server');
+      const app = createApi({ multiVault: false, legacyVault: process.env.VAULT_PATH });
+      const server = serve({ fetch: app.fetch, port: 0 });
       try {
         if (!server.listening) await once(server, 'listening');
         const base = 'http://127.0.0.1:' + server.address().port;
@@ -42,7 +44,7 @@ test("the image's copied API files boot and serve an authenticated synthetic vau
     `;
     await execute(
       process.execPath,
-      ["--input-type=module", "-e", probe, pathToFileURL(path.join(temporary, "server.mjs")).href],
+      ["--input-type=module", "-e", probe, pathToFileURL(path.join(temporary, "api", "src", "server.mjs")).href],
       {
         env: { ...process.env, PORT: "0", VAULT_PATH: vault, API_KEY: "synthetic-startup-test-key" },
         timeout: 15_000

@@ -35,7 +35,7 @@ test("Zotero setup dependencies stay in the controller, not the API relay", asyn
 
 test("Obsidian ships the isolated CouchDB readiness helper", async () => {
   const recipe = await readFile("apps/obsidian/sync/Dockerfile", "utf8");
-  assert.match(recipe, /COPY .*apps\/obsidian\/sync\/couchdb-request\.mjs \/app\/couchdb-request\.mjs/);
+  assert.match(recipe, /COPY .*apps\/obsidian\/sync\/couchdb-request\.mjs \/app\/sync\/couchdb-request\.mjs/);
 });
 
 test("every distributed custom image pins its base and cannot install official Headless", async () => {

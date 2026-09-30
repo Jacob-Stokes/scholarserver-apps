@@ -149,7 +149,13 @@ export function createOfficialClient({
     if (profile !== "official") throw new Error("Official client installation is only available with Obsidian Sync.");
     if (!confirmed) throw new Error("Confirm the Obsidian download and terms before proceeding.");
     if (operation) return operation;
-    operation = install().finally(() => {
+    // Other vault controllers reuse the verified shared client. The supervisor
+    // serializes installation actions; an intact copy is never replaced for a
+    // second account or vault.
+    operation = (async () => {
+      if (await inspect()) return;
+      await install();
+    })().finally(() => {
       operation = null;
     });
     return operation;

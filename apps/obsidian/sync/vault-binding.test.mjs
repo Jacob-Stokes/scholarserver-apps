@@ -550,7 +550,7 @@ test("the sync image copies vault binding and inventories its source for image d
   const inventory = await readJson(new URL("../../../scripts/image-source-inventory.json", import.meta.url));
   assert.match(
     dockerfile,
-    /^COPY[^\n]*apps\/obsidian\/sync\/vault-binding\.mjs[^\n]* \/app\/(?:vault-binding\.mjs)?\s*$/m
+    /^COPY[^\n]*apps\/obsidian\/sync\/vault-binding\.mjs[^\n]* \/app\/sync\/(?:vault-binding\.mjs)?\s*$/m
   );
   const recipes = inventory.recipes.filter((recipe) => recipe.name === "obsidian-sync");
   assert.equal(recipes.length, 1);

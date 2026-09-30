@@ -25,22 +25,24 @@ RUN addgroup -g 1000 obsidian \
     && mkdir -p /vault /runtime /official-client /livesync-runtime /home/obsidian/.config \
     && chown -R 1000:1000 /vault /runtime /official-client /livesync-runtime /home/obsidian
 
-COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/controller.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/configuration.mjs /app/configuration.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/status-presentation.mjs /app/status-presentation.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/research-note.mjs /app/research-note.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/vault-folders.mjs /app/vault-folders.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/vault-binding.mjs /app/vault-binding.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/official-client.mjs apps/obsidian/sync/official-command.mjs /app/
-COPY --chown=1000:1000 apps/obsidian/sync/official-failure.mjs /app/official-failure.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/controller.mjs /app/sync/controller.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/configuration.mjs /app/sync/configuration.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/status-presentation.mjs /app/sync/status-presentation.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/research-note.mjs /app/sync/research-note.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/vault-folders.mjs /app/sync/vault-folders.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/vault-binding.mjs /app/sync/vault-binding.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/official-client.mjs apps/obsidian/sync/official-command.mjs /app/sync/
+COPY --chown=1000:1000 apps/obsidian/sync/official-failure.mjs /app/sync/official-failure.mjs
 COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
-COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/livesync-setup.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/couchdb-request.mjs /app/couchdb-request.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/couchdb-address.mjs /app/couchdb-address.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/livesync-settings.mjs /app/livesync-settings.mjs
-COPY --chown=1000:1000 apps/obsidian/sync/livesync-lifecycle.mjs /app/livesync-lifecycle.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/livesync-setup.mjs /app/sync/livesync-setup.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/couchdb-request.mjs /app/sync/couchdb-request.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/couchdb-address.mjs /app/sync/couchdb-address.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/livesync-settings.mjs /app/sync/livesync-settings.mjs
+COPY --chown=1000:1000 apps/obsidian/sync/livesync-lifecycle.mjs /app/sync/livesync-lifecycle.mjs
 COPY --from=ui-build --chown=1000:1000 /source/apps/obsidian/ui/dist /app/ui
 
 ENV HOME=/home/obsidian
 USER 1000:1000
-CMD ["node", "/app/controller.mjs"]
+COPY --chown=1000:1000 apps/obsidian/vaults /app/vaults
+COPY --chown=1000:1000 apps/obsidian/sync/supervisor.mjs /app/sync/supervisor.mjs
+CMD ["node", "/app/sync/supervisor.mjs"]

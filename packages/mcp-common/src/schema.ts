@@ -26,8 +26,19 @@ export function zodToJsonSchema(schema: z.ZodType): any {
     const discriminator: string = def.discriminator;
     const discriminatorValues: string[] = [];
     const allProperties: Record<string, any> = {};
+    let commonRequired: Set<string> | null = null;
     for (const opt of def.options as z.ZodObject<any>[]) {
       const shape = (opt as any)._def.shape();
+      const required = new Set<string>(
+        Object.entries(shape)
+          .filter(([, value]) => !(value as any).isOptional?.() && !isDefaulted(value as z.ZodType))
+          .map(([key]) => key)
+      );
+      if (commonRequired === null) commonRequired = required;
+      else
+        commonRequired = new Set<string>(
+          Array.from(commonRequired as Set<string>).filter((key: string) => required.has(key))
+        );
       for (const [k, v] of Object.entries(shape)) {
         if (k === discriminator) {
           const litDef = (v as any)._def;
@@ -48,7 +59,7 @@ export function zodToJsonSchema(schema: z.ZodType): any {
     return {
       type: "object",
       properties: allProperties,
-      required: [discriminator],
+      required: [discriminator, ...[...(commonRequired ?? [])].filter((key) => key !== discriminator)],
       additionalProperties: false
     };
   }

@@ -84,8 +84,10 @@ done
 echo "Gate 2/4: Obsidian native startup, user download and two-peer LiveSync check"
 if [ "${NATIVE_IMAGE_TEST_USE_SUDO:-0}" = 1 ]; then
   sudo python3 scripts/check-obsidian-packaging.py
+  sudo python3 scripts/check-obsidian-multivault.py
 else
   python3 scripts/check-obsidian-packaging.py
+  python3 scripts/check-obsidian-multivault.py
 fi
 
 reader_record=$(verified_recipe freshrss-reader)

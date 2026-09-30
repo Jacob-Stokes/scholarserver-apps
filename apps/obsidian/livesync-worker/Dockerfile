@@ -2,8 +2,10 @@ FROM ghcr.io/vrtmrz/livesync-cli:1.0.21-cli@sha256:c5f7897bd0763e79250136a7631e1
 
 LABEL org.opencontainers.image.source="https://github.com/Jacob-Stokes/scholarserver-apps"
 
-COPY --chmod=755 apps/obsidian/livesync-worker/worker.mjs /app/scholarserver-worker.mjs
+COPY --chmod=755 apps/obsidian/livesync-worker/worker.mjs /app/livesync-worker/worker.mjs
 COPY packages/controller-runtime /app/node_modules/@scholarserver/controller-runtime
-COPY --chmod=644 apps/obsidian/livesync-worker/worker-state.mjs /app/worker-state.mjs
+COPY --chmod=644 apps/obsidian/livesync-worker/worker-state.mjs /app/livesync-worker/worker-state.mjs
+COPY --chmod=644 apps/obsidian/vaults /app/vaults
+COPY --chmod=644 apps/obsidian/livesync-worker/supervisor.mjs /app/livesync-worker/supervisor.mjs
 USER 1000:1000
-ENTRYPOINT ["node", "/app/scholarserver-worker.mjs"]
+ENTRYPOINT ["node", "/app/livesync-worker/supervisor.mjs"]

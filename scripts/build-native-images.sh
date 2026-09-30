@@ -86,7 +86,7 @@ build logseq-helper apps/logseq/helper/Dockerfile .
 build logseq-mcp apps/logseq/mcp/Dockerfile .
 build logseq-sync apps/logseq/sync-adapter/Dockerfile .
 build obsidian-sync apps/obsidian/sync/Dockerfile .
-build obsidian-api apps/obsidian/api/Dockerfile apps/obsidian/api
+build obsidian-api apps/obsidian/api/Dockerfile .
 build obsidian-mcp apps/obsidian/mcp/Dockerfile .
 build obsidian-livesync-couchdb apps/obsidian/livesync-couchdb/Dockerfile . scholarserver-obsidian-sync livesync-couchdb
 build obsidian-livesync-worker apps/obsidian/livesync-worker/Dockerfile . scholarserver-obsidian-sync livesync-worker
