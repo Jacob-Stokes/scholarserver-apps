@@ -42,7 +42,11 @@ test("workflow retains only current native JSON receipts even after a failed gat
   ]);
   const publish = steps.find((step) => step.run === "./scripts/publish-native-images.sh");
   assert.ok(steps.indexOf(upload) > steps.indexOf(publish));
-  assert.equal(publish.if, undefined, "publication must keep its default success-only condition");
+  assert.equal(
+    publish.if,
+    "${{ inputs.publish_images }}",
+    "publication requires explicit opt-in and keeps GitHub's implicit success condition"
+  );
   assert.equal(publish["continue-on-error"], undefined);
 });
 
@@ -527,4 +531,22 @@ test("native builds apply the local disk budget without a private-repository che
       workflow.indexOf("Build native images without publishing")
   );
   assert.doesNotMatch(workflow, /repository: Jacob-Stokes\/scholarserver\n/);
+});
+
+test("qualification-only workflow skips every registry write and defaults publication off", async () => {
+  const workflow = parse(await readFile(path.join(repositoryRoot, ".github/workflows/images.yml"), "utf8"));
+  assert.equal(workflow.on.workflow_dispatch.inputs.publish_images.default, false);
+  assert.equal(workflow.on.workflow_dispatch.inputs.publish_images.type, "boolean");
+  const build = workflow.jobs.build;
+  for (const step of build.steps.filter(
+    (step) => step.uses?.startsWith("docker/login-action") || step.run?.includes("publish-native-images.sh")
+  )) {
+    assert.equal(step.if, "${{ inputs.publish_images }}");
+  }
+  assert.equal(workflow.jobs.manifest.if, "${{ inputs.publish_images }}");
+  assert.equal(workflow.jobs.manifest.needs, "build");
+  const qualification = build.steps.find((step) => step.name === "Run the named native qualification gates");
+  assert.equal(qualification.if, undefined);
+  const receipts = build.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
+  assert.equal(receipts.if, "always()");
 });

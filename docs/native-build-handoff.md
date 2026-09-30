@@ -13,7 +13,11 @@ AMD64 and ARM64 runner:
    publishes only the exact local image objects recorded by the successful build
    stage.
 
-The GitHub workflow remains available only through **Run workflow**. Standard
+The GitHub workflow remains available only through **Run workflow**. Its
+`publish_images` input defaults to false: both native architectures run every
+qualification gate and retain receipts without logging into GHCR or pushing
+images/manifests. Set it true only for a separately authorized publication run;
+all existing exact-image qualification checks remain mandatory. Standard
 GitHub-hosted runners are free for this public repository; exhausting private
 repository minutes does not consume that entitlement. Artifact storage has its
 own limits. Publication remains an explicit operator action, not an automatic

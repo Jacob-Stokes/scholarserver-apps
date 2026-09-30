@@ -3,6 +3,12 @@ name: Native multi-architecture images
 on:
   # Image publication is opt-in. These standard public-repository runners are free.
   workflow_dispatch:
+    inputs:
+      publish_images:
+        description: Publish qualified native images and multi-platform manifests
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -63,11 +69,13 @@ jobs:
           REVISION: ${{ github.sha }}
         run: ./scripts/qualify-development-apps.sh
       - uses: docker/login-action@v3
+        if: ${{ inputs.publish_images }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the exact images that passed the native gates
+        if: ${{ inputs.publish_images }}
         env:
           REGISTRY: ghcr.io/jacob-stokes
           ARCH: ${{ matrix.architecture }}
@@ -89,6 +97,7 @@ jobs:
           retention-days: 14
 
   manifest:
+    if: ${{ inputs.publish_images }}
     needs: build
     runs-on: ubuntu-24.04
     strategy:
