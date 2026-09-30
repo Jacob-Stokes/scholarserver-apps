@@ -84,8 +84,8 @@
     },
     {
       "recipe": "obsidian-api",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:7d383fbbe5b3db3d443f0956d80d042e1af349a4daf1e46600ce6e0602d4ca7d",
-      "sourceDigest": "sha256:b6d7e171450491e37a5d26b5717c1dafeeab046835f721e67ab226923d5ff697",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-api@sha256:ee8887c7c14cd9f5d8860ebde643a487014486f3130e5046593857dc1b85f7d6",
+      "sourceDigest": "sha256:32bacb2480a44c3bd839161ed704220f7147b619d628455029a81aebd45b8573",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -93,7 +93,7 @@
     },
     {
       "recipe": "obsidian-livesync-couchdb",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:458854857c98097a02652e6c5d8293a206e2471b7e5f7c9f0e36dfb139a037ef",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:49cb9ad1ca165133f6ed55cf221f13f3e530ca47c94fe8b8f9cd4830ec639db6",
       "sourceDigest": "sha256:d66073cd77ac25594055e1726ee104b645d491384040767bed875fc7f4f257c8",
       "nativeArchitectures": [
         "amd64",
@@ -102,8 +102,8 @@
     },
     {
       "recipe": "obsidian-livesync-worker",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:e8234c3c8a6126b3900ae4d6e76596a5e430825bc5f4db6ddcc4c2ffec3fa879",
-      "sourceDigest": "sha256:d5fc41f2846706cea9b73c57bcd523348f44097110a7580486adc1b11b7c2858",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:27b9ed38adf52be5874786d6bf7d966c02168d933be073dd506be744d8aacb99",
+      "sourceDigest": "sha256:2e98ebeee4efb5784f6a71b8d6316feea125b3f74922bed0a5aa4f67a80db2e4",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -111,8 +111,8 @@
     },
     {
       "recipe": "obsidian-mcp",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:04097da36e1baf86ea21a5dd23549d27d3aeddaad7f9f64b410abe24c850a60a",
-      "sourceDigest": "sha256:8707f026e4893b9b295c15c7cb302cb5e52aabd8d7ec513d19b3a851c5d16b6c",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-mcp@sha256:76510fb7024567e3faa012d6b3bb1ba2fedee16091c7a15c26eddfef3f925e4b",
+      "sourceDigest": "sha256:a9d2793388289b155c8bf8a821408f25721e47038d6f2646a15407966c39eb65",
       "nativeArchitectures": [
         "amd64",
         "arm64"
@@ -120,8 +120,8 @@
     },
     {
       "recipe": "obsidian-sync",
-      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:bb1bd5a90068bde583e13a18acc070d3495e59132cfbe611d8e2722b7edbeeef",
-      "sourceDigest": "sha256:cf221a46350fdc1a4d48bbec12f1b1bb5d15b2959f4e3949dacc41eea98ff3d1",
+      "reference": "ghcr.io/jacob-stokes/scholarserver-obsidian-sync@sha256:0230a479af0e782871e2b35be64fa9e168e7b1a0c5ce9d7d86972270abb1c537",
+      "sourceDigest": "sha256:51aab32d2fef6e7739f7c2bc0e3b75eef93ed137ad932f4c28c0dc3e74f1f0d3",
       "nativeArchitectures": [
         "amd64",
         "arm64"

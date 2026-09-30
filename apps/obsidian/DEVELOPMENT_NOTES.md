@@ -963,3 +963,31 @@ message. Privacy regression tests cover secret-bearing exception text. The nativ
 harness observes the existing failed receipt/state and a recognized HTTP failure;
 it never retries an uncertain mutation. Required source tests pass. The extended
 native gate still needs a successful new run, and no installed app changed.
+
+### Final native qualification and immutable image selection
+
+Qualification-only run 36774515028 and publication run
+[36776366852](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36776366852)
+both passed AMD64 and ARM64 at
+`2401873bcce6497f12f2162ddf34d372c722612d`. Both logs pass the complete
+production five-service stack: four connections, explicitly consented shared
+official client, two independent encrypted LiveSync peers, one explicit-vault
+MCP inventory, same-path isolation, encrypted binary attachment delivery,
+per-vault scope/revocation, restart and production legacy adoption. Official
+slots remain unsigned-in. The earlier failed runs are not accepted by this result.
+
+Publication created immutable source tags and multi-platform manifests without
+moving `edge`. Each selected registry index contains precisely AMD64 and ARM64;
+native config digests and every RootFS diff ID match the publication-run receipts.
+The five Obsidian pins in package/Compose/source-lock are reconciled. Evidence:
+`/private/tmp/obsidian-published-2401873` and
+`/private/tmp/obsidian-multivault-migration-20260930/published-obsidian.json`.
+
+The generic platform prerequisites are deployed at core
+`5bc7ed5f59d7e9cdda491b3da55f62bb7eed47bb`. Guarded package-only review,
+encrypted checkpoints, retained LiveSync adoption, owner fresh official sign-in,
+private inventory/digest comparison and real retained Gateway / two-way sync
+acceptance are separate pending gates. Both older retained packages and their
+enrollments remain unchanged at this image-selection checkpoint. The project-vault
+note/index update remains pending vault access; no credentials or research data
+are placed in repository evidence.

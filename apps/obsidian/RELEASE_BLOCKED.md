@@ -1,17 +1,20 @@
 # Multi-vault source candidate — 30 September 2026
 
-Package `0.6.0-multivault.20260930.1` is **not installable or publishable yet**.
-Its new registry, five-service layout and additional vault dataset require the
-new native images. The manifest and Compose deliberately retain the previous
-image pins while qualification is pending; those pins do not implement this
-candidate. Do not import or deploy this package until they are replaced with
-receipt-qualified multi-architecture indexes from the exact final source.
+Package `0.6.0-multivault.20260930.1` now selects receipt-qualified native images
+from `2401873bcce6497f12f2162ddf34d372c722612d`, publication run
+[36776366852](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36776366852).
+Both native jobs and all manifest jobs passed. Registry indexes, platform configs
+and RootFS layer identities match the downloaded publication receipts. Manifest,
+Compose and the five Obsidian source-lock records select those same images.
+This is a scoped development candidate for the guarded package-only workflow,
+not an unrestricted catalog release or a completed retained migration.
 
-The paired core must include workspace installation limits and selected-context
-configuration evaluation/output validation. Exact core/package qualification is
-required; the broad compatibility range is not an old-core guarantee. The core
-also needs guarded authoritative dataset addition, identical inactive-exclusion
-activation and explicit no-variant planning for the backup-required cutover. Existing
+Development delivery requires paired core
+`5bc7ed5f59d7e9cdda491b3da55f62bb7eed47bb`, deployed and accepted on Freelove.
+It includes workspace installation limits, selected-context configuration,
+guarded authoritative dataset addition, identical inactive-exclusion activation
+and explicit no-variant planning. The broad compatibility range is not an
+old-core guarantee. Existing
 installed variants need an explicit reviewed transition to no variant, preserving
 every installed dataset and excluded client directory. Two retained installations
 must be consolidated only through a checkpointed, runtime-qualified migration.
