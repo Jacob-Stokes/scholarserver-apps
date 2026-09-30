@@ -183,7 +183,7 @@ try {
   await waitFor("automation worker starts", () => healthy(worker, 8081));
   await waitFor("MCP starts", () => healthy(mcp, 7012));
   let controllerOrigin = `http://${await docker("port", controller, "8080/tcp")}`;
-  const configuration = async (route = "", input) => {
+  const configuration = async (route = "", input, expectedStatus = 200) => {
     const response = await fetch(
       `${controllerOrigin}/api/configuration/automation${route}`,
       input
@@ -194,18 +194,22 @@ try {
           }
         : {}
     );
-    assert.equal(response.status, 200);
+    assert.equal(response.status, expectedStatus, `Unexpected configuration response for ${route}`);
     return response.json();
   };
   const unusedProcessing = await configuration("/evaluate", { values: { editSettings: true } });
   assert.deepEqual(unusedProcessing.actions, [], "Fresh installations use Automations for new workflows");
   assert.deepEqual(unusedProcessing.fields, []);
   assert.match(unusedProcessing.description, /Automations/);
-  const forbiddenSetup = await configuration("/actions/save-automation", {
-    requestId: "native-zotero-unused-processing-0001",
-    expectedRevision: unusedProcessing.revision,
-    values: { editSettings: true, active: true }
-  });
+  const forbiddenSetup = await configuration(
+    "/actions/save-automation",
+    {
+      requestId: "native-zotero-unused-processing-0001",
+      expectedRevision: unusedProcessing.revision,
+      values: { editSettings: true, active: true }
+    },
+    400
+  );
   assert.equal(forbiddenSetup.status, "rejected-before-change");
   // This worker and its state volume are disposable qualification fixtures.
   await probe(

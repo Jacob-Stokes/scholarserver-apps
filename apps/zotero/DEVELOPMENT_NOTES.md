@@ -467,3 +467,19 @@ in the description, not catalog filters. Reserved a new `.20260929.2` source
 package identity; published packages and installed instances remain unchanged.
 Replacement image qualification and package publication remain separate gates.
 Project-vault documentation remains pending the existing external-write approval.
+
+## PDF workflow ownership and native qualification — 30 September 2026
+
+Untouched default processing now directs new workflows to Automations. Any saved
+setting, customization, activation or run history retains the previous worker's
+controls, failures and recovery. This presentation change does not activate,
+migrate or delete processing state. The retained removed Zotero worker was read
+only: inactive defaults, no history. No runtime configuration changed.
+
+Native run `36647617074` at `8cbe5ffe0623fe6cff6eb983dce583082e3a3576`
+passed Docling and Logseq on both architectures, then stopped because the Zotero
+harness expected HTTP 200 for a correctly rejected unavailable action. The
+controller returned HTTP 400 with `rejected-before-change`, as its contract
+requires. The harness now expects that refusal explicitly before seeding its
+disposable previous-settings fixture. The images were not published. A new
+qualification run is required; this correction does not change runtime code.
