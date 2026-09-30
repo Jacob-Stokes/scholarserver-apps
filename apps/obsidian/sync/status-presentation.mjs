@@ -26,3 +26,23 @@ export async function readDeviceOnboarding({ currentState, assertBinding, readOn
     setupPassphrase: onboarding.setupPassphrase
   };
 }
+
+// Only our fixed CouchDB operation labels and numeric HTTP status can cross
+// into setup feedback. Upstream exceptions may contain credentials or vault data.
+export function liveSyncSetupFailure(error) {
+  const operations = new Map([
+    ["CouchDB startup", "CouchDB readiness"],
+    ["single-node setup", "CouchDB setup"],
+    ["CouchDB configuration", "CouchDB configuration"],
+    ["CouchDB system database creation", "CouchDB system database creation"],
+    ["vault account creation", "LiveSync member creation"],
+    ["vault database creation", "LiveSync database creation"],
+    ["vault database permissions", "LiveSync database permissions"],
+    ["vault account verification", "LiveSync member verification"]
+  ]);
+  const message = error instanceof Error ? error.message : "";
+  const match = message.match(/^(.+) failed \(HTTP ([45][0-9]{2})\)$/);
+  const operation = match ? operations.get(match[1]) : null;
+  const cause = operation ? `${operation} failed (HTTP ${match[2]}).` : "LiveSync setup failed before completion.";
+  return `${cause} Its outcome is uncertain. Check progress before another action.`;
+}

@@ -944,3 +944,22 @@ fixture now excludes that child token and asserts the global token before boot.
 This is a fixture correction, not evidence of a retained or production token
 rotation. The whole extended native gate still requires a successful rerun;
 publishing remains disabled. No installed package or vault changed.
+
+### Unconfirmed setup observation gate
+
+Run [36772289065](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36772289065)
+at `d0e73439d2d36094021f5f198bff3bc8a5b01942` passed the complete ARM64 job,
+including binary replication and production legacy adoption. AMD64 stopped at a
+`configure-livesync` action whose receipt was not successful, before the new
+attachment/adoption checks. The existing harness did not report its exact status
+or cause; this is not a root-cause or flaky-test conclusion. The failed gate is
+not accepted and publication stays disabled.
+
+Native configuration now retains app-authored setup failure feedback after a
+real LiveSync execution exception while preserving the recovery state and
+unconfirmed receipt. Only fixed CouchDB operation labels and numeric 4xx/5xx
+statuses are disclosed; unknown/upstream exception text is replaced with a fixed
+message. Privacy regression tests cover secret-bearing exception text. The native
+harness observes the existing failed receipt/state and a recognized HTTP failure;
+it never retries an uncertain mutation. Required source tests pass. The extended
+native gate still needs a successful new run, and no installed app changed.

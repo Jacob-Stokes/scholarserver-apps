@@ -34,7 +34,7 @@ import {
   unconfiguredVaultRejection
 } from "./official-failure.mjs";
 import { createResearchNote } from "./research-note.mjs";
-import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
+import { liveSyncSetupFailure, publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 import { createVaultBinding } from "./vault-binding.mjs";
 import { browseVaultFolders } from "./vault-folders.mjs";
 
@@ -640,6 +640,9 @@ async function dispatch(request) {
   } catch (error) {
     if (request.action === "configure-livesync") {
       await restore();
+      const failure = liveSyncSetupFailure(error);
+      const message = state.state === "recovery-required" ? `${state.lastError} ${failure}` : failure;
+      await updateStatus({ lastError: message });
       if (state.state === "recovery-required") throw new Error(state.lastError);
     }
     throw error;

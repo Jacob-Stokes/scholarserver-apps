@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
+import { liveSyncSetupFailure, publicStatus, readDeviceOnboarding } from "./status-presentation.mjs";
 
 const state = { profile: "livesync", state: "livesync-device-setup", scopePath: "/" };
 const onboarding = {
@@ -98,4 +98,22 @@ test("controller wires a separate no-store browser read and packages its helper"
   assert(
     (await readFile(new URL("./Dockerfile", import.meta.url), "utf8")).includes("/app/sync/status-presentation.mjs")
   );
+});
+
+test("LiveSync setup failure exposes only a fixed operation and HTTP status", () => {
+  assert.equal(
+    liveSyncSetupFailure(new Error("vault account verification failed (HTTP 401)")),
+    "LiveSync member verification failed (HTTP 401). Its outcome is uncertain. Check progress before another action."
+  );
+  for (const message of [
+    "https://private.example/?password=synthetic-secret failed (HTTP 401)",
+    "vault account verification failed (HTTP 401) synthetic-secret",
+    "vault account verification failed (HTTP 200)",
+    "synthetic-secret"
+  ]) {
+    assert.equal(
+      liveSyncSetupFailure(new Error(message)),
+      "LiveSync setup failed before completion. Its outcome is uncertain. Check progress before another action."
+    );
+  }
 });

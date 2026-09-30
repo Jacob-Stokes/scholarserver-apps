@@ -7,6 +7,7 @@ storage, not paid-account authentication or official device sync.
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -81,7 +82,24 @@ def main():
             result = request(controller, f"/api/configuration/{section_id}/actions/{action_id}", {
                 "requestId": str(uuid.uuid4()), "expectedRevision": section["revision"], "values": values
             })
-            assert result["status"] == "succeeded", f"Native action did not complete: {action_id}"
+            if result["status"] != "succeeded":
+                # Inspect the existing receipt; an uncertain mutation is never
+                # replayed to make qualification pass. Keep credentials out of
+                # this diagnostic even in the disposable fixture.
+                selected = values.get("vaultId")
+                status_path = root / "runtime/vaults" / selected / "status.json" if selected else None
+                saved = json.loads(status_path.read_text()) if status_path and status_path.exists() else {}
+                diagnostic = {"action": action_id, "receiptStatus": result["status"],
+                              "state": saved.get("state"), "profile": saved.get("profile"),
+                              "hasError": bool(saved.get("lastError")),
+                              "httpFailure": None}
+                error = saved.get("lastError")
+                if isinstance(error, str):
+                    match = re.search(r"(CouchDB|LiveSync) [A-Za-z ]+ failed \(HTTP [45][0-9]{2}\)", error)
+                    if match:
+                        diagnostic["httpFailure"] = match.group(0)
+                print("Native configuration stopped: " + json.dumps(diagnostic), flush=True)
+                raise AssertionError(f"Native action did not complete: {action_id}")
 
         def add(label, source):
             save("vaults", "add-vault", {"label": label, "source": source})
