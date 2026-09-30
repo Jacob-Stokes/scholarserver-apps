@@ -219,14 +219,18 @@ def main():
         docker("stop", controller)
         docker("stop", worker)
         adopted = live_ids[0]
-        def copy_owned_fixture(source, destination):
-            shutil.copytree(source, destination, dirs_exist_ok=True)
+        def copy_owned_fixture(source, destination, excluded=()):
+            shutil.copytree(source, destination, dirs_exist_ok=True, ignore=shutil.ignore_patterns(*excluded))
             for directory, names, files in os.walk(destination):
                 os.chown(directory, 1000, 1000)
                 for name in names + files:
                     os.chown(Path(directory) / name, 1000, 1000)
         copy_owned_fixture(root / "vaults" / adopted, root / "vault")
-        copy_owned_fixture(root / "runtime/vaults" / adopted, root / "runtime")
+        # Child controllers own a separate token; a legacy single-vault fixture
+        # uses the app token already at the shared root. Do not replace it while
+        # projecting only the child's enrollment/status into the old layout.
+        copy_owned_fixture(root / "runtime/vaults" / adopted, root / "runtime", excluded=("service-token",))
+        assert (root / "runtime/service-token").read_bytes() == token
         copy_owned_fixture(root / "live/vaults" / adopted, root / "live")
         copy_owned_fixture(root / "database/vaults" / adopted, root / "database")
         admin_before = (root / "live/livesync-couchdb.env").read_bytes()

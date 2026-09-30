@@ -931,3 +931,16 @@ exclusions and unknown pre-existing authoritative roots remain refused. Explicit
 the new paired core, not the retained executor currently running on Freelove.
 No retained vault was updated by this source pass. The required project-vault
 note/index update remains pending external vault access/approval.
+
+### Native extension fixture correction
+
+Run [36770379610](https://github.com/Jacob-Stokes/scholarserver-apps/actions/runs/36770379610)
+at `bbf2f6c` failed both architectures at the legacy fixture's shared-token
+assertion. Earlier checks in that same run passed encrypted binary attachment
+MCP/API roundtrip, delivery to each independent peer and restart byte preservation.
+The failure came from constructing the synthetic old layout: copying the selected
+child runtime also copied its separate token over the app's shared token. The
+fixture now excludes that child token and asserts the global token before boot.
+This is a fixture correction, not evidence of a retained or production token
+rotation. The whole extended native gate still requires a successful rerun;
+publishing remains disabled. No installed package or vault changed.
