@@ -1070,3 +1070,11 @@ uncertain-outcome reconciliation, preventing a confirmed addition from leaving
 the client on a blank Add vault form. A real isolated supervisor regression
 checks matching selected-vault identity without another addition. Native run
 36801302098 was canceled before publication as superseded by this final fix.
+
+Native run 36801678770 stopped before publication on both architectures. AMD64
+read the import form before its newly started child was ready; ARM64 observed a
+startup revision change between evaluation and Add vault. The native fixture now
+waits for the actual import form and refreshes only an explicit 409
+rejected-before-change response, with a matching request/action identity and
+confirmed absent target ledger. An uncertain or recorded mutation is never
+replayed. Runtime source is unchanged by this fixture correction.

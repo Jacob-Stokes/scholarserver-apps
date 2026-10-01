@@ -84,6 +84,9 @@ def qualify(root, start, controller, worker, images, probe, request, save, docke
     setup = json.loads((root / "tls/import.json").read_text())
     values = {"vaultId": vault_id, "livesyncMode": "join", "scopePath": "/", "confirmedNoOtherSync": True,
               "setupURI": setup["setupURI"], "setupPassphrase": "Wrong-synthetic-setup-passphrase"}
+    wait_for("Existing-vault controller exposes the import form", lambda:
+             request(controller, "/api/configuration/vaults/evaluate", {"values": {"vaultId": vault_id}})
+             .get("values", {}).get("livesyncMode") == "join")
     section = request(controller, "/api/configuration/vaults/evaluate", {"values": {"vaultId": vault_id}})
     assert section["values"]["livesyncMode"] == "join"
     request_id = str(uuid.uuid4())

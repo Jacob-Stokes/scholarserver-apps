@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 
 support_spec = importlib.util.spec_from_file_location("obsidian_native_support", Path(__file__).with_name("check-obsidian-packaging.py"))
@@ -23,13 +24,17 @@ existing = importlib.util.module_from_spec(existing_spec)
 existing_spec.loader.exec_module(existing)
 
 
-def request(container, pathname, body=None):
+def request_response(container, pathname, body=None):
     options = {"method": "GET"} if body is None else {"method": "POST", "headers": {"content-type": "application/json"}, "body": json.dumps(body)}
     result = probe(container, f"""
       const response=await fetch('http://127.0.0.1:8080'+{json.dumps(pathname)},{json.dumps(options)});
       console.log(JSON.stringify({{status:response.status,body:await response.json()}}));
     """)
-    response = json.loads(result)
+    return json.loads(result)
+
+
+def request(container, pathname, body=None):
+    response = request_response(container, pathname, body)
     assert response["status"] == 200, f"Native configuration request failed: {pathname} ({response['status']})"
     return response["body"]
 
@@ -84,10 +89,22 @@ def main():
         mcp = start("mcp", [("runtime", "/runtime:ro")])
 
         def save(section_id, action_id, values):
-            section = request(controller, f"/api/configuration/{section_id}/evaluate", {"values": values})
-            result = request(controller, f"/api/configuration/{section_id}/actions/{action_id}", {
-                "requestId": str(uuid.uuid4()), "expectedRevision": section["revision"], "values": values
-            })
+            request_id = str(uuid.uuid4())
+            for attempt in range(5):
+                section = request(controller, f"/api/configuration/{section_id}/evaluate", {"values": values})
+                response = request_response(controller, f"/api/configuration/{section_id}/actions/{action_id}", {
+                    "requestId": request_id, "expectedRevision": section["revision"], "values": values
+                })
+                result = response["body"]
+                # A newly started peer may change the observed revision. Retry
+                # only a definite refusal before any target receipt or mutation.
+                refused = (response["status"] == 409 and result.get("status") == "rejected-before-change"
+                           and result.get("requestId") == request_id and result.get("actionId") == action_id)
+                if not refused:
+                    break
+                assert not (root / "runtime/configuration-targets" / f"{request_id}.json").exists()
+                time.sleep(0.2)
+            assert response["status"] == 200, f"Native action HTTP failure: {action_id} ({response['status']})"
             if result["status"] != "succeeded":
                 # Inspect the existing receipt; an uncertain mutation is never
                 # replayed to make qualification pass. Keep credentials out of

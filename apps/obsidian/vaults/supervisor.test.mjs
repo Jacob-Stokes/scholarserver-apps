@@ -111,6 +111,10 @@ test("two official vault controllers share the installation, keep separate sign-
   );
   assert.equal(reconciledAddition.status, "succeeded");
   assert.equal(reconciledAddition.section.values.vaultId, first.result.section.values.vaultId);
+  await until(
+    () => section("setup"),
+    (result) => result.stage?.id === "client"
+  );
   await add("Notes");
   const registry = readRegistry(roots.runtime);
   assert.equal(registry.vaults.length, 2);
@@ -128,6 +132,15 @@ test("two official vault controllers share the installation, keep separate sign-
   }).then((response) => response.json());
   assert.equal(evaluated.values.vaultId, registry.vaults[1].id);
   assert.equal(evaluated.fields.find((field) => field.id === "vaultId").selectsContext, true);
+  await until(
+    () =>
+      fetch(`${base}/api/configuration/setup/evaluate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ values: { vaultId: registry.vaults[1].id } })
+      }).then((response) => response.json()),
+    (result) => result.stage?.id === "client"
+  );
   const awaitingConsent = await until(
     () => section("setup"),
     (result) => result.stage?.id === "client"
