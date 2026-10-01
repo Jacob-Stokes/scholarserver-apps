@@ -991,3 +991,36 @@ acceptance are separate pending gates. Both older retained packages and their
 enrollments remain unchanged at this image-selection checkpoint. The project-vault
 note/index update remains pending vault access; no credentials or research data
 are placed in repository evidence.
+
+
+### Retained adoption and generic Gateway refresh — 1 October 2026
+
+The exact published package `0.6.0-multivault.20260930.1` is installed on the
+original LiveSync instance at revision 9. Its five native services remain
+healthy. The old official instance is disabled at revision 5; enrollment,
+private 352-file inventory and encrypted backup `b20e14dc29712c653297f585`
+remain retained. No upstream enrollment relocation or credential copying was
+used. The original target backup is `41627782f143280d0effc6fd`; a verified
+restore of five identity files matches live hashes. This is limited identity
+continuity, not a full backup restore or CouchDB document-byte comparison.
+
+Direct provider discovery was current, while the healthy Gateway cached older
+schemas at an unchanged endpoint. Generic core `fea08a3` now refreshes inventory
+at bounded intervals without moving app logic into Manager or replaying writes.
+Full Linux checks/build and capped native ARM64 images passed; copied-database
+rehearsal and guarded retained cutover passed. Fresh normal OAuth acceptance
+finds 20 Obsidian tools and required `vault_id` on all 19 content tools. A unique
+synthetic note and 16-byte binary roundtrip through the retained Gateway match
+hashes in the ready legacy connection. Missing/unknown selection and traversal
+are refused. This is real single-vault Gateway acceptance, not encrypted device
+replication or two-vault acceptance.
+
+The added official connection remains at client consent. Owner terms, account
+and vault encryption input, frozen-source comparison, encrypted device/restart,
+same-path two-vault isolation and per-vault saved scope/revocation remain open.
+The duplicate section selectors and earlier official worker's stopped-error
+record also need follow-up. The project-vault app note and index update remain
+pending until the owner's corresponding vault is connected and accessible.
+Authoritative runtime/checkpoint paths are in the paired core deployment map
+and durable rollout checklist. Source pushes, published images, deployed
+packages and actual device checks remain distinct; no catalog release is claimed.

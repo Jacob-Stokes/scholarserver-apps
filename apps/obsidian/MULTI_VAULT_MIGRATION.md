@@ -1,8 +1,24 @@
 # Retained multi-vault consolidation gate
 
-This is the development cutover design, not a qualified operator procedure.
-Do not apply the source candidate to retained data until the final package and
-paired core are qualified. Fresh shared-stack tests are separate from cutover.
+The guarded package adoption completed on 30 September 2026; full retained
+multi-vault acceptance is still open. The qualified development package is
+`0.6.0-multivault.20260930.1`, metadata source `39f1702` and native runtime
+source `2401873`. Both native architectures and immutable image publication
+passed. Core `fea08a3` deployed on 1 October corrects generic Gateway inventory
+refresh; it exposes the app-owned discovery tool and explicit vault selection.
+
+The original `personal/obsidian` is revision 9 with five healthy shared services.
+`personal/obsidian-2` is disabled at revision 5, with its encrypted backup,
+enrollment and 352-file frozen inventory retained. Five original identity files
+restored from the original LiveSync target's pre-update encrypted backup match live hashes; this is
+a limited restore comparison, not a complete vault restore or device test.
+
+Fresh authenticated Gateway checks pass 20 Obsidian tools, selection on all 19
+content tools, note/binary creation and read-back in the existing LiveSync vault,
+and refusal of missing selection, an unknown vault and path traversal. The new
+official slot remains at client consent, awaiting owner reconnection. These
+observations do not qualify two-vault isolation, source-file comparison,
+retained encrypted device roundtrip or enrolled restart.
 
 Keep the original LiveSync installation as the target. Its legacy `/vault`,
 CouchDB data, administrator record, database member account and private endpoint
@@ -49,8 +65,8 @@ Required cutover sequence:
    the owner accepts the cutover. Do not remove its data merely to meet the
    single-install rule. Existing copies remain manageable; new copies are refused.
 
-Still open: final image/package qualification, guarded retained cutover, owner
-sign-in/encryption input and real Gateway/sync/device acceptance. No retained
-files, credentials or endpoints were changed by the source checkpoint adding
-this design. The package updater preserves an installation; it does not merge
+Still open: owner sign-in/encryption input, all frozen source-file comparisons,
+real two-vault Gateway isolation/scope/revocation and retained sync/device/restart
+acceptance. The initial source checkpoint adding this design changed no retained
+files, credentials or endpoints; the adoption described above is a later operation. The package updater preserves an installation; it does not merge
 vault data or transfer account credentials automatically.

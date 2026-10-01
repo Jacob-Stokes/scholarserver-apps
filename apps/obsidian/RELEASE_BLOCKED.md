@@ -1,4 +1,4 @@
-# Multi-vault source candidate — 30 September 2026
+# Multi-vault retained development candidate — 1 October 2026
 
 Package `0.6.0-multivault.20260930.1` now selects receipt-qualified native images
 from `2401873bcce6497f12f2162ddf34d372c722612d`, publication run
@@ -6,7 +6,11 @@ from `2401873bcce6497f12f2162ddf34d372c722612d`, publication run
 Both native jobs and all manifest jobs passed. Registry indexes, platform configs
 and RootFS layer identities match the downloaded publication receipts. Manifest,
 Compose and the five Obsidian source-lock records select those same images.
-This is a scoped development candidate for the guarded package-only workflow,
+The original retained installation adopted this package at revision 9 on
+30 September. The old official replica remains disabled and preserved; the new
+official connection awaits owner setup. Core `fea08a3` deployed on 1 October;
+real Gateway discovery and single-vault note/binary checks pass. Full two-vault
+sync/device acceptance remains open. This is a retained development candidate,
 not an unrestricted catalog release or a completed retained migration.
 
 Development delivery requires paired core
