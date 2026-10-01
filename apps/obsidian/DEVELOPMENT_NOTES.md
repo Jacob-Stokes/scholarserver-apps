@@ -1097,3 +1097,10 @@ published or deployed. The new .2 candidate needs fresh native qualification and
 compatible core presentation before retained installation. Exact source and
 synthetic browser evidence are in the paired durable checklist. Project note/index
 update remains pending access to the owner's intended documentation vault.
+
+Native run 36859987233 stopped before qualification/publication on both
+architectures: the standalone Logseq image could not resolve Radix Dialog from
+application-screen. The modal is now a separate shared export so existing screen
+consumers keep their previous import boundary. This fixes packaging responsibility;
+local monorepo imports alone had not proved independent image dependency closure.
+Fresh production builds and full/native checks follow at the corrected source.
