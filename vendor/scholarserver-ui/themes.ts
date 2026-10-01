@@ -48,7 +48,7 @@ export function themeTokens(id: ColourTheme, dark: boolean): Record<string, stri
     return {
       background: "#fffefa",
       foreground: "#253d32",
-      card: "#fffefa",
+      card: "#ffffff",
       "card-foreground": "#253d32",
       primary: theme.primary,
       "primary-foreground": "#ffffff",

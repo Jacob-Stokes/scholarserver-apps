@@ -34,7 +34,7 @@ SOFTWARE.
   color-scheme: light;
   --background: #fffefa;
   --foreground: #253d32;
-  --card: #fffefa;
+  --card: #ffffff;
   --card-foreground: #253d32;
   --primary: #285641;
   --primary-foreground: #ffffff;
@@ -53,6 +53,7 @@ SOFTWARE.
   --sidebar-accent: #e3e8da;
   --sidebar-accent-foreground: #285641;
   --radius: 0.25rem;
+  --card-radius: 0.625rem;
   font-family: var(--ss-font-sans);
 }
 
@@ -286,9 +287,9 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 }
 .ss-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--card-radius);
   background: var(--card);
-  padding: 1.25rem;
+  padding: 1rem;
 }
 .ss-card h2,
 .ss-card h3 {
@@ -696,7 +697,7 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 /* Connection choices share one app-owned view selector. */
 .ss-configuration-navigation { display: grid; gap: .75rem; min-width: 0; }
 .ss-configuration-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
-.ss-configuration-cards .ss-configuration-choice { align-items: flex-start; flex-direction: column; border: 1px solid var(--border); border-radius: .75rem; padding: 1.25rem; background: var(--card); gap: 1rem; }
+.ss-configuration-cards .ss-configuration-choice { align-items: flex-start; flex-direction: column; border: 1px solid var(--border); border-radius: var(--card-radius); padding: 1rem; background: var(--card); gap: .75rem; }
 .ss-configuration-cards .ss-configuration-choice > button { margin-top: auto; }
 .ss-configuration-card-navigation { display: grid; gap: 1rem; }
 .ss-configuration-card-actions { display: flex; justify-content: flex-end; }
