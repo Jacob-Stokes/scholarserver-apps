@@ -81,10 +81,14 @@ test("two official vault controllers share the installation, keep separate sign-
   async function section(id = "vaults") {
     return fetch(`${base}/api/configuration/${id}`).then((response) => response.json());
   }
-  async function add(label) {
-    const saved = await section();
+  async function add(label, view = "add-official") {
+    const saved = await fetch(`${base}/api/configuration/vaults/evaluate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ values: { vaultId: view } })
+    }).then((response) => response.json());
     const requestId = randomUUID();
-    const body = { requestId, expectedRevision: saved.revision, values: { label, source: "official" } };
+    const body = { requestId, expectedRevision: saved.revision, values: { label, vaultId: view } };
     const result = await fetch(`${base}/api/configuration/vaults/actions/add-vault`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -166,6 +170,41 @@ test("two official vault controllers share the installation, keep separate sign-
   assert.equal(accessReceipt.status, "succeeded");
   const wrongSection = await fetch(`${base}/api/configuration/setup/operations/${accessRequest.requestId}`);
   assert.equal(wrongSection.status, 404);
+  const joining = await add("Existing remote", "add-livesync-existing");
+  assert.equal(joining.result.status, "succeeded");
+  const importedVault = readRegistry(roots.runtime).vaults.find((vault) => vault.label === "Existing remote");
+  const joinSection = await until(
+    () =>
+      fetch(`${base}/api/configuration/vaults/evaluate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ values: { vaultId: importedVault.id } })
+      }).then((response) => response.json()),
+    (result) => result.actions.some((action) => action.id === "join-livesync")
+  );
+  const refusedId = randomUUID();
+  const refused = await fetch(`${base}/api/configuration/vaults/actions/join-livesync`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      requestId: refusedId,
+      expectedRevision: joinSection.revision,
+      values: {
+        vaultId: importedVault.id,
+        livesyncMode: "join",
+        setupURI: "obsidian://setuplivesync?invalid",
+        setupPassphrase: "synthetic-wrong-passphrase",
+        scopePath: "/",
+        confirmedNoOtherSync: true
+      }
+    })
+  });
+  assert.equal(refused.status, 400);
+  assert.equal((await refused.json()).status, "rejected-before-change");
+  const importedPaths = vaultPaths(importedVault, roots);
+  assert.equal(fs.existsSync(path.join(importedPaths.runtime, "vault-binding.json")), false);
+  assert.equal(fs.existsSync(path.join(roots.runtime, "configuration-targets", `${refusedId}.json`)), false);
+  const beforeRestart = readRegistry(roots.runtime);
   const token = fs.readFileSync(path.join(roots.runtime, "service-token"), "utf8");
   await stop();
   await start();
@@ -181,7 +220,7 @@ test("two official vault controllers share the installation, keep separate sign-
     rejected,
     "restart must preserve the proven refusal without replaying the install"
   );
-  assert.deepEqual(readRegistry(roots.runtime), afterAccess);
+  assert.deepEqual(readRegistry(roots.runtime), beforeRestart);
   assert.equal(fs.readFileSync(path.join(roots.runtime, "service-token"), "utf8"), token);
   assert.equal(diagnostic, "");
 });

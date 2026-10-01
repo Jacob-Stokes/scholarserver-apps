@@ -1,5 +1,6 @@
 import { obsidianConfiguration } from "./configuration.mjs";
-import { selectedVaultConfiguration, vaultAccessConfiguration, vaultsConfiguration } from "./vault-configuration.mjs";
+import { selectedVaultConfiguration, vaultAccessConfiguration } from "./vault-configuration.mjs";
+import { vaultWorkspaceConfiguration } from "./vault-workspace.mjs";
 
 function status(profile, state, extra = {}) {
   return {
@@ -23,7 +24,7 @@ export const obsidianConfigurationFixtures = [
     vaults: [{ id: "remote-vault", name: "Research" }]
   }),
   obsidianConfiguration(status("official", "ready", { remoteVault: "Research", workerRunning: true })),
-  obsidianConfiguration(status("livesync", "setup-required")),
+  obsidianConfiguration(status("livesync", "setup-required"), { values: { livesyncMode: "new" } }),
   obsidianConfiguration(status("livesync", "livesync-preparing")),
   obsidianConfiguration(status("livesync", "livesync-device-setup")),
   obsidianConfiguration(status("livesync", "livesync-server-joining")),
@@ -64,10 +65,8 @@ const registry = {
 };
 
 export const obsidianMultiVaultFixtures = {
-  "vaults-empty": vaultsConfiguration(emptyRegistry),
   "setup-empty": selectedVaultConfiguration(emptyRegistry, null, "empty"),
   "access-empty": vaultAccessConfiguration(emptyRegistry, null, "empty"),
-  "vaults-added": vaultsConfiguration(registry),
   "setup-official-ready": selectedVaultConfiguration(registry, registry.vaults[0], "mixed", {
     childSection: obsidianConfiguration(
       status("official", "ready", {
@@ -93,4 +92,48 @@ export const obsidianMultiVaultFixtures = {
   }),
   "access-research": vaultAccessConfiguration(registry, registry.vaults[0], "mixed"),
   "access-notes-disabled": vaultAccessConfiguration(registry, registry.vaults[1], "mixed")
+};
+
+export const obsidianWorkspaceFixtures = {
+  "workspace-empty": vaultWorkspaceConfiguration(emptyRegistry, "fixture"),
+  "workspace-list": vaultWorkspaceConfiguration(registry, "fixture", "overview", {
+    statuses: {
+      research: status("official", "ready", { workerRunning: true }),
+      notes: status("livesync", "ready", { liveSyncWorker: { running: true } })
+    }
+  }),
+  "workspace-add": vaultWorkspaceConfiguration(registry, "fixture", "add"),
+  ...Object.fromEntries(
+    ["add-official", "add-livesync-existing", "add-livesync-new"].map((view) => [
+      view,
+      vaultWorkspaceConfiguration(registry, "fixture", view)
+    ])
+  ),
+  "workspace-official-ready": vaultWorkspaceConfiguration(registry, "fixture", "research", {
+    childSection: obsidianConfigurationFixtures[4]
+  }),
+  "workspace-livesync-ready": vaultWorkspaceConfiguration(registry, "fixture", "notes", {
+    childSection: obsidianConfigurationFixtures[9]
+  }),
+  "workspace-livesync-join": vaultWorkspaceConfiguration(registry, "fixture", "notes", {
+    childSection: obsidianConfiguration(status("livesync", "setup-required"), { values: { livesyncMode: "join" } })
+  }),
+  "workspace-storage-error": vaultWorkspaceConfiguration(registry, "fixture", "notes", {
+    errors: { notes: "This vault's storage needs recovery." }
+  }),
+  ...Object.fromEntries(
+    obsidianConfigurationFixtures.map((childSection, index) => [
+      `workspace-stage-${index}`,
+      vaultWorkspaceConfiguration(
+        registry,
+        "fixture",
+        childSection.fields.some((field) => field.id === "email") ||
+          childSection.stage?.id === "client" ||
+          childSection.stage?.id === "vault"
+          ? "research"
+          : "notes",
+        { childSection }
+      )
+    ])
+  )
 };

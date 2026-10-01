@@ -1,36 +1,4 @@
 // App-owned presentation builders; storage and worker observation stay in the supervisor.
-export function vaultsConfiguration(registry) {
-  return {
-    version: 1,
-    id: "vaults",
-    revision: String(registry.revision),
-    title: "Vaults",
-    description: "Add vault connections here. Each vault has separate files, sign-in and sync state.",
-    notices: [],
-    fields: [
-      { id: "label", label: "Vault name", type: "text", required: true, maxLength: 120 },
-      {
-        id: "source",
-        label: "Sync method",
-        type: "select",
-        required: true,
-        options: [
-          { value: "official", label: "Obsidian Sync (subscription required)" },
-          { value: "livesync", label: "Self-hosted LiveSync" }
-        ]
-      }
-    ],
-    values: {},
-    summary: registry.vaults.map((vault) => ({
-      label: vault.label,
-      value: vault.source === "official" ? "Obsidian Sync" : "Self-hosted LiveSync"
-    })),
-    actions: [
-      { id: "add-vault", label: "Add vault", kind: "submit", fieldIds: ["label", "source"], target: { kind: "app" } }
-    ]
-  };
-}
-
 export function selectedVaultConfiguration(
   registry,
   selected,

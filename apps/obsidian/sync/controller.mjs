@@ -18,11 +18,11 @@ import {
   validateObsidianConfigurationAction
 } from "./configuration.mjs";
 import { couchDbAddress } from "./couchdb-address.mjs";
+import { decodeExistingLiveSync, existingWorkerConfiguration, verifyExistingLiveSync } from "./livesync-join.mjs";
 import { activateLiveSyncWorker, prepareLiveSyncWorker, restoredLiveSyncState } from "./livesync-lifecycle.mjs";
 import {
   generateSecret,
   generateSetupUri,
-  initializeCouchDb,
   normalizeCouchDbUrl,
   provisionCouchDb,
   repairDeviceOnboarding
@@ -417,6 +417,37 @@ async function configureLiveSync(input) {
   return statusSummary();
 }
 
+async function prepareExistingLiveSync(input) {
+  const connection = await decodeExistingLiveSync(input.setupURI, input.setupPassphrase);
+  await verifyExistingLiveSync(connection);
+  return { connection, config: await existingWorkerConfiguration(connection, input.setupPassphrase, Date.now()) };
+}
+
+async function joinLiveSync(input, prepared = null) {
+  if (state.profile !== "livesync") throw new Error("Self-hosted LiveSync is not selected.");
+  const scope = normalizeScope(input.scopePath);
+  const { connection, config } = prepared || (await prepareExistingLiveSync(input));
+  // Validate and observe before reserving the pristine local replica. After this
+  // reservation a partial write is recovery, never permission to replace it.
+  await vaultBinding.begin({ profile: "livesync", vaultId: connection.database });
+  await atomicJson(enrollmentPath, {
+    profile: "livesync",
+    database: connection.database,
+    connectionUrl: connection.connectionUrl,
+    scopePath: scope,
+    joiningExisting: true
+  });
+  await writeFile(scopePath, `${scope}\n`, { mode: 0o600 });
+  await atomicJson(liveSyncWorkerPath, config);
+  await updateStatus({
+    state: "livesync-server-joining",
+    remoteVault: connection.database,
+    scopePath: scope,
+    lastError: null
+  });
+  return statusSummary();
+}
+
 async function repairLiveSyncConnection(input) {
   if (state.profile !== "livesync" || state.state !== "livesync-device-setup") {
     throw new Error("Device connection repair is only available before the first device is confirmed.");
@@ -516,17 +547,19 @@ function evaluation(input) {
 async function configurationAction(actionId, wireInput) {
   const input = assertConfigurationActionRequest(wireInput, actionId, "setup");
   let receipt;
+  let preparedJoin = null;
   try {
     receipt = await configurationActions.run(
       input,
       currentConfiguration,
       async (values) => {
         const operation = actionId === "check-connection" ? "status" : actionId;
-        await dispatch({ action: operation, input: values });
+        await dispatch({ action: operation, input: values }, preparedJoin);
       },
-      (values) => {
+      async (values) => {
         try {
           validateObsidianConfigurationAction(actionId, values);
+          if (actionId === "join-livesync") preparedJoin = await prepareExistingLiveSync(values);
         } catch (error) {
           throw new ConfigurationActionError(400, error.message);
         }
@@ -576,7 +609,7 @@ async function configurationReceipt(requestId) {
   }
 }
 
-async function action(request) {
+async function action(request, preparedJoin = null) {
   switch (request.action) {
     case "browse-folders":
       if (state.state !== "ready") throw new Error("Finish connecting this vault before browsing folders");
@@ -617,6 +650,8 @@ async function action(request) {
       return login(request.input ?? {});
     case "connect-vault":
       return connectVault(request.input ?? {});
+    case "join-livesync":
+      return joinLiveSync(request.input ?? {}, preparedJoin);
     case "configure-livesync":
       return configureLiveSync(request.input ?? {});
     case "repair-livesync-connection":
@@ -630,13 +665,13 @@ async function action(request) {
   }
 }
 
-async function dispatch(request) {
+async function dispatch(request, preparedJoin = null) {
   if (request.action === "status") return action(request);
   if (state.state === "recovery-required") throw new Error(state.lastError);
   if (mutationRunning || installingClient) throw new Error("An operation is already running. Please wait.");
   mutationRunning = true;
   try {
-    return await action(request);
+    return await action(request, preparedJoin);
   } catch (error) {
     if (request.action === "configure-livesync") {
       await restore();
@@ -691,11 +726,21 @@ async function restore() {
   if (enrollment?.profile === "livesync") {
     const onboarding = await readJson(liveSyncOnboardingPath, null);
     const worker = await readJson(liveSyncWorkerPath, null);
+    if (enrollment.joiningExisting && !worker?.enabled) {
+      await updateStatus({
+        state: "recovery-required",
+        lastError: "The existing vault connection was interrupted. Restore its connection records before continuing."
+      });
+      return;
+    }
     state = {
       ...state,
       profile: "livesync",
-      state: restoredLiveSyncState(onboarding, worker),
-      remoteVault: "Self-hosted LiveSync",
+      state:
+        enrollment.joiningExisting && worker?.setupURI
+          ? "livesync-server-joining"
+          : restoredLiveSyncState(onboarding, worker),
+      remoteVault: enrollment.joiningExisting ? enrollment.database : "Self-hosted LiveSync",
       scopePath: enrollment.scopePath || "/"
     };
   } else if (enrollment) {
@@ -873,12 +918,9 @@ await mkdir(requestsPath, { recursive: true });
 await mkdir(responsesPath, { recursive: true });
 await ensureServiceToken();
 if (installedProfile === "livesync") {
-  const liveSyncCredentials = await ensureLiveSyncSecrets();
-  await initializeCouchDb({
-    internalUrl: internalCouchDbUrl,
-    username: liveSyncCredentials.username,
-    password: liveSyncCredentials.password
-  });
+  // New-database provisioning initializes CouchDB inside its explicit action.
+  // Joining an existing remote must not wait for or configure the internal DB.
+  await ensureLiveSyncSecrets();
 }
 await restore();
 setInterval(() => {

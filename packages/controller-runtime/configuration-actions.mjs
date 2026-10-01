@@ -63,7 +63,7 @@ function validateFields(values, section, action) {
     }
     if (
       typeof value !== "string" ||
-      value.length > 4096 ||
+      value.length > (field.type === "secret" ? 8192 : 4096) ||
       (field.minLength !== undefined && value.length < field.minLength) ||
       (field.maxLength !== undefined && value.length > field.maxLength)
     )

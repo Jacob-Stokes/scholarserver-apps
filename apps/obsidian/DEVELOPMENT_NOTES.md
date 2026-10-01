@@ -1024,3 +1024,41 @@ pending until the owner's corresponding vault is connected and accessible.
 Authoritative runtime/checkpoint paths are in the paired core deployment map
 and durable rollout checklist. Source pushes, published images, deployed
 packages and actual device checks remain distinct; no catalog release is claimed.
+
+
+## 1 October: workspace navigation and existing LiveSync import candidate
+
+Candidate 0.6.0-vault-ui.20261001.1 exposes one app-owned vaults section.
+The overview lists named connections with status; Add vault offers official
+Obsidian Sync, join existing LiveSync via an exported setup URI, or create a new
+ScholarServer LiveSync database. Optional local naming is explicitly separate
+from choosing the actual remote vault. Connection, folder scope, name and AI
+access share one selected vault. Legacy setup/access routes remain bounded
+compatibility adapters for existing request receipts and qualification callers.
+
+Existing import uses the pinned maintained LiveSync codec. It preserves remote
+identity, member credentials, encryption and chunking settings, preflights with
+one authenticated HTTPS GET, and sets initializeAfterFirstDevice=false. Bad
+setup passphrases are refused before a binding or supervisor target receipt.
+No import path provisions, resets or unlocks the remote database. The native
+qualification fixture now exercises trusted HTTPS, an independent encrypted
+source peer, wrong-password retry, existing note preservation, both sync
+directions and restart; qualification execution remains pending. No TLS check
+is disabled. Synthetic certificates exist only inside the owned disposable test.
+
+Core adds generic bounded navigation presentation and transient validated next
+views; no app IDs or sync rules move into Manager. Independent saves retain
+unsubmitted non-secret edits; switching views protects unsaved input. The shared
+UI snapshot is deliberately copied from core. Full source checks passed before
+the final regression additions; final reruns and native qualification are recorded
+separately in the paired durable checklist. Published image pins still refer to
+the previous qualified runtime until this new candidate is qualified and selected.
+No package publication, retained migration or official-device acceptance is claimed
+by these source edits. Project note/index update remains pending owner-vault access.
+
+The isolated real-controller regression found unconditional startup initialization
+of the internal CouchDB, which prevented an external existing-vault form from
+opening without that database. Initialization now belongs to explicit new-database
+provisioning; startup only ensures the local service credential file. The test
+opens an existing-vault form without CouchDB, refuses the bad URI before any
+binding/target receipt, and preserves registry/token across restart.

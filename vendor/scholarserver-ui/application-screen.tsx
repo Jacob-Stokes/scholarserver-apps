@@ -4,6 +4,57 @@ import { MotionSurface } from "./motion.tsx";
 import { Notifications, SuccessNotice } from "./notifications.tsx";
 import { SectionFeedback } from "./section-feedback.tsx";
 
+/** A collection of app-owned view choices. No settings or requests live here. */
+export function ApplicationConfigurationNavigation({
+  label,
+  choices,
+  selected,
+  disabled,
+  onSelect
+}: {
+  label: string;
+  choices: Array<{
+    value: string;
+    label: string;
+    description?: string;
+    status?: string;
+    actionLabel?: string;
+    disabled?: boolean;
+  }>;
+  selected: string;
+  disabled: boolean;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <nav aria-label={label} className="ss-configuration-navigation">
+      {choices
+        .filter((choice) => choice.value !== selected)
+        .map((choice) => (
+          <div key={choice.value} className="ss-configuration-choice">
+            {choice.description || choice.status || choice.actionLabel !== choice.label ? (
+              <div className="ss-configuration-choice-copy">
+                <span className="ss-configuration-choice-title">{choice.label}</span>
+                {choice.description ? <p>{choice.description}</p> : null}
+                {choice.status ? <span>{choice.status}</span> : null}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className="ss-button ss-button-secondary"
+              disabled={disabled || choice.disabled}
+              aria-label={
+                choice.actionLabel === choice.label ? choice.label : `${choice.actionLabel || "Open"} ${choice.label}`
+              }
+              onClick={() => onSelect(choice.value)}
+            >
+              {choice.actionLabel || choice.label}
+            </button>
+          </div>
+        ))}
+    </nav>
+  );
+}
+
 /** A compact settings summary; the caller owns its data and editing workflow. */
 export function ApplicationSettingsRow({
   title,

@@ -32,10 +32,12 @@ export function validateRegistry(value) {
       vault.label.length > 120 ||
       /[\x00-\x1f\x7f]/.test(vault.label) ||
       typeof vault.aiEnabled !== "boolean" ||
-      Object.keys(vault).some((key) => !["id", "label", "source", "layout", "aiEnabled"].includes(key))
+      Object.keys(vault).some((key) => !["id", "label", "source", "layout", "aiEnabled", "setupMode"].includes(key))
     ) {
       throw new Error("The saved vault registry contains an invalid connection.");
     }
+    if (vault.setupMode !== undefined && (vault.source !== "livesync" || !["join", "new"].includes(vault.setupMode)))
+      throw new Error("Invalid LiveSync setup choice.");
     if (vault.layout === "legacy") {
       if (legacy) throw new Error("The saved vault registry assigns two vaults to legacy storage.");
       legacy = true;
@@ -152,7 +154,12 @@ export function initializeRegistry({
   return registry;
 }
 
-export function planVaultAddition(runtime, expectedRevision, { label, source }, reservedId = `vault-${randomUUID()}`) {
+export function planVaultAddition(
+  runtime,
+  expectedRevision,
+  { label, source, setupMode },
+  reservedId = `vault-${randomUUID()}`
+) {
   const registry = readRegistry(runtime);
   if (registry.revision !== expectedRevision)
     throw new Error("Vault connections changed. Refresh before adding another.");
@@ -171,6 +178,7 @@ export function planVaultAddition(runtime, expectedRevision, { label, source }, 
   if (!identifier.test(reservedId) || registry.vaults.some((vault) => vault.id === reservedId))
     throw new Error("Invalid or existing vault identity.");
   const vault = { id: reservedId, label: label.trim(), source, layout: "managed", aiEnabled: true };
+  if (setupMode !== undefined) vault.setupMode = setupMode;
   const next = { ...registry, revision: registry.revision + 1, vaults: [...registry.vaults, vault] };
   return { vault, registry: next };
 }

@@ -19,7 +19,9 @@ import {
   vaultPaths
 } from "../vaults/registry.mjs";
 import { VaultWorkers } from "../vaults/workers.mjs";
-import { selectedVaultConfiguration, vaultAccessConfiguration, vaultsConfiguration } from "./vault-configuration.mjs";
+import { decodeExistingLiveSync } from "./livesync-join.mjs";
+import { selectedVaultConfiguration, vaultAccessConfiguration } from "./vault-configuration.mjs";
+import { additionMethod, vaultWorkspaceConfiguration } from "./vault-workspace.mjs";
 
 const runtime = process.env.OBSIDIAN_RUNTIME_PATH || "/runtime";
 const sharedLiveSync = process.env.OBSIDIAN_SHARED_LIVESYNC_PATH || "/livesync-runtime";
@@ -42,7 +44,20 @@ function savedRevision() {
   const states = registry.vaults.map((vault) => {
     const paths = vaultPaths(vault, { ...workers.roots, runtime });
     const status = readRegularJson(path.join(paths.runtime, "status.json"), { optional: true });
-    return [vault.id, status?.state, status?.profile, status?.remoteVault, status?.scopePath, status?.lastError];
+    const liveSyncWorker = readRegularJson(path.join(paths.liveSync, "livesync-worker-status.json"), {
+      optional: true
+    });
+    return [
+      vault.id,
+      status?.state,
+      status?.profile,
+      status?.remoteVault,
+      status?.scopePath,
+      status?.lastError,
+      status?.workerRunning,
+      liveSyncWorker?.running,
+      liveSyncWorker?.lastError
+    ];
   });
   return createHash("sha256")
     .update(JSON.stringify([registry, states]))
@@ -55,10 +70,6 @@ function connection(values = {}) {
   const vault = registry.vaults.find((candidate) => candidate.id === id);
   if (!vault) throw new ConfigurationActionError(409, "Choose an existing vault connection.");
   return vault;
-}
-
-function vaultSection() {
-  return vaultsConfiguration(readRegistry(runtime));
 }
 
 async function setupSection(values = {}) {
@@ -82,8 +93,46 @@ function accessSection(values = {}) {
   return vaultAccessConfiguration(registry, selected, savedRevision());
 }
 
+async function workspaceSection(values = {}) {
+  const registry = readRegistry(runtime);
+  const statuses = {};
+  const errors = {};
+  for (const vault of registry.vaults) {
+    const paths = vaultPaths(vault, { ...workers.roots, runtime });
+    try {
+      const status = readRegularJson(path.join(paths.runtime, "status.json"), { optional: true });
+      const liveSyncWorker = readRegularJson(path.join(paths.liveSync, "livesync-worker-status.json"), {
+        optional: true
+      });
+      statuses[vault.id] = status ? { ...status, liveSyncWorker } : null;
+      if (workers.workers.get(vault.id)?.error) errors[vault.id] = workers.workers.get(vault.id).error;
+    } catch {
+      errors[vault.id] = "This vault's saved state needs recovery.";
+    }
+  }
+  const view = values.vaultId || "overview";
+  let childSection;
+  const selected = registry.vaults.find((vault) => vault.id === view);
+  if (selected) {
+    // Evaluation needs only presentation choices, never sign-in or setup secrets.
+    const childValues = {};
+    if (values.livesyncMode !== undefined) childValues.livesyncMode = values.livesyncMode;
+    if (values.repairConnection !== undefined) childValues.repairConnection = values.repairConnection;
+    if (selected.setupMode && childValues.livesyncMode === undefined) childValues.livesyncMode = selected.setupMode;
+    try {
+      childSection = await workers.request(selected.id, "/api/configuration/setup/evaluate", {
+        method: "POST",
+        body: { values: childValues }
+      });
+    } catch {
+      errors[selected.id] ||= "Could not read this vault's connection. Check it again before making a change.";
+    }
+  }
+  return vaultWorkspaceConfiguration(registry, savedRevision(), view, { childSection, statuses, errors });
+}
+
 async function currentSection(sectionId, values = {}) {
-  if (sectionId === "vaults") return vaultSection();
+  if (sectionId === "vaults") return workspaceSection(values);
   if (sectionId === "access") return accessSection(values);
   return setupSection(values);
 }
@@ -102,11 +151,11 @@ async function targetReceipt(requestId, expectedSectionId = null) {
       status: "rejected",
       message: "This change was not applied. Check the fields and try again."
     };
-  if (target.sectionId === "vaults" || target.sectionId === "access") {
+  if (target.actionId === "add-vault" || target.actionId === "save-access") {
     const registry = readRegistry(runtime);
     const selected = registry.vaults.find((vault) => vault.id === target.vaultId);
     const applied =
-      target.sectionId === "vaults"
+      target.actionId === "add-vault"
         ? Boolean(selected)
         : selected?.label === target.settings?.label && selected?.aiEnabled === target.settings?.aiEnabled;
     if (applied && registry.revision > target.registryRevision)
@@ -120,7 +169,11 @@ async function targetReceipt(requestId, expectedSectionId = null) {
       };
     return { requestId, actionId: target.actionId, status: "unconfirmed" };
   }
-  return workers.request(target.vaultId, `/api/configuration/setup/operations/${requestId}`);
+  const result = await workers.request(target.vaultId, `/api/configuration/setup/operations/${requestId}`);
+  if (target.sectionId === "vaults" && result.section) {
+    return { ...result, section: await workspaceSection({ vaultId: target.vaultId }) };
+  }
+  return result;
 }
 
 async function nativeAction(sectionId, actionId, wire) {
@@ -131,7 +184,7 @@ async function nativeAction(sectionId, actionId, wire) {
       if (
         previous.actionId !== actionId ||
         previous.sectionId !== sectionId ||
-        (sectionId !== "vaults" && previous.vaultId !== input.values.vaultId)
+        (actionId !== "add-vault" && previous.vaultId !== input.values.vaultId)
       ) {
         throw new ConfigurationActionError(409, "This request belongs to another vault action.");
       }
@@ -146,23 +199,39 @@ async function nativeAction(sectionId, actionId, wire) {
     if (!action || Object.keys(input.values).some((id) => !action.fieldIds.includes(id))) {
       throw new ConfigurationActionError(400, "This action is unavailable or contains an unsupported field.");
     }
-    if (sectionId === "vaults") {
-      if (actionId !== "add-vault") throw new ConfigurationActionError(400, "Unsupported vault action.");
+    if (actionId === "add-vault") {
+      const registry = readRegistry(runtime);
+      const method = additionMethod(input.values.vaultId);
+      if (!method) throw new ConfigurationActionError(400, "Choose how to connect this vault.");
+      let label = input.values.label?.trim() || method.label;
+      let suffix = 2;
+      while (
+        !input.values.label?.trim() &&
+        registry.vaults.some((vault) => vault.label.toLocaleLowerCase() === label.toLocaleLowerCase())
+      ) {
+        label = `${method.label} ${suffix++}`;
+      }
+      const addition = { label, source: method.source, ...(method.setupMode ? { setupMode: method.setupMode } : {}) };
       const reservedId = `vault-${randomUUID()}`;
       try {
-        planVaultAddition(runtime, Number(input.expectedRevision), input.values, reservedId);
+        planVaultAddition(runtime, registry.revision, addition, reservedId);
       } catch (error) {
         throw new ConfigurationActionError(400, error.message);
       }
-      const target = { sectionId, actionId, vaultId: reservedId, registryRevision: Number(input.expectedRevision) };
+      const target = { sectionId, actionId, vaultId: reservedId, registryRevision: registry.revision };
       await atomicJson(path.join(targets, `${input.requestId}.json`), target);
-      addVault(runtime, Number(input.expectedRevision), input.values, reservedId);
+      addVault(runtime, registry.revision, addition, reservedId);
       workers.reconcile();
       await atomicJson(path.join(targets, `${input.requestId}.json`), { ...target, status: "succeeded" });
-      return { requestId: input.requestId, actionId, status: "succeeded" };
+      return {
+        requestId: input.requestId,
+        actionId,
+        status: "succeeded",
+        section: await workspaceSection({ vaultId: reservedId })
+      };
     }
     const selected = connection(input.values);
-    if (sectionId === "access") {
+    if (actionId === "save-access") {
       const registry = readRegistry(runtime);
       const { vaultId: ignored, ...settings } = input.values;
       try {
@@ -175,6 +244,28 @@ async function nativeAction(sectionId, actionId, wire) {
       updateVaultSettings(runtime, registry.revision, selected.id, settings);
       await atomicJson(path.join(targets, `${input.requestId}.json`), { ...target, status: "succeeded" });
       return { requestId: input.requestId, actionId, status: "succeeded" };
+    }
+    if (actionId === "join-livesync") {
+      let imported;
+      try {
+        imported = await decodeExistingLiveSync(input.values.setupURI, input.values.setupPassphrase);
+      } catch (error) {
+        // Refuse a bad import before recording or mutating a connection.
+        throw new ConfigurationActionError(400, error.message);
+      }
+      for (const vault of readRegistry(runtime).vaults) {
+        if (vault.id === selected.id || vault.source !== "livesync") continue;
+        const paths = vaultPaths(vault, { ...workers.roots, runtime });
+        const enrollment = readRegularJson(path.join(paths.runtime, "enrollment.json"), { optional: true });
+        if (
+          enrollment?.database === imported.database &&
+          enrollment.connectionUrl?.replace(/\/$/, "") === imported.connectionUrl
+        )
+          throw new ConfigurationActionError(
+            409,
+            "This LiveSync database already has a connection here. Configure that vault instead."
+          );
+      }
     }
     if (actionId === "connect-vault") {
       for (const vault of readRegistry(runtime).vaults) {
@@ -200,6 +291,9 @@ async function nativeAction(sectionId, actionId, wire) {
     });
     if (result.status === "rejected") {
       await atomicJson(path.join(targets, `${input.requestId}.json`), { ...target, status: "rejected" });
+    }
+    if (sectionId === "vaults" && result.section) {
+      return { ...result, section: await workspaceSection({ vaultId: selected.id }) };
     }
     return result;
   });
@@ -275,7 +369,7 @@ async function handle(request, response) {
       const result = await targetReceipt(id, sectionId);
       return reply(response, result ? 200 : 404, result || { error: "Operation not found" });
     }
-    if (operation === "outputs" && sectionId === "setup" && id && request.method === "POST") {
+    if (operation === "outputs" && ["setup", "vaults"].includes(sectionId) && id && request.method === "POST") {
       const selected = readRegistry(runtime).vaults.find((vault) => id.endsWith(`-${vault.id}`));
       if (!selected) throw new ConfigurationActionError(404, "Output not found.");
       const input = await body(request);

@@ -200,6 +200,7 @@ test("LiveSync action receipt survives reload without storing passphrase or repl
   try {
     const section = obsidianConfigurationFixtures[5];
     const values = {
+      livesyncMode: "new",
       accessMethod: "tailscale",
       connectionUrl: "https://vault.example.ts.net:8443",
       vaultPassphrase: "long enough passphrase",

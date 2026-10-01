@@ -18,6 +18,9 @@ support_spec = importlib.util.spec_from_file_location("obsidian_native_support",
 support = importlib.util.module_from_spec(support_spec)
 support_spec.loader.exec_module(support)
 docker, probe, wait_for = support.docker, support.probe, support.wait_for
+existing_spec = importlib.util.spec_from_file_location("existing_livesync", Path(__file__).with_name("obsidian-existing-livesync.py"))
+existing = importlib.util.module_from_spec(existing_spec)
+existing_spec.loader.exec_module(existing)
 
 
 def request(container, pathname, body=None):
@@ -48,6 +51,7 @@ def main():
             os.chown(directory, uid, uid)
         docker("network", "create", prefix)
         network_created = True
+        existing.prepare_tls(root)
 
         def start(role, mounts, extra=(), image=None, command=()):
             name = f"{prefix}-{role}"
@@ -67,13 +71,15 @@ def main():
             return name
 
         controller = start("sync", [("vault", "/vault"), ("vaults", "/vaults"), ("runtime", "/runtime"),
-                                    ("live", "/livesync-runtime"), ("client", "/official-client"), ("config", "/home/obsidian/.config")])
+                                    ("live", "/livesync-runtime"), ("client", "/official-client"), ("config", "/home/obsidian/.config"),
+                                    ("tls", "/tls")], ["-e", "NODE_EXTRA_CA_CERTS=/tls/cert.pem"])
         wait_for("Empty registry starts without an official client", lambda: request(controller, "/health")["status"] == "ok")
         assert not (root / "client/installed").exists()
         start("couch", [("couch", "/opt/couchdb/data"), ("live", "/livesync-runtime")],
               ["--network-alias", "livesync-couchdb", "--tmpfs", "/opt/couchdb/etc/local.d:rw,noexec,nosuid,nodev,size=4m,uid=5984,gid=5984,mode=0700"], image=images["couchdb"])
         worker = start("worker", [("vault", "/vault"), ("vaults", "/vaults"), ("runtime", "/runtime:ro"),
-                                  ("live", "/livesync-runtime"), ("database", "/livesync-db")])
+                                  ("live", "/livesync-runtime"), ("database", "/livesync-db"), ("tls", "/tls:ro")],
+                       ["-e", "NODE_EXTRA_CA_CERTS=/tls/cert.pem"])
         api = start("api", [("vault", "/vault"), ("vaults", "/vaults"), ("runtime", "/runtime:ro")], ["--network-alias", "api"])
         mcp = start("mcp", [("runtime", "/runtime:ro")])
 
@@ -102,17 +108,17 @@ def main():
                 raise AssertionError(f"Native action did not complete: {action_id}")
 
         def add(label, source):
-            save("vaults", "add-vault", {"label": label, "source": source})
+            save("vaults", "add-vault", {"label": label, "vaultId": "add-official" if source == "official" else "add-livesync-new"})
             registry = json.loads((root / "runtime/vaults.json").read_text())
             return next(vault["id"] for vault in registry["vaults"] if vault["label"] == label)
 
         official_one = add("Official research", "official")
         official_two = add("Official notes", "official")
         def official_step(vault):
-            return request(controller, "/api/configuration/setup/evaluate", {"values": {"vaultId": vault}})
+            return request(controller, "/api/configuration/vaults/evaluate", {"values": {"vaultId": vault}})
         wait_for("Both official connections wait for consent", lambda: all(official_step(vault).get("stage", {}).get("id") == "client" for vault in [official_one, official_two]))
         assert not (root / "client/installed").exists()
-        save("setup", "install-client", {"vaultId": official_one, "confirmed": True})
+        save("vaults", "install-client", {"vaultId": official_one, "confirmed": True})
         # The action confirms that the consented background download was started.
         # Completion belongs to persisted client state, not the request receipt.
         wait_for("Shared official client download and integrity checks finish", lambda: official_step(official_one).get("stage", {}).get("id") == "account", 180)
@@ -126,12 +132,12 @@ def main():
         peers = []
         for index, vault_id in enumerate(live_ids):
             wait_for("LiveSync connection starts independently", lambda vault=vault_id: official_step(vault).get("stage", {}).get("id") == "livesync")
-            save("setup", "configure-livesync", {"vaultId": vault_id, "confirmedNoOtherSync": True,
+            save("vaults", "configure-livesync", {"livesyncMode": "new","vaultId": vault_id, "confirmedNoOtherSync": True,
                 "accessMethod": "tailscale", "connectionUrl": "https://synthetic.example.ts.net",
                 "vaultPassphrase": "Synthetic-vault-test-only-2026", "vaultPassphraseAgain": "Synthetic-vault-test-only-2026", "scopePath": "/"})
             selected = official_step(vault_id)
             output = next(item for item in selected["outputs"] if item["id"].startswith("setup-uri-"))
-            disclosed = request(controller, f"/api/configuration/setup/outputs/{output['id']}", {"values": {"vaultId": vault_id}})
+            disclosed = request(controller, f"/api/configuration/vaults/outputs/{output['id']}", {"values": {"vaultId": vault_id}})
             assert disclosed["id"] == output["id"] and disclosed["value"]
             # Do not print the disposable setup credentials. A peer receives only
             # this connection's internal protocol setup, never CouchDB admin access.
@@ -152,7 +158,7 @@ def main():
                 return docker("exec", "-i", target, "node", "/app/dist/index.cjs", "/livesync-db", "--settings", "/livesync-db/.livesync/settings.json", *args, input=input)
             peer_cli("put", "Same.md", input=f"Synthetic device note {index}")
             peer_cli("sync")
-            save("setup", "complete-livesync", {"vaultId": vault_id, "confirmedPluginConnected": True})
+            save("vaults", "complete-livesync", {"vaultId": vault_id, "confirmedPluginConnected": True})
             wait_for("Encrypted peer note arrives in its selected vault", lambda vault=vault_id: (root / "vaults" / vault / "Same.md").exists(), 120)
             assert (root / "vaults" / vault_id / "Same.md").read_text() == f"Synthetic device note {index}"
             wait_for("LiveSync vault becomes ready", lambda vault=vault_id: official_step(vault).get("summary", []) and any(item["label"] == "Server sync" for item in official_step(vault)["summary"]), 120)
@@ -207,8 +213,10 @@ def main():
             assert (root / (peer_name + "-vault") / "Research/Server.md").read_text() == f"Synthetic server note {index}"
             assert (root / (peer_name + "-vault") / "Research/Server.bin").read_bytes() == bytes([0, 1, index, 127, 128, 255])
 
-        save("setup", "save-scope", {"vaultId": live_ids[0], "scopePath": "Research"})
-        save("access", "save-access", {"vaultId": live_ids[1], "label": "Live notes", "aiEnabled": False})
+        existing.qualify(root, start, controller, worker, images, probe, request, save, docker, wait_for)
+
+        save("vaults", "save-scope", {"vaultId": live_ids[0], "scopePath": "Research"})
+        save("vaults", "save-access", {"vaultId": live_ids[1], "label": "Live notes", "aiEnabled": False})
         probe(api, f"""
           import assert from 'node:assert/strict'; import {{readFile}} from 'node:fs/promises';
           const token=(await readFile('/runtime/service-token','utf8')).trim(); const id={json.dumps(live_ids[0])};

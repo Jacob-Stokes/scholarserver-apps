@@ -12,7 +12,7 @@ test("one workspace installation runs the shared stack without an installation-w
   assert.deepEqual(Object.keys(compose.services), ["sync", "api", "mcp", "livesync-couchdb", "livesync-worker"]);
   assert.deepEqual(
     manifest.ui.configuration.sections.map((section) => section.id),
-    ["vaults", "setup", "access"]
+    ["vaults"]
   );
 });
 

@@ -1,7 +1,7 @@
 schemaVersion: 1
 id: org.scholarserver.obsidian
 name: Obsidian
-packageVersion: 0.6.0-multivault.20260930.1
+packageVersion: 0.6.0-vault-ui.20261001.1
 compatibility:
   platform: ">=0.1.0"
   schema: 1
@@ -136,8 +136,6 @@ ui:
     version: 1
     sections:
       - { id: vaults, title: Vaults }
-      - { id: setup, title: Vault connection }
-      - { id: access, title: Vault settings }
 presentation:
   editorialIcon:
     path: assets/icons/obsidian-editorial.png

@@ -134,3 +134,12 @@ joins its private network. Existing installed packages are unchanged. The full
 app test suite and core package-schema validation pass. Fresh development install,
 private-route and desktop synchronization acceptance remain pending. This is not
 a general release or an update of Freelove's existing notes.
+
+
+1 October vault UI candidate 0.6.0-vault-ui.20261001.1 is unpublished.
+It requires the paired core's bounded navigation and transient-next-view contract.
+The broad 0.1.0 platform range cannot distinguish individual development commits;
+this candidate must not be put into the general catalog before feature-version
+compatibility is qualified. Native existing-vault HTTPS import and retained
+checkpointed deployment are separate gates, as are owner official-device setup
+and the project-vault documentation update. Published older packages remain immutable.

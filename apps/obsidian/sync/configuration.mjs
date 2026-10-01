@@ -58,7 +58,10 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
       { label: "Server sync", value: serverSyncRunning ? "Running" : "Not confirmed running" }
     ];
     if (status.profile === "livesync")
-      section.notices.push({ kind: "warning", text: "Keep other vault sync methods turned off to avoid conflicts." });
+      section.notices.push({
+        kind: "warning",
+        text: "Use only one sync method on this vault. Other vaults can use different methods."
+      });
     section.fields = [
       {
         id: "scopePath",
@@ -253,9 +256,85 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     });
     return section;
   }
+  const mode = values.livesyncMode || "";
+  if (mode !== "new") {
+    section.stage = { id: "livesync-existing", label: "Connect LiveSync", index: 2, total: 6 };
+    section.fields = [
+      {
+        id: "livesyncMode",
+        label: "LiveSync setup",
+        type: "select",
+        required: true,
+        options: [
+          { value: "join", label: "Connect an existing LiveSync vault" },
+          { value: "new", label: "Create a new LiveSync setup" }
+        ]
+      }
+    ];
+    section.values = { livesyncMode: mode };
+    if (mode === "join") {
+      section.fields.push(
+        {
+          id: "setupURI",
+          label: "LiveSync setup URI",
+          type: "secret",
+          required: true,
+          maxLength: 8192,
+          autocomplete: "off"
+        },
+        {
+          id: "setupPassphrase",
+          label: "Setup URI passphrase",
+          type: "secret",
+          required: true,
+          autocomplete: "off",
+          hint: "The passphrase used to export the setup URI, which contains the vault's connection and encryption settings."
+        },
+        {
+          id: "scopePath",
+          label: "AI-accessible folder",
+          type: "text",
+          required: true,
+          hint: "Use / for the whole vault, or a folder inside it."
+        },
+        { id: "confirmedNoOtherSync", label: "This vault uses only LiveSync", type: "boolean", required: true }
+      );
+      section.values.scopePath = "/";
+      section.instructions = [
+        {
+          title: "Copy the existing connection",
+          text: "In the connected Obsidian vault, use Self-hosted LiveSync: Copy settings as a new Setup URI. Paste the URI and its export passphrase here. The existing database must be reachable from ScholarServer over HTTPS."
+        }
+      ];
+      section.notices.push({
+        kind: "warning",
+        text: "ScholarServer will join this existing vault and keep its encryption settings. It will not create, reset or unlock the remote database."
+      });
+      section.actions = [
+        submit("join-livesync", "Connect existing vault", [
+          "livesyncMode",
+          "setupURI",
+          "setupPassphrase",
+          "scopePath",
+          "confirmedNoOtherSync"
+        ])
+      ];
+    }
+    return section;
+  }
   section.stage = { id: "livesync", label: "LiveSync connection", index: 2, total: 6 };
   section.endpointIds = ["livesync-couchdb"];
   section.fields = [
+    {
+      id: "livesyncMode",
+      label: "LiveSync setup",
+      type: "select",
+      required: true,
+      options: [
+        { value: "new", label: "Create a new LiveSync setup" },
+        { value: "join", label: "Connect an existing LiveSync vault" }
+      ]
+    },
     {
       id: "accessMethod",
       label: "Device access",
@@ -296,7 +375,7 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
     },
     { id: "confirmedNoOtherSync", label: "Other vault sync methods are turned off", type: "boolean", required: true }
   ];
-  section.values = { accessMethod: "tailscale", scopePath: "/", confirmedNoOtherSync: false };
+  section.values = { livesyncMode: "new", accessMethod: "tailscale", scopePath: "/", confirmedNoOtherSync: false };
   section.actions = [
     submit(
       "configure-livesync",
@@ -315,6 +394,8 @@ export function obsidianConfiguration(status, { vaults = [], deviceConnectionUrl
 }
 
 export function validateObsidianConfigurationAction(actionId, values) {
+  if (actionId === "join-livesync" && (values.livesyncMode !== "join" || values.confirmedNoOtherSync !== true))
+    throw new Error("Confirm the existing vault uses only LiveSync.");
   if (actionId === "configure-livesync" && values.vaultPassphrase !== values.vaultPassphraseAgain)
     throw new Error("Vault passphrases do not match.");
   if (actionId === "configure-livesync" && values.confirmedNoOtherSync !== true)
@@ -342,7 +423,7 @@ export function validateObsidianConfigurationAction(actionId, values) {
       throw new Error("Choose to change the device address before updating the setup link.");
   }
   if (
-    ["configure-livesync", "connect-vault", "save-scope"].includes(actionId) &&
+    ["configure-livesync", "join-livesync", "connect-vault", "save-scope"].includes(actionId) &&
     (values.scopePath.includes("..") || values.scopePath.includes("\\") || values.scopePath.startsWith("~"))
   ) {
     throw new Error("Choose a folder inside the vault.");

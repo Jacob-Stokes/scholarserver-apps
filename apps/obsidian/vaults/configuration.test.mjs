@@ -30,7 +30,6 @@ test("every connection stage carries its selected context without mutating the c
 
 test("empty, ready, disabled-access and storage-failure pages retain useful controls and truthful errors", () => {
   const cases = obsidianMultiVaultFixtures;
-  assert.equal(cases["vaults-empty"].actions[0].id, "add-vault");
   assert.deepEqual(cases["setup-empty"].actions, []);
   assert.equal(cases["setup-empty"].notices[0].kind, "info");
   const ready = cases["setup-official-ready"];
@@ -44,4 +43,31 @@ test("empty, ready, disabled-access and storage-failure pages retain useful cont
     ["research", "notes"]
   );
   assert.deepEqual(damaged.actions, []);
+});
+
+test("workspace uses one context for setup and access and separates adding from selecting a remote vault", async () => {
+  const { vaultWorkspaceConfiguration } = await import("../sync/vault-workspace.mjs");
+  const list = vaultWorkspaceConfiguration(registry, "revision");
+  assert.equal(list.fields.length, 1);
+  assert.equal(list.fields[0].presentation, "navigation");
+  assert.deepEqual(list.actions, []);
+  assert.equal(
+    list.fields.some((field) => field.id === "label"),
+    false
+  );
+  const choices = vaultWorkspaceConfiguration(registry, "revision", "add");
+  assert.deepEqual(
+    choices.fields[0].options.slice(2).map((option) => option.value),
+    ["add-official", "add-livesync-existing", "add-livesync-new"]
+  );
+  const detail = vaultWorkspaceConfiguration(registry, "revision", "notes", {
+    childSection: obsidianConfigurationFixtures[9]
+  });
+  assert.equal(detail.fields.filter((field) => field.selectsContext).length, 1);
+  assert.equal(detail.values.vaultId, "notes");
+  assert.equal(detail.values.aiEnabled, false);
+  assert.equal(detail.values.label, "Notes");
+  assert.ok(detail.actions.some((action) => action.id === "save-scope"));
+  assert.ok(detail.actions.some((action) => action.id === "save-access"));
+  assert.throws(() => vaultWorkspaceConfiguration(registry, "revision", "unknown"), /existing/);
 });

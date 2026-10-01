@@ -693,3 +693,11 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 @keyframes ss-section-spin { to { transform: rotate(360deg); } }
 /* Delay feedback, not data. Instant reads should not flash a spinner. */
 @keyframes ss-section-reveal { to { visibility: visible; } }
+/* Connection choices share one app-owned view selector. */
+.ss-configuration-navigation { display: grid; gap: .75rem; min-width: 0; }
+.ss-configuration-choice { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .75rem; border-bottom: 1px solid var(--border); min-width: 0; }
+.ss-configuration-choice-copy { min-width: 0; overflow-wrap: anywhere; }
+.ss-configuration-choice-title { font-weight: 600; }
+.ss-configuration-choice > button { flex-shrink: 0; white-space: nowrap; }
+.ss-configuration-choice-copy p, .ss-configuration-choice-copy > span:last-child:not(:first-child) { display: block; font-size: .875rem; color: var(--muted-foreground); margin-block: .25rem 0; }
+@media (max-width: 480px) { .ss-configuration-choice { align-items: flex-start; flex-direction: column; gap: .5rem; } }
