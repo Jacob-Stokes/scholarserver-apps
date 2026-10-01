@@ -1104,3 +1104,14 @@ application-screen. The modal is now a separate shared export so existing screen
 consumers keep their previous import boundary. This fixes packaging responsibility;
 local monorepo imports alone had not proved independent image dependency closure.
 Fresh production builds and full/native checks follow at the corrected source.
+
+The cards/modal candidate uses package `0.6.0-vault-ui.20261001.2`.
+Native image source `44da44f013f9594a0f646df747f29db28a3e5767` passed both
+architectures, every named native gate, independent Docling/Logseq/Zotero checks
+and immutable index publication in run 36860772543. The five Obsidian indexes
+were separately compared with both native config/layer receipts before selection.
+This metadata checkpoint selects those images; it is not their build revision.
+Only the Obsidian source-lock records advance. Unrelated package image records
+remain independently stale where shared source changed, so this is a scoped
+package qualification, not a repository-wide release claim. Retained Apply and
+browser acceptance follow; paid-device sync and project-vault notes remain open.
