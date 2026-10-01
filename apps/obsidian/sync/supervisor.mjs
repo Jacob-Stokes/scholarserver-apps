@@ -143,7 +143,12 @@ async function targetReceipt(requestId, expectedSectionId = null) {
     throw new ConfigurationActionError(404, "Operation not found in this section.");
   if (!/^[a-z][a-z0-9-]{0,62}$/.test(target.vaultId || "") || !["vaults", "access", "setup"].includes(target.sectionId))
     throw new Error("The saved configuration request needs recovery.");
-  if (target.status === "succeeded") return { requestId, actionId: target.actionId, status: "succeeded" };
+  if (target.status === "succeeded") {
+    const result = { requestId, actionId: target.actionId, status: "succeeded" };
+    if (target.sectionId === "vaults" && ["add-vault", "save-access"].includes(target.actionId))
+      result.section = await workspaceSection({ vaultId: target.vaultId });
+    return result;
+  }
   if (target.status === "rejected")
     return {
       requestId,
@@ -158,8 +163,11 @@ async function targetReceipt(requestId, expectedSectionId = null) {
       target.actionId === "add-vault"
         ? Boolean(selected)
         : selected?.label === target.settings?.label && selected?.aiEnabled === target.settings?.aiEnabled;
-    if (applied && registry.revision > target.registryRevision)
-      return { requestId, actionId: target.actionId, status: "succeeded" };
+    if (applied && registry.revision > target.registryRevision) {
+      const result = { requestId, actionId: target.actionId, status: "succeeded" };
+      if (target.sectionId === "vaults") result.section = await workspaceSection({ vaultId: target.vaultId });
+      return result;
+    }
     if (registry.revision === target.registryRevision)
       return {
         requestId,

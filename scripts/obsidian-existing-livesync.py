@@ -103,7 +103,9 @@ def qualify(root, start, controller, worker, images, probe, request, save, docke
     enrollment = json.loads((root / "runtime/vaults" / vault_id / "enrollment.json").read_text())
     assert enrollment["joiningExisting"] is True and enrollment["database"] == "existing_import"
     config = json.loads((root / "live/vaults" / vault_id / "livesync-worker.json").read_text())
-    assert config["initializeAfterFirstDevice"] is False
+    # The worker may already have replaced one-time setup with its configured
+    # marker. Neither form can request initialization of the imported database.
+    assert config.get("initializeAfterFirstDevice") is not True
     vault = root / "vaults" / vault_id
     wait_for("Imported encrypted source note arrives without resetting the database", lambda: (vault / "Existing.md").exists(), 120)
     assert (vault / "Existing.md").read_text() == "Synthetic encrypted note predating ScholarServer import"

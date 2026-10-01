@@ -1062,3 +1062,11 @@ opening without that database. Initialization now belongs to explicit new-databa
 provisioning; startup only ensures the local service credential file. The test
 opens an existing-vault form without CouchDB, refuses the bad URI before any
 binding/target receipt, and preserves registry/token across restart.
+
+Receipt recovery also returns the current detail for the originally added vault.
+The target ledger stores only identity/settings metadata, not form secrets or
+section descriptors. The same view is returned for duplicate observation and
+uncertain-outcome reconciliation, preventing a confirmed addition from leaving
+the client on a blank Add vault form. A real isolated supervisor regression
+checks matching selected-vault identity without another addition. Native run
+36801302098 was canceled before publication as superseded by this final fix.

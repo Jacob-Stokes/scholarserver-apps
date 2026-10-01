@@ -105,6 +105,12 @@ test("two official vault controllers share the installation, keep separate sign-
     body: JSON.stringify(first.body)
   }).then((response) => response.json());
   assert.equal(replay.status, "succeeded");
+  assert.equal(replay.section.values.vaultId, first.result.section.values.vaultId);
+  const reconciledAddition = await fetch(`${base}/api/configuration/vaults/operations/${first.body.requestId}`).then(
+    (response) => response.json()
+  );
+  assert.equal(reconciledAddition.status, "succeeded");
+  assert.equal(reconciledAddition.section.values.vaultId, first.result.section.values.vaultId);
   await add("Notes");
   const registry = readRegistry(roots.runtime);
   assert.equal(registry.vaults.length, 2);
