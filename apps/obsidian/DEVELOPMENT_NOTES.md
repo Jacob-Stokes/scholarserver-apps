@@ -1078,3 +1078,22 @@ waits for the actual import form and refreshes only an explicit 409
 rejected-before-change response, with a matching request/action identity and
 confirmed absent target ledger. An uncertain or recorded mutation is never
 replayed. Runtime source is unchanged by this fixture correction.
+
+
+### 1 October — card collection and per-vault modal candidate
+
+The owner superseded rows with one card per connection and a modal for Manage
+or continued setup. Add vault opens a guided source choice. Descriptors request
+shared cards/dialogs; Manager receives no Obsidian rules. The selected source
+stays visible; editing name, folder or AI access cannot silently convert sync
+identity. Existing warnings, errors, recovery and distinct save operations remain.
+Source setup selects actual remote vaults or imports the existing LiveSync setup
+URI after creating a local connection slot.
+
+Native run 36802974915 completed successfully at source 19ddde9 after the AMD64
+FreshRSS retry, including combined immutable indexes. Those images qualify the
+older row candidate, not this modal descriptor source. The row package was not
+published or deployed. The new .2 candidate needs fresh native qualification and
+compatible core presentation before retained installation. Exact source and
+synthetic browser evidence are in the paired durable checklist. Project note/index
+update remains pending access to the owner's intended documentation vault.

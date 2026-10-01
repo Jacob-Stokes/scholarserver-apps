@@ -1,3 +1,4 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import React from "react";
 import { ScholarServerLogo } from "./logo.tsx";
 import { MotionSurface } from "./motion.tsx";
@@ -10,7 +11,8 @@ export function ApplicationConfigurationNavigation({
   choices,
   selected,
   disabled,
-  onSelect
+  onSelect,
+  layout = "rows"
 }: {
   label: string;
   choices: Array<{
@@ -19,39 +21,109 @@ export function ApplicationConfigurationNavigation({
     description?: string;
     status?: string;
     actionLabel?: string;
+    presentation?: "action";
     disabled?: boolean;
   }>;
   selected: string;
   disabled: boolean;
   onSelect: (value: string) => void;
+  layout?: "rows" | "cards";
 }) {
+  const visibleChoices = choices.filter((choice) => choice.value !== selected);
+  function renderChoice(choice: (typeof choices)[number]) {
+    return (
+      <div key={choice.value} className="ss-configuration-choice">
+        {choice.description || choice.status || choice.actionLabel !== choice.label ? (
+          <div className="ss-configuration-choice-copy">
+            <span className="ss-configuration-choice-title">{choice.label}</span>
+            {choice.description ? <p>{choice.description}</p> : null}
+            {choice.status ? <span>{choice.status}</span> : null}
+          </div>
+        ) : null}
+        <button
+          type="button"
+          className="ss-button ss-button-secondary"
+          disabled={disabled || choice.disabled}
+          data-configuration-choice={choice.value}
+          aria-label={
+            choice.actionLabel === choice.label ? choice.label : `${choice.actionLabel || "Open"} ${choice.label}`
+          }
+          onClick={() => onSelect(choice.value)}
+        >
+          {choice.actionLabel || choice.label}
+        </button>
+      </div>
+    );
+  }
+  if (layout === "cards") {
+    const actions = visibleChoices.filter((choice) => choice.presentation === "action");
+    const cards = visibleChoices.filter((choice) => choice.presentation !== "action");
+    return (
+      <nav aria-label={label} className="ss-configuration-card-navigation">
+        {actions.length ? <div className="ss-configuration-card-actions">{actions.map(renderChoice)}</div> : null}
+        <div className="ss-configuration-navigation ss-configuration-cards">{cards.map(renderChoice)}</div>
+      </nav>
+    );
+  }
   return (
     <nav aria-label={label} className="ss-configuration-navigation">
-      {choices
-        .filter((choice) => choice.value !== selected)
-        .map((choice) => (
-          <div key={choice.value} className="ss-configuration-choice">
-            {choice.description || choice.status || choice.actionLabel !== choice.label ? (
-              <div className="ss-configuration-choice-copy">
-                <span className="ss-configuration-choice-title">{choice.label}</span>
-                {choice.description ? <p>{choice.description}</p> : null}
-                {choice.status ? <span>{choice.status}</span> : null}
-              </div>
-            ) : null}
-            <button
-              type="button"
-              className="ss-button ss-button-secondary"
-              disabled={disabled || choice.disabled}
-              aria-label={
-                choice.actionLabel === choice.label ? choice.label : `${choice.actionLabel || "Open"} ${choice.label}`
-              }
-              onClick={() => onSelect(choice.value)}
-            >
-              {choice.actionLabel || choice.label}
-            </button>
-          </div>
-        ))}
+      {visibleChoices.map(renderChoice)}
     </nav>
+  );
+}
+
+/** Focus, dismissal and scrolling only. The caller retains form and request ownership. */
+export function ApplicationConfigurationDialog({
+  open,
+  title,
+  description,
+  onDismiss,
+  children
+}: {
+  open: boolean;
+  title: string;
+  description?: string;
+  onDismiss: () => void;
+  children: React.ReactNode;
+}) {
+  const opener = React.useRef<HTMLElement | null>(null);
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onDismiss();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="ss-dialog-overlay ss-configuration-dialog-overlay" />
+        <Dialog.Content
+          className="ss-dialog-content ss-configuration-dialog"
+          onOpenAutoFocus={() => {
+            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }}
+          onCloseAutoFocus={(event) => {
+            // The caller can restore a replaced collection control after its view settles.
+            event.preventDefault();
+            if (opener.current?.isConnected) {
+              opener.current.focus();
+            }
+          }}
+        >
+          <Dialog.Title className="ss-visually-hidden">{title}</Dialog.Title>
+          <Dialog.Description className="ss-visually-hidden">
+            {description || "Configure this connection."}
+          </Dialog.Description>
+          <button
+            type="button"
+            className="ss-button ss-button-secondary ss-configuration-dialog-close"
+            onClick={onDismiss}
+          >
+            Close
+          </button>
+          {children}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

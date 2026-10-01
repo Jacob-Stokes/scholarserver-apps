@@ -49,8 +49,9 @@ test("workspace uses one context for setup and access and separates adding from 
   const { vaultWorkspaceConfiguration } = await import("../sync/vault-workspace.mjs");
   const list = vaultWorkspaceConfiguration(registry, "revision");
   assert.equal(list.fields.length, 1);
-  assert.equal(list.fields[0].presentation, "navigation");
+  assert.equal(list.fields[0].presentation, "cards");
   assert.deepEqual(list.actions, []);
+  assert.equal(list.fields[0].options.at(-1).presentation, "action");
   assert.equal(
     list.fields.some((field) => field.id === "label"),
     false
@@ -64,6 +65,8 @@ test("workspace uses one context for setup and access and separates adding from 
     childSection: obsidianConfigurationFixtures[9]
   });
   assert.equal(detail.fields.filter((field) => field.selectsContext).length, 1);
+  assert.deepEqual(detail.presentation, { kind: "dialog", dismissValue: "overview" });
+  assert.deepEqual(choices.presentation, { kind: "dialog", dismissValue: "overview" });
   assert.equal(detail.values.vaultId, "notes");
   assert.equal(detail.values.aiEnabled, false);
   assert.equal(detail.values.label, "Notes");

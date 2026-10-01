@@ -695,6 +695,16 @@ html:has(body[data-scroll-locked]) { overflow: hidden; }
 @keyframes ss-section-reveal { to { visibility: visible; } }
 /* Connection choices share one app-owned view selector. */
 .ss-configuration-navigation { display: grid; gap: .75rem; min-width: 0; }
+.ss-configuration-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
+.ss-configuration-cards .ss-configuration-choice { align-items: flex-start; flex-direction: column; border: 1px solid var(--border); border-radius: .75rem; padding: 1.25rem; background: var(--card); gap: 1rem; }
+.ss-configuration-cards .ss-configuration-choice > button { margin-top: auto; }
+.ss-configuration-card-navigation { display: grid; gap: 1rem; }
+.ss-configuration-card-actions { display: flex; justify-content: flex-end; }
+.ss-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.ss-configuration-dialog-overlay { position: fixed; inset: 0; z-index: 50; backdrop-filter: blur(2px); }
+.ss-configuration-dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 50; width: min(48rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; background: var(--background); border: 1px solid var(--border); border-radius: .75rem; padding: 1.25rem; }
+.ss-configuration-dialog-close { display: block; margin-left: auto; margin-bottom: .5rem; }
+.ss-configuration-dialog > section { border: 0; padding: 0; }
 .ss-configuration-choice { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .75rem; border-bottom: 1px solid var(--border); min-width: 0; }
 .ss-configuration-choice-copy { min-width: 0; overflow-wrap: anywhere; }
 .ss-configuration-choice-title { font-weight: 600; }

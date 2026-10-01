@@ -73,14 +73,16 @@ export function vaultWorkspaceConfiguration(
           label: vault.label,
           description: vault.source === "official" ? "Obsidian Sync" : "Self-hosted LiveSync",
           status: connectionStatus(vault, statuses[vault.id], errors[vault.id]),
-          actionLabel: statuses[vault.id]?.state === "ready" ? "Configure" : "Continue setup"
+          actionLabel: statuses[vault.id]?.state === "ready" ? "Manage" : "Continue setup"
         })),
-        { value: "add", label: "Add vault", actionLabel: "Add vault" }
+        { value: "add", label: "Add vault", actionLabel: "Add vault", presentation: "action" }
       ])
     ];
+    section.fields[0].presentation = "cards";
     if (!registry.vaults.length) section.description = "Connect an Obsidian vault to get started.";
     return section;
   }
+  section.presentation = { kind: "dialog", dismissValue: "overview" };
   if (view === "add") {
     section.title = "Add vault";
     section.description = "Choose where your vault syncs.";
@@ -127,8 +129,15 @@ export function vaultWorkspaceConfiguration(
     revision,
     title: selected.label,
     description: selected.source === "official" ? "Obsidian Sync" : "Self-hosted LiveSync",
-    pollAfterMs: child.pollAfterMs || 3000
+    pollAfterMs: child.pollAfterMs || 3000,
+    presentation: { kind: "dialog", dismissValue: "overview" }
   });
+  if (section.summary.some((item) => item.label === "Server sync")) {
+    const editableSummaryLabels = new Set(["Sync method", "AI-accessible folder"]);
+    section.summary = section.summary
+      .filter((item) => !editableSummaryLabels.has(item.label))
+      .map((item) => (item.label === "Vault" ? { ...item, label: "Remote vault" } : item));
+  }
   section.fields = [
     navigation([back, { value: view, label: selected.label }]),
     ...child.fields,
