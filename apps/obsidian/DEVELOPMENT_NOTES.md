@@ -1113,5 +1113,20 @@ were separately compared with both native config/layer receipts before selection
 This metadata checkpoint selects those images; it is not their build revision.
 Only the Obsidian source-lock records advance. Unrelated package image records
 remain independently stale where shared source changed, so this is a scoped
-package qualification, not a repository-wide release claim. Retained Apply and
-browser acceptance follow; paid-device sync and project-vault notes remain open.
+package qualification, not a repository-wide release claim.
+
+Retained `personal/obsidian` now runs `.20261001.2` at revision 10. Normal owner
+Manager imported-package Apply completed without warnings, with a fresh verified
+encrypted update checkpoint and unchanged data, endpoints and permissions.
+Twenty-two unselected container identities remain exact; its own private-origin
+router was normally recreated with identical runtime config, mounts and networks.
+Live in-app acceptance covers all three preserved cards, ready-vault settings,
+official Account setup, three Add choices, unsaved Keep/discard and focus return.
+Mobile acceptance at 390 CSS pixels measures a 358-pixel modal without horizontal
+overflow. No test edit was saved or new connection created. Core actual revision
+is `3d62a5b57f63cf2154f5e871066e1533f1e632a9`; exact target receipts are in the
+core deployment map and sibling package operation stage. The long-request proof
+is synthetic, not a new real download or restart test. Public signed feed release,
+owner paid-device sync, two real owner vaults through Gateway and project-vault
+note/index updates remain separate gaps. The normal browser session superseded
+the authentication helper; no login exception was used.
