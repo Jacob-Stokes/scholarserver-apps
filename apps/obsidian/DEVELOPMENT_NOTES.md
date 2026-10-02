@@ -1130,3 +1130,22 @@ is synthetic, not a new real download or restart test. Public signed feed releas
 owner paid-device sync, two real owner vaults through Gateway and project-vault
 note/index updates remain separate gaps. The normal browser session superseded
 the authentication helper; no login exception was used.
+
+### 2 October — request and worker lifetime review
+
+Two isolated regressions exposed shutdown/timeout gaps. The MCP client's ten-second
+deadline was cleared on receipt of headers, allowing a stalled response body to
+wait indefinitely. The deadline now covers the body and is released in `finally`;
+an uncertain write is not retried. Worker reconciliation could also start new
+processes after shutdown had begun. Reconciliation now respects the terminal
+stopping state. Tests cover the stalled write, successful JSON/text/empty bodies,
+and reconciliation after workers stop.
+
+The complete `scripts/check-source.sh` workflow passed on Resolution at
+`2026-10-02T13:50:40Z`, including lint, source/packaging tests, production workspace
+builds and all seven independent app UI builds. This qualifies the changed source
+and build entry points only. No container images were published, no retained app
+was updated, and no real device or owner vault was exercised. Existing image
+source-lock drift remains a release gap. The project note and index are being
+updated for this source review; earlier pending documentation items remain
+historical gaps unless explicitly reconciled.

@@ -89,3 +89,13 @@ test("only a matching pre-change rejection unlocks a forwarded configuration req
   assert.equal(confirmedControllerRejection({ ...expected, status: "unconfirmed" }, 400, expected), null);
   assert.equal(confirmedControllerRejection(rejected, 400, null), null);
 });
+
+test("reconciliation cannot restart vault processes after supervisor shutdown begins", async (t) => {
+  const f = fixture(t);
+  f.workers.reconcile();
+  await f.workers.stop();
+  for (const worker of f.workers.workers.values()) worker.retryAfter = 0;
+  f.workers.reconcile();
+  assert.equal(f.spawned.length, 2, "A late reconciliation must not reopen the stopped supervisor");
+  assert.ok([...f.workers.workers.values()].every((worker) => worker.child === null));
+});

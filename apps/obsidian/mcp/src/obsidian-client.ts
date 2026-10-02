@@ -26,7 +26,6 @@ export class ObsidianClient {
         body: body !== undefined ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined,
         signal: controller.signal
       });
-      clearTimeout(timeout);
       if (method === "HEAD" && res.ok) {
         return {
           exists: true,
@@ -52,12 +51,15 @@ export class ObsidianClient {
       } catch {
         return text;
       }
-    } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === "AbortError") {
+    } catch (error: unknown) {
+      if (controller.signal.aborted) {
         throw new ObsidianError(0, `timeout after ${TIMEOUT_MS}ms`, method, path);
       }
-      throw e;
+      throw error;
+    } finally {
+      // Receiving headers is not completion: stalled response bodies must stay
+      // inside the same deadline, including after a write was dispatched.
+      clearTimeout(timeout);
     }
   }
 

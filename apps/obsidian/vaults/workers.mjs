@@ -63,6 +63,7 @@ export class VaultWorkers {
   }
 
   reconcile() {
+    if (this.stopping) return;
     const registry = readRegistry(this.runtime);
     for (const [index, vault] of registry.vaults.entries()) {
       if (this.role === "livesync" && vault.source !== "livesync") continue;
