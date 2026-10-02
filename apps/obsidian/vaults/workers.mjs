@@ -4,6 +4,34 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRegistry, vaultPaths } from "./registry.mjs";
 
+async function readControllerResponse(response) {
+  if (!response.body) throw new Error("The vault controller returned an invalid response.");
+  const reader = response.body.getReader();
+  const chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 1024 * 1024) throw new Error("The vault controller returned too much data.");
+      chunks.push(value);
+    }
+  } catch (error) {
+    // Cleanup must not hold an uncertain write open if the peer cannot finish it.
+    void reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks, bytes).toString("utf8"));
+  } catch {
+    // Parser diagnostics can quote a response containing account/setup secrets.
+    throw new Error("The vault controller returned an invalid response.");
+  }
+}
+
 function ensureStorage(directory, root) {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   const relative = path.relative(root, directory);
@@ -138,13 +166,11 @@ export class VaultWorkers {
       ...(body !== undefined ? { body: JSON.stringify(body), headers: { "content-type": "application/json" } } : {}),
       signal: AbortSignal.timeout(timeoutMs)
     });
-    const text = await response.text();
-    if (text.length > 1024 * 1024) throw new Error("The vault controller returned too much data.");
-    const value = JSON.parse(text);
+    const value = await readControllerResponse(response);
     if (!response.ok) {
       const rejection = confirmedControllerRejection(value, response.status, expectedAction);
       if (rejection) return rejection;
-      throw new Error(typeof value.error === "string" ? value.error : "This vault operation failed.");
+      throw new Error(typeof value?.error === "string" ? value.error : "This vault operation failed.");
     }
     return value;
   }

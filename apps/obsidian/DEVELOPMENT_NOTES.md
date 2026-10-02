@@ -1146,6 +1146,16 @@ The complete `scripts/check-source.sh` workflow passed on Resolution at
 builds and all seven independent app UI builds. This qualifies the changed source
 and build entry points only. No container images were published, no retained app
 was updated, and no real device or owner vault was exercised. Existing image
-source-lock drift remains a release gap. The project note and index are being
-updated for this source review; earlier pending documentation items remain
-historical gaps unless explicitly reconciled.
+source-lock drift remains a release gap. The project note and index were updated for this source review. Earlier pending
+documentation items remain historical gaps unless explicitly reconciled.
+
+A second boundary check reproduced full buffering before the supervisor's 1 MiB
+response check and parser diagnostics quoting body contents. The supervisor now
+counts encoded bytes while reading, releases rejected streams and uses a fixed
+invalid-response error. Matching pre-change rejection receipts still unlock the
+form; uncertain requests are not retried. Focused tests cover excessive bodies,
+byte-versus-character limits, split UTF-8, malformed JSON and receipt matching.
+The complete source/packaging/workspace and independent UI build checks passed
+on Resolution at 2026-10-02T14:31:52Z. Container publication, retained deployment
+and real vault sync remain separate. The project note follows this source
+checkpoint; exact build evidence is in the paired core review ledger.

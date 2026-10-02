@@ -99,3 +99,80 @@ test("reconciliation cannot restart vault processes after supervisor shutdown be
   assert.equal(f.spawned.length, 2, "A late reconciliation must not reopen the stopped supervisor");
   assert.ok([...f.workers.workers.values()].every((worker) => worker.child === null));
 });
+
+test("oversized controller responses stop at the byte limit and release their stream", async (t) => {
+  const f = fixture(t);
+  f.workers.reconcile();
+  t.after(() => f.workers.stop());
+  let chunks = 0;
+  let cancelled = false;
+  const response = new Response(
+    new ReadableStream({
+      pull(controller) {
+        chunks++;
+        controller.enqueue(new Uint8Array(300_000).fill(120));
+        if (chunks === 10) controller.close();
+      },
+      cancel() {
+        cancelled = true;
+      }
+    })
+  );
+  t.mock.method(globalThis, "fetch", async () => response);
+  await assert.rejects(f.workers.request("one", "/configuration"), /too much data/);
+  assert.ok(chunks <= 5, `Consumed ${chunks} chunks before checking the bound`);
+  assert.equal(cancelled, true);
+});
+
+test("controller JSON errors omit body contents and requests are not replayed", async (t) => {
+  const f = fixture(t);
+  f.workers.reconcile();
+  t.after(() => f.workers.stop());
+  const calls = t.mock.method(globalThis, "fetch", async () => new Response("synthetic-private-password"));
+  await assert.rejects(
+    f.workers.request("one", "/configuration/actions", { method: "POST", body: { test: true } }),
+    (error) => {
+      assert.match(error.message, /invalid response/);
+      assert.doesNotMatch(error.message, /synthetic-private-password/);
+      return true;
+    }
+  );
+  assert.equal(calls.mock.callCount(), 1);
+});
+
+test("controller replies preserve split UTF-8 and retain matching pre-change rejection", async (t) => {
+  const f = fixture(t);
+  f.workers.reconcile();
+  t.after(() => f.workers.stop());
+  const bytes = new TextEncoder().encode(JSON.stringify({ label: "Research £" }));
+  const split = bytes.indexOf(0xc2) + 1;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes.subarray(0, split));
+            controller.enqueue(bytes.subarray(split));
+            controller.close();
+          }
+        })
+      )
+  );
+  assert.deepEqual(await f.workers.request("one", "/configuration"), { label: "Research £" });
+  const expectedAction = { requestId: "test-request-identity", actionId: "save-scope" };
+  globalThis.fetch = async () =>
+    Response.json({ ...expectedAction, status: "rejected-before-change" }, { status: 422 });
+  assert.equal((await f.workers.request("one", "/configuration/actions", { expectedAction })).status, "rejected");
+  globalThis.fetch = async () => Response.json(null, { status: 500 });
+  await assert.rejects(f.workers.request("one", "/configuration"), /operation failed/);
+});
+
+test("controller response limits count encoded bytes, not JavaScript characters", async (t) => {
+  const f = fixture(t);
+  f.workers.reconcile();
+  t.after(() => f.workers.stop());
+  t.mock.method(globalThis, "fetch", async () => Response.json({ value: "£".repeat(600_000) }));
+  await assert.rejects(f.workers.request("one", "/configuration"), /too much data/);
+});
